@@ -142,12 +142,18 @@ function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   const state = pageState({ telemetryOn, activeHarnessCount, hasData });
   const nothingToReport = state !== "full";
 
-  // Scaffold (filter bar + mark-change banner + data panels) belongs to the "has data to show"
-  // state only.
+  // Scaffold (filter bar + mark-change banner) belongs to the "has data to show" state only —
+  // filters are real-data machinery and the mock report ignores them. The REPORT content itself
+  // always renders: in non-full states it shows the shared mock analysis below the banner
+  // (identical contract to the v2 /tokens page).
   controls.hidden = nothingToReport;
   frame.hidden = nothingToReport;
-  content.hidden = nothingToReport;
+  content.hidden = false;
   enableBtn.hidden = telemetryOn;
+
+  // Mock-data disclaimer: the report below is simulated whenever the install state isn't full.
+  const mockBanner = document.getElementById("mock-disclaimer");
+  if (mockBanner) mockBanner.style.display = nothingToReport ? "" : "none";
 
   if (!telemetryOn) {
     // Telemetry off — the banner IS the page.
@@ -190,10 +196,9 @@ function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
 // repaint even when the server's version is unchanged (range/pan/resize). The version embeds the
 // windowed event set, so a normal 5s poll only repaints when that window's data actually changed.
 async function load(force, opts) {
-  if (!setupReady) {
-    if (firstLoad) { firstLoad = false; portalHideLoading(); }
-    return;
-  }
+  // Demo path (mirrors the v2 /tokens page): load ALWAYS fetches. Outside the full cascade state
+  // (telemetry off / no harness) it reads the shared mock analysis instead of the real spool —
+  // the mock endpoint serves one cached report, so window/cohort params are inert there.
   const wipe = !!(opts && opts.wipe);
   if (wipe) { wipeSections(); setLoading(true); }
   let qs = view.rangeMs == null ? "" : "?range=" + view.rangeMs + (view.panEnd == null ? "" : "&end=" + view.panEnd);
@@ -204,7 +209,9 @@ async function load(force, opts) {
   syncViewToUrl(view);
   let data;
   try {
-    data = await api.fetchAnalysis(qs);
+    // Demo path: outside the full cascade state (telemetry off / no harness) the report renders
+    // from the shared mock analysis — identical contract to the v2 /tokens page.
+    data = await (!setupReady ? api.fetchMockAnalysis(qs) : api.fetchAnalysis(qs));
   } finally {
     if (wipe) setLoading(false);
     if (firstLoad) { firstLoad = false; portalHideLoading(); }
@@ -584,6 +591,10 @@ function showError(err) {
 }
 
 refreshTelemetryState();
+// Demo path: the report fetch runs IMMEDIATELY (not only after the state poll flips setupReady) —
+// outside the full cascade state the first load reads the shared mock analysis, so the demo
+// report paints on first render instead of one poll cycle late. Mirrors the v2 /tokens page.
+load(false).catch(showError);
 setInterval(() => load(false).catch(showError), LOAD_POLL_INTERVAL_MS);
 setInterval(refreshTelemetryState, TELEMETRY_STATE_POLL_INTERVAL_MS);
 window.addEventListener("resize", () => redrawChart());
