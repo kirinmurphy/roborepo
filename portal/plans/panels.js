@@ -60,13 +60,16 @@ export function createRootsPanel({ onSnapshot, onError, onExpand }) {
     if (expanded) onExpand?.();
   }
 
-  function render(roots) {
+  // Single-visible-step onboarding: while the plan-docs package is disabled the banner is the one
+  // setup prompt (the empty-state settings block stays hidden), so a new user sees one call to
+  // action at a time — enable the skill first, then add Project Folders.
+  function render(roots, planDocsEnabled) {
     currentRoots = roots;
     if (!roots.length) {
-      // Empty state: form lives in the standalone `.settings` block, always visible, no toggle.
-      settingsEl.hidden = false;
-      settingsEl.append(settingsBodyEl);
-      settingsLabelEl.textContent = "No Project Folders configured";
+      // True-empty state: the form stays hidden behind the banner while plan-docs is disabled.
+      settingsEl.hidden = !planDocsEnabled;
+      if (!settingsEl.hidden) settingsEl.append(settingsBodyEl);
+      settingsLabelEl.textContent = "Add your first Project Folder";
       rootFormLabelEmptyEl.hidden = false;
       rootFormLabelPopulatedEl.hidden = true;
       rootsDoneEl.hidden = true;

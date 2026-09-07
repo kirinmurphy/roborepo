@@ -80,10 +80,9 @@ export function spinner() {
 }
 
 export function packageBanner(pkg, onEnable, skillModal) {
-  const text = pkg.available
-    ? "Enable skill to add functionality for managing markdown planning documents."
-    : "";
-  const node = fill(tpl("tpl-package-banner"), { text });
+  // The explanatory copy lives statically in the tpl-package-banner template (data-slot="text");
+  // slots not passed to fill() are left untouched, so there's nothing to fill here.
+  const node = tpl("tpl-package-banner");
   const details = node.querySelector("[data-slot=details]");
   details.addEventListener("click", () => skillModal.open("plan-docs", "plan-docs"));
   const action = node.querySelector("[data-slot=action]");

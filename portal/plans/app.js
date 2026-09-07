@@ -165,7 +165,9 @@ async function load() {
 function applySnapshot(snapshot) {
   state.snapshot = snapshot;
   portalSetUpdatedAt();
-  rootsPanel.render(snapshot.settings.discoveryRoots);
+  // Onboarding is single-step: the enable banner shows whenever plan-docs is disabled, and the
+  // "Add your first Project Folder" form appears only after it's enabled (one prompt at a time).
+  rootsPanel.render(snapshot.settings.discoveryRoots, snapshot.planDocsPackage.enabled);
   plansHeaderEl.hidden = snapshot.settings.discoveryRoots.length === 0;
   setPluralCount(plansCountTextEl, snapshot.plans.length, "Plan");
   setPluralCount(reposCountTextEl, snapshot.repositories.length, "Repo");
@@ -499,6 +501,9 @@ function renderWarnings(snapshot) {
 
 function renderPackageBanner(snapshot) {
   const pkg = snapshot.planDocsPackage || {};
+  // Banner is the step-1 onboarding prompt: visible whenever the package is disabled (even with
+  // roots already configured — a mid-life disable needs its re-enable path back). Once enabled,
+  // the Project Folders form is the only visible setup surface.
   if (pkg.enabled) {
     bannerEl.hidden = true;
     return;
