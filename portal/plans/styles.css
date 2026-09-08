@@ -468,7 +468,7 @@ dialog#skill-modal::backdrop {
 
 /* Narrow content column, left-aligned inside it (the page centers the box, never the text). */
 .package-onboarding {
-  max-width: 620px;
+  max-width: 660px;
   width: 100%;
   margin: auto; /* vertical centering within the flex mount */
   display: flex;
@@ -492,10 +492,10 @@ dialog#skill-modal::backdrop {
 .onboarding-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 1rem 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1.5rem;
 }
 
 .onboarding-list portal-icon {
@@ -504,12 +504,16 @@ dialog#skill-modal::backdrop {
   margin-top: 1px; /* optically centers the 20px glyph against the first text line */
 }
 
+.onboarding-list .snippet {
+  padding-top: .5rem;
+}
+
 /* Nested skill rows under the "suite of skills" bullet: indented to the bullet text's left edge,
  * one skill per line, no icons — the parent glyph covers the whole group. */
 .onboarding-sublist {
   list-style: none;
   margin: 2px 0 0;
-  padding: 0;
+  padding: .5rem 0 0 0;
   display: flex;
   flex-direction: column;
   gap: 6px;

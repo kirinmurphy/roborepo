@@ -316,7 +316,7 @@ function configItemElement(item, actions) {
 // chrome as the per-package rows — whose state is derived from the section's items on every
 // render, so individual and group selections can never disagree (bidirectional by construction:
 // any mutation re-renders from the fresh server snapshot). All-on => on + "Deselect All";
-// anything else (mixed or all-off) => off + "Enable All".
+// anything else (mixed or all-off) => off + "Select All".
 export function standardSection(section, { onInspectClick, onToggle, onBulkToggle, contextCost }) {
   const panel = tpl("tpl-section-packages");
   panel.classList.toggle("wide", !!section.wide);
@@ -335,7 +335,7 @@ export function standardSection(section, { onInspectClick, onToggle, onBulkToggl
     const activeCount = toggleableItems.filter((item) => item.active).length;
     const allOn = toggleableItems.length > 0 && activeCount === toggleableItems.length;
     const label = panel.querySelector('[data-slot="bulk-label"]');
-    label.textContent = allOn ? "Deselect All" : "Enable All";
+    label.textContent = allOn ? "Deselect All" : "Select All";
     // createElement (not the template clone): a cloned-but-unconnected custom element upgrades
     // only on connect, so property assignments before that would land as own properties and
     // permanently shadow the class's accessors (the exact trap config-item.js avoids the same
@@ -344,7 +344,7 @@ export function standardSection(section, { onInspectClick, onToggle, onBulkToggl
     bulkToggle.item = { active: allOn, label: `${section.category}: ${label.textContent}` };
     bulkToggle.statusSlot = panel.querySelector('[data-slot="bulk-status"]');
     // Each group action captures exactly the rows it owns; the handler flips them all to one
-    // target (from mixed or all-off => enable all; from all-on => disable all).
+    // target (from mixed or all-off => select all; from all-on => disable all).
     bulkToggle.onToggle = (item, enabled) => onBulkToggle(section, toggleableItems, enabled);
     panel.querySelector('[data-slot="bulk-toggle"]').replaceWith(bulkToggle);
     bulkWrap.hidden = false;
