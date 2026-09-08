@@ -90,6 +90,9 @@ export function readPackageCategories() {
       // manifest so adding a category never requires a template or printer edit.
       description: typeof category.description === "string" ? category.description : undefined,
       footnote: typeof category.footnote === "string" ? category.footnote : undefined,
+      // Opt-in section-level bulk enable/disable (portal renders one group switch for the section).
+      // Explicit === true: any other value (including absent) means the capability is off.
+      bulkToggle: category.bulkToggle === true,
       order: Number.isFinite(category.order) ? category.order : 0,
     };
   });

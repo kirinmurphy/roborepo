@@ -34,10 +34,22 @@ class ConfigToggleElement extends HTMLElement {
     return this._statusSlot;
   }
 
+  // External lock (e.g. section batch in flight): re-render so the input picks up disabled.
+  // Property, not attribute — callers hold the element reference, and the re-render path is the
+  // same one every other state change goes through.
+  set disabled(value) {
+    this._disabled = value;
+    if (this.isConnected) this.render();
+  }
+  get disabled() {
+    return this._disabled;
+  }
+
   render() {
     const label = tpl("tpl-config-toggle");
     const input = label.querySelector('[data-slot="input"]');
     input.checked = !!this._item.active;
+    input.disabled = !!this._disabled;
     input.setAttribute("aria-label", this._item.label);
 
     input.addEventListener("change", async () => {

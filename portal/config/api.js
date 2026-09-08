@@ -18,6 +18,13 @@ export function toggleItem(kind, id, enabled) {
   return portalPostJson(TOGGLE_ENDPOINT[kind], { id, enabled });
 }
 
+// Section-level bulk toggle: one request applies the whole batch, runs the single reconcile pass
+// server-side, and returns the fresh snapshot. 409 = another batch in flight or preflight
+// rejection (results carries per-id detail).
+export function bulkTogglePackages(ids, enabled) {
+  return portalPostJson("/api/config/packages/bulk", { ids, enabled });
+}
+
 export function applyPermission(payload) {
   return portalPostJson("/api/config/permissions", payload);
 }

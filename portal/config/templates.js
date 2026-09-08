@@ -10,6 +10,7 @@ import {
   harnessChipSpec,
   rulesChipSpec,
   tokenWarningEntries,
+  isBulkInFlight,
 } from "./state.js";
 
 // Applies a chip spec ({ tokens, level, detail, breakdown, legend }) to a <token-chip> element;
@@ -310,16 +311,53 @@ function configItemElement(item, actions) {
 // Every package category renders through one template, driven by the section data the server
 // already sends. No per-category branch: a category added to the manifest appears here without a
 // portal edit, and none can be silently dropped for lacking a template.
-export function standardSection(section, { onInspectClick, onToggle, contextCost }) {
+//
+// Bulk sections (section.bulkToggle): the head carries one <config-toggle> — the SAME switch
+// chrome as the per-package rows — whose state is derived from the section's items on every
+// render, so individual and group selections can never disagree (bidirectional by construction:
+// any mutation re-renders from the fresh server snapshot). All-on => on + "Deselect All";
+// anything else (mixed or all-off) => off + "Enable All".
+export function standardSection(section, { onInspectClick, onToggle, onBulkToggle, contextCost }) {
   const panel = tpl("tpl-section-packages");
   panel.classList.toggle("wide", !!section.wide);
   toggleSlot(panel, "heading", true, section.category);
   toggleSlot(panel, "description", !!section.description, section.description);
   toggleSlot(panel, "footnote", !!section.footnote, section.footnote);
 
-  panel.querySelector('[data-slot="items"]').replaceChildren(
+  const itemsSlot = panel.querySelector('[data-slot="items"]');
+  itemsSlot.replaceChildren(
     ...section.items.map((item) => configItemElement(item, { onInspect: onInspectClick, onToggle, contextCost })),
   );
+
+  const bulkWrap = panel.querySelector('[data-slot="bulk"]');
+  if (section.bulkToggle && typeof onBulkToggle === "function") {
+    const toggleableItems = section.items.filter((item) => item.toggle);
+    const activeCount = toggleableItems.filter((item) => item.active).length;
+    const allOn = toggleableItems.length > 0 && activeCount === toggleableItems.length;
+    const label = panel.querySelector('[data-slot="bulk-label"]');
+    label.textContent = allOn ? "Deselect All" : "Enable All";
+    // createElement (not the template clone): a cloned-but-unconnected custom element upgrades
+    // only on connect, so property assignments before that would land as own properties and
+    // permanently shadow the class's accessors (the exact trap config-item.js avoids the same
+    // way). createElement on a registered tag upgrades synchronously.
+    const bulkToggle = document.createElement("config-toggle");
+    bulkToggle.item = { active: allOn, label: `${section.category}: ${label.textContent}` };
+    bulkToggle.statusSlot = panel.querySelector('[data-slot="bulk-status"]');
+    // Each group action captures exactly the rows it owns; the handler flips them all to one
+    // target (from mixed or all-off => enable all; from all-on => disable all).
+    bulkToggle.onToggle = (item, enabled) => onBulkToggle(section, toggleableItems, enabled);
+    panel.querySelector('[data-slot="bulk-toggle"]').replaceWith(bulkToggle);
+    bulkWrap.hidden = false;
+  }
+
+  // While a batch is in flight every per-row toggle in THIS section is disabled, so a click can
+  // never interleave with the batch. (config-toggle re-renders and re-enables itself once the
+  // snapshot-driven re-render replaces the panel.)
+  if (isBulkInFlight()) {
+    for (const toggle of panel.querySelectorAll("config-toggle")) {
+      toggle.disabled = true;
+    }
+  }
   return panel;
 }
 

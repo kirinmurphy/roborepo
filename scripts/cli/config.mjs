@@ -297,6 +297,8 @@ export function buildBehaviorView(snap) {
     .map((section) => ({
       category: section.label,
       categoryId: section.id,
+      // Opt-in section-level bulk toggle (portal-only affordance; the terminal view ignores it).
+      bulkToggle: section.bulkToggle === true,
       // Section prose lives in the category manifest, not in each consumer's markup, so adding a
       // category needs no template edit in the portal or the CLI printer.
       description: section.description,

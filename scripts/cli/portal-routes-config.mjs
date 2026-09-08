@@ -29,6 +29,27 @@ export const configRoutes = defineRoutes([
   { method: "POST", path: "/api/config/packages", handler: handleToggle("/api/config/packages") },
   { method: "POST", path: "/api/config/skills", handler: handleToggle("/api/config/skills") },
   {
+    // Section-level bulk enable/disable (bulkToggle sections only; the client sends the whole
+    // section's package ids). One request = one unit: preflighted sequential mutations, then a
+    // single reconcile pass, then the fresh snapshot. 409 when another batch is in flight or
+    // preflight rejects (ownership conflicts) — results carries per-id detail for the UI.
+    method: "POST",
+    path: "/api/config/packages/bulk",
+    handler: (req, res, { handlers }) => {
+      const { loadConfig, bulkPackageChange } = handlers;
+      readJsonBody(req, async (body, err) => {
+        if (err) return send(res, 400, "application/json", JSON.stringify({ error: "invalid JSON body" }));
+        const { ids, enabled } = body || {};
+        if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string") || typeof enabled !== "boolean") {
+          return send(res, 400, "application/json", JSON.stringify({ error: "expected { ids: string[], enabled: boolean }" }));
+        }
+        const result = await bulkPackageChange(ids, enabled);
+        send(res, result.status, "application/json", JSON.stringify({ ...result, config: loadConfig() }));
+      });
+      return true;
+    },
+  },
+  {
     // Flat model: either a named behavior (by manifest id) or an arbitrary command (by token
     // array) moves to a bucket. "default" reverts to the manifest's own default for that item.
     // Global only — no profile, no scope; see permissions-render.mjs / config-mutate.mjs.

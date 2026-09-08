@@ -215,7 +215,17 @@
          category without a template was silently dropped from the page. -->
     <template id="tpl-section-packages">
       <section class="panel">
-        <div class="panel-head"><h2 data-slot="heading"></h2></div>
+        <div class="panel-head">
+          <h2 data-slot="heading"></h2>
+          <!-- Section-level bulk toggle (bulkToggle sections only): same switch chrome as the
+               per-package toggles, plus a Select/Deselect All label that tracks the group state.
+               The status span shows "applying…" while the batch request is in flight. -->
+          <span class="bulk-toggle-wrap" data-slot="bulk" hidden>
+            <span class="bulk-toggle-status" data-slot="bulk-status"></span>
+            <span class="bulk-toggle-label" data-slot="bulk-label"></span>
+            <config-toggle data-slot="bulk-toggle"></config-toggle>
+          </span>
+        </div>
         <p class="panel-desc" data-slot="description" hidden></p>
         <div data-slot="items"></div>
         <p class="panel-footnote" data-slot="footnote" hidden></p>
