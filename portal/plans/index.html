@@ -395,24 +395,46 @@
       </div>
     </dialog>
     <!-- Discovery roots: enable-skill banner + one chip per configured root path -->
+    <!-- First-run onboarding: an empty-page state (centered content, no banner chrome). Shown only
+         while the plan-docs package is disabled — once enabled, the Project Folders form takes
+         over as the single visible setup step (the two are never shown together). -->
     <template id="tpl-package-banner">
-      <portal-notice class="package-not-installed-banner" variant="info">
-        <div class="package-not-installed-body">
-          <header>
-            <strong>/plan-docs workflows are not enabled </strong
-            ><span data-slot="text"></span>
-          </header>
-          <div class="banner-links">
-            <button type="button" data-btn="text" data-slot="details">
-              View Skill Details
-            </button>
-            <span class="banner-sep">|</span>
-            <button type="button" data-btn="cta" data-slot="action">
-              Enable Skill
-            </button>
-          </div>
+      <div class="package-onboarding">
+        <h2 class="onboarding-title">Plan and track development with plan-docs</h2>
+        <p class="onboarding-lead">
+          Enable the plan-docs skill to turn next-step ideas into tracked, agent-ready plans.
+        </p>
+        <ul class="onboarding-list">
+          <li>
+            <portal-icon name="plans" size="md"></portal-icon>
+            <span>One Markdown file per plan, in each project's <code>docs/plans/</code> folder.</span>
+          </li>
+          <li>
+            <portal-icon name="filter" size="md"></portal-icon>
+            <span
+              >Plans move through lifecycle folders: 
+              <div class="code-sample">
+                <code>backlog</code> → <code>active</code> →
+                <code>completed</code> → <code>archived</code>.
+              </div>
+            </span>
+          </li>
+          <li>
+            <portal-icon name="pencil" size="md"></portal-icon>
+            <span>A suite of skills drives the development lifecycle:</span>
+            <ul class="onboarding-sublist">
+              <li><code>/plan-docs</code> — create and manage plans</li>
+              <li><code>/plan-promote</code> — prepare a plan for development</li>
+              <li><code>/plan-start</code> — implement it in an isolated worktree</li>
+              <li><code>/wrap-up</code> — commit and hand off the session</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="banner-links">
+          <button type="button" data-btn="cta" data-slot="action">Enable Plan Docs</button>
+          <button type="button" data-btn="text" data-slot="details">View Skill Details</button>
         </div>
-      </portal-notice>
+      </div>
     </template>
     <template id="tpl-root-chip">
       <span class="root-chip">

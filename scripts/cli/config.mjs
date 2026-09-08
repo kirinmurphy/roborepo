@@ -155,6 +155,7 @@ export function readConfigSnapshot() {
     description: pkg.description || null,
     status: packageLiveState.get(pkg.id)?.status || "disabled",
     catalogStatus: pkg.status || "available",
+    capabilities: pkg.capabilities || [],
     defaultEnabled: pkg.defaultEnabled === true,
     desired: packageLiveState.get(pkg.id)?.desired || false,
     cliCommands: [...new Set([...(pkg.cliCommands || []), ...pkg.components.filter((c) => c.type === "command").map((c) => c.name)])],
@@ -296,6 +297,8 @@ export function buildBehaviorView(snap) {
     .map((section) => ({
       category: section.label,
       categoryId: section.id,
+      // Opt-in section-level bulk toggle (portal-only affordance; the terminal view ignores it).
+      bulkToggle: section.bulkToggle === true,
       // Section prose lives in the category manifest, not in each consumer's markup, so adding a
       // category needs no template edit in the portal or the CLI printer.
       description: section.description,

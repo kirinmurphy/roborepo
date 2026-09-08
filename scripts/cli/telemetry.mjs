@@ -45,6 +45,7 @@ import { buildRepositoryHashIndex } from "./telemetry-repository.mjs";
 import { privacyHash } from "./telemetry-schemas/hash.mjs";
 import { buildAnalysisPrompt } from "../harnesses/transcript-locate.mjs";
 import { insightsSummary } from "./telemetry-insights.mjs";
+import { deriveSessionFindings } from "./telemetry-session-findings.mjs";
 import { hookFilePath, writeHooksFile } from "./hook-composition.mjs";
 import { getHarnessProvider, hasHarnessProvider, listHarnessProviders, harnessDisplayName } from "../harnesses/registry.mjs";
 import { ensureInitialized, finalizeInitialization, describeNewerSchemaRefusal } from "./initialization-bootstrap.mjs";
@@ -770,7 +771,12 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     // view is. See telemetry-analyze.mjs's analyzeTelemetry() options and telemetry-cohort.mjs for
     // the shared filter shape the CLI report will eventually reuse too.
     loadAnalysisJson: (window, harness, extra = {}) => cachedAnalysisJson(window, harness, extra),
-    loadSession: (req) => loadSessionDetail({ ...req, spoolContext: sessionSpoolContext(req.id, readMarkers()) }),
+    loadMockAnalysisJson: () => loadMockAnalysisJson(),
+    loadSession: (req) => loadSessionDetail({
+      ...req,
+      spoolContext: sessionSpoolContext(req.id, readMarkers()),
+      reportRows: sessionReportRows(req),
+    }),
     loadInsightsLlm: () => loadInsightsLlm(),
     loadMarkers: () => readMarkers(),
     createMarkerFromRequest: (body) => createMarkerFromPortalRequest(body),
@@ -802,6 +808,10 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     patchRepository: (params) => patchRepository(params),
     mutatePackage: (id, enabled) => mutatePackage(id, enabled),
     mutateSkill: (id, enabled) => setSkillInstalled(id, enabled),
+    // Section-level bulk enable/disable (portal bulkToggle sections). Lazy import: keeps the
+    // batch module (and its reconcile dependency) out of every non-portal code path.
+    bulkPackageChange: (ids, enabled) =>
+      import("./config-bulk.mjs").then((m) => m.applyBulkPackageChange(ids, enabled)),
     mutateBehavior: (behaviorId, bucket) => setBehaviorBucket(behaviorId, bucket),
     mutateCommand: (tokens, bucket) => setCommandBucket(tokens, bucket),
     // Managed cleanup, shared with `roborepo uninstall` so both consume one implementation of what
@@ -1251,6 +1261,47 @@ function cachedAnalysisJson(window, harness, extra = {}) {
   return cachedAnalysisEntry(window, harness, extra).json;
 }
 
+// Mock analysis for the /tokens2 page: reads the bundled mock spool file
+// (portal/tokens2/mock-spool.jsonl) and runs it through the same analyzeTelemetry()
+// pipeline as real data. The mock spool is a committed .jsonl file with the same
+// schema-2 record shape telemetryCapture() writes, so the only difference from real
+// data is the source file — analyzeTelemetry() processes it identically. Cached so
+// repeated requests don't re-parse the file.
+let _mockAnalysisJson = null;
+const MOCK_SPOOL_PATH = path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl");
+// Demo marker for the mock report: the mock spool is seeded with sessions on both sides of
+// this timestamp so the "Before vs after your change" section has real pipeline output.
+const MOCK_MARKER = {
+  marker_id: "mk_demo-skill-change",
+  type: "change",
+  title: "jcodemunch skill swap (demo marker)",
+  ts: "2026-06-13T12:00:00.000Z",
+};
+function loadMockAnalysisJson() {
+  if (_mockAnalysisJson) return _mockAnalysisJson;
+  const events = [];
+  try {
+    const text = fs.readFileSync(MOCK_SPOOL_PATH, "utf8");
+    for (const line of text.split("\n")) {
+      if (!line.trim()) continue;
+      try { events.push(JSON.parse(line)); } catch { /* ignore corrupt lines */ }
+    }
+  } catch { /* no mock spool — return empty report */ }
+  const report = analyzeTelemetry(events, { markers: [MOCK_MARKER], markerId: MOCK_MARKER.marker_id });
+  report.available_harnesses = [...new Set(events.map((e) => e.harness).filter(Boolean))].sort();
+  report.harness_display_names = Object.fromEntries(
+    (report.available_harnesses || []).map((id) => [id, hasHarnessProvider(id) ? getHarnessProvider(id).manifest.displayName : id]),
+  );
+  report.available_models = [...new Set(events.map((e) => e.session?.model).filter(Boolean))].sort();
+  report.available_repos = [...new Set(events.map((e) => e.repo?.label).filter(Boolean))].sort();
+  report.available_metrics = listMetrics().map((m) => m.id);
+  report.markers = [];
+  report.experiments = [];
+  report.deepread_cli = findDeepReadCli();
+  _mockAnalysisJson = JSON.stringify(report);
+  return _mockAnalysisJson;
+}
+
 // Tier 2 — debounced default-view refresh. cachedAnalysisJson() still computes synchronously on a
 // cache miss, but for the DEFAULT view (window=null, harness=null — what every page load and the 5s poll
 // request) we keep the result warm PROACTIVELY on a background timer, so the request path reads a
@@ -1407,17 +1458,46 @@ function sessionSpoolContext(sessionId, markers) {
   };
 }
 
+// Pull one session's rows out of the (cached) analyzed report so the session popup can show
+// deterministic "what happened" findings without re-running the pipeline. Rows live in the report
+// keyed by session_id; the testing summary is report-global so it rides along as-is. Returns null
+// when the report can't be computed (e.g. no spool) — the session endpoint still works, just
+// without findings.
+function sessionReportRows({ id, harness }) {
+  try {
+    const report = JSON.parse(cachedAnalysisJson(null, null));
+    const match = (rows) => (rows || []).filter((r) => r.session_id === id);
+    const harnessMatch = (rows) => match(rows).filter((r) => !harness || r.harness === harness);
+    return {
+      spikes: harnessMatch(report.spikes),
+      loops: harnessMatch(report.loops),
+      read_warnings: harnessMatch(report.read_warnings),
+      testing_efficiency: report.testing_efficiency || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Resolve a flagged event to its chat: find the transcript, surface the heaviest turns, and build a
 // paste-ready analysis prompt. Best-effort — a missing transcript returns found:false, never throws.
-function loadSessionDetail({ id, harness, finding, repo, spoolContext = null }) {
+// `reportRows` (optional) carries the session's own rows from the analyzed report (spikes, loops,
+// read warnings) plus the report-global testing summary, so deriveSessionFindings() can emit the
+// deterministic "what happened" prose alongside the transcript facts. When a caller has no report
+// in scope, findings are simply omitted — the transcript path still works unchanged.
+function loadSessionDetail({ id, harness, finding, repo, spoolContext = null, reportRows = null }) {
   const adapters = getHarnessProvider(harness).adapters;
   const transcriptPath = adapters.transcripts.locate(id);
+  const findings = reportRows
+    ? deriveSessionFindings({ sessionId: id, ...reportRows })
+    : null;
   if (!transcriptPath) {
     return {
       found: false,
       session_id: id,
       harness,
       analysis_prompt: buildAnalysisPrompt({ sessionId: id, harness, repo, finding, transcriptPath: null }),
+      findings,
       spool_context: spoolContext,
     };
   }
@@ -1430,6 +1510,7 @@ function loadSessionDetail({ id, harness, finding, repo, spoolContext = null }) 
     title,
     heavy_turns: heavyTurns,
     analysis_prompt: buildAnalysisPrompt({ sessionId: id, harness, repo, finding, transcriptPath }),
+    findings,
     spool_context: spoolContext,
   };
 }

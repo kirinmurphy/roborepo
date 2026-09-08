@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  {{HEAD}}
+  <body>
+    {{CHROME}}
+    {{WIDGET_TEMPLATES}}
+    {{LOADING}}
+    <main class="inner">
+      <div class="banner-stack" id="tokens2banner-stack">
+        <section class="panel tokens2-off" id="tokens2off" style="display:none">
+          <h2 data-slot="title">telemetry is off</h2>
+          <div class="legend" data-slot="body"></div>
+          <div class="modalactions">
+            <button data-btn="cta" id="tokens2enable">turn on telemetry</button>
+          </div>
+          <div class="item-err" id="tokens2enableerr"></div>
+        </section>
+        <div id="tokens2banner" style="display:none"></div>
+        <div id="mock-disclaimer" class="mock-disclaimer" style="display:none">
+          <span class="mock-text">Below is a <b>simulated tracking report</b>, track your activity after running your own agent sessions.</span>
+        </div>
+      </div>
+      <div id="tokens2content" hidden>
+        <!-- Frame-of-reference meta line (v1 renderMeta contract): sessions · captures · period,
+             with the Codex rate limit riding along as a dim clause when the provider reports one. -->
+        <div id="tokens2meta" class="t2-meta"></div>
+        <!-- Section: waste stats — the dashboard header. One card per range (this week /
+             all time): color-graded % badge, tokens context, top-3 violators, and a
+             "[more]" tooltip with the full violator table. -->
+        <section class="t2-section">
+          <header class="t2-sec-head">
+            <h2 class="tier-head">Identifiable waste</h2>
+          </header>
+          <div class="t2-sec-body">
+            <div class="waste-grid" id="waste-grid"></div>
+          </div>
+        </section>
+        <section class="t2-section">
+          <header class="t2-sec-head">
+            <h2 class="tier-head">Action items</h2>
+          </header>
+          <div class="t2-sec-body">
+            <div class="findings" id="findings"></div>
+          </div>
+        </section>
+        <section class="t2-section">
+          <header class="t2-sec-head">
+            <h2 class="tier-head">Investigate</h2>
+          </header>
+          <div class="t2-sec-body">
+            <div id="invest-sections"></div>
+          </div>
+        </section>
+        <!-- Timeline strip: WHEN did flagged things happen. Marks only — no day totals, no volume.
+             Each mark is a flagged event (spike/loop/read-warning) and opens that session's popup. -->
+        <section class="t2-section" id="timeline-section" hidden>
+          <header class="t2-sec-head">
+            <h2 class="tier-head">When did problems happen</h2>
+          </header>
+          <div class="t2-sec-body">
+            <div id="timeline-strip" class="timeline-strip"></div>
+            <p class="timeline-legend" id="timeline-legend"></p>
+          </div>
+        </section>
+        <!-- Agent-ready prompt: distilled from the Investigate evidence above -->
+        <section class="t2-section">
+          <header class="t2-sec-head">
+            <h2 class="tier-head">Agent-ready prompt</h2>
+          </header>
+          <div class="t2-sec-body">
+            <div class="panel distilled-panel">
+              <div class="distilled-toolbar">
+                <portal-copy-button id="agent-prompt-copy" label="Copy"></portal-copy-button>
+              </div>
+              <pre id="agent-prompt-text" class="agent-prompt-text"></pre>
+            </div>
+          </div>
+        </section>
+        <details class="fulldata">
+          <summary>Full data — top-N lists, sessions, data quality</summary>
+          <div class="fulldata-content" id="fulldata-content"></div>
+        </details>
+      </div>
+    </main>
+    <!-- Session drill-down: what the session was, what happened (deterministic findings from
+         /api/session), what to do, and the copy-prompt-for-agent action. -->
+    <dialog id="tokens2session-modal" class="t2-session-modal" data-dialog-size="md">
+      <div class="modal-head">
+        <span class="modal-title" data-slot="title">Session</span>
+        <span class="modal-path" data-slot="sub"></span>
+        <portal-close-button data-slot="close"></portal-close-button>
+      </div>
+      <div class="t2-session-body" data-slot="body"></div>
+    </dialog>
+    <!-- Doc-guide popup: server-rendered docs/user/guides/telemetry.md, shared factory. -->
+    <dialog id="tokens2docmodal" data-dialog-size="lg">
+      <div class="modal-head">
+        <span class="modal-title" data-slot="title"></span>
+        <span class="modal-path" data-slot="path"></span>
+        <portal-close-button data-slot="close"></portal-close-button>
+      </div>
+      <div class="modal-body" data-slot="content"></div>
+    </dialog>
+    <script src="/portal/shared/theme.js" type="module"></script>
+    <script src="/portal/shared/api.js" type="module"></script>
+    <script src="/portal/shared/icon.js" type="module"></script>
+    <script src="/portal/shared/copy-button.js" type="module"></script>
+    <script src="/portal/shared/close-button.js" type="module"></script>
+    <script src="/portal/shared/info-icon.js" type="module"></script>
+    <script src="/portal/shared/doc-guide-modal.js" type="module"></script>
+    <script src="/portal/shared/markdown-mermaid.js" type="module"></script>
+    <script src="/portal/shared/tooltip.js" type="module"></script>
+    <script src="/portal/shared/harness-warning.js" type="module"></script>
+    <script src="/portal/shared/notice.js" type="module"></script>
+    <script src="/portal/tokens2/app.js" type="module"></script>
+  </body>
+</html>

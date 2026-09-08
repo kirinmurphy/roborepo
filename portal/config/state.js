@@ -10,6 +10,19 @@ export const TOGGLE_ENDPOINT = {
   skill: "/api/config/skills",
 };
 
+// Section-batch lock (client side of the server's own in-flight flag): true while a bulk request
+// is in flight. standardSection() reads it to disable every toggle in bulk sections during the
+// batch, so no per-row click can interleave with it; app.js's bulk handler clears it when the
+// request settles. The server rejects overlapping batches (409) regardless — this is the
+// fast, visual layer of the same guarantee.
+let bulkInFlight = false;
+export function setBulkInFlight(value) {
+  bulkInFlight = value;
+}
+export function isBulkInFlight() {
+  return bulkInFlight;
+}
+
 // Display order, loosest to strictest. Order-independent everywhere it is used as a membership
 // check; only affects how bucket options are presented.
 export const BUCKETS = ["allow", "ask", "deny"];

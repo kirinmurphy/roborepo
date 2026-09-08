@@ -16,6 +16,7 @@
       "id": "skills-dev-lifecycle",
       "label": "Skills - Development Life Cycle",
       "description": "Named slash-command workflows you start intentionally, in the order you use them.",
+      "bulkToggle": true,
       "order": 20
     },
     {

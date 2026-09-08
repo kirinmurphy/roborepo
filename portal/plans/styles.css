@@ -20,7 +20,7 @@ main {
   padding: 1rem 1.5rem;
 }
 /* Discovery-root ("Project Folders") section: a subtly different background/border from
- * read-only sections (.warnings/.package-banner use plain --panel/--line) so it visibly reads as
+ * read-only sections (.warnings uses plain --panel/--line) so it visibly reads as
  * an editable control surface, not just another info panel. */
 .settings {
   background: color-mix(in srgb, var(--accent) 6%, var(--panel));
@@ -211,9 +211,10 @@ main {
 }
 /* Button chrome (default/secondary, cta, text) is defined globally in portal/shared/base.css via
  * data-btn — no page-local button {} override here. */
-/* Matches .empty-state h2's weight/size, so "No Project Folders configured" reads as the same
- * heading style. Only shown in the true-empty state — once roots exist, the row-1 "N Repos"
- * control item takes over and this whole block relocates into the control bar (unlabeled). */
+/* Matches .empty-state h2's weight/size, so "Add your first Project Folder" reads as the same
+ * heading style. Only shown once plan-docs is enabled — while it's disabled the banner is the
+ * single visible setup step. Once roots exist, the row-1 "N Repos" control item takes over and
+ * this whole block relocates into the control bar (unlabeled). */
 .settings-label {
   display: block;
   margin-bottom: 10px;
@@ -445,16 +446,102 @@ dialog#skill-modal::backdrop {
 .revert-action:hover {
   color: var(--ink);
 }
-/* Full-width banner, flush to the viewport edges — a sibling of <main> (not a child), so it can
- * break out of main's padding. Scrolls normally with the page (no sticky/fixed). */
-/* Full-width mount for the not-installed callout. Callout chrome (border/bg/padding) is owned by
-   the shared <portal-notice> inside it now; this just spans the page width and pads the edges. */
+/* Onboarding empty-page mount: full-width, fills the space between the shared chrome (sticky
+ * header above, footer below) so the hero sits in the true visual middle of the page. A display
+ * rule here would defeat the `hidden` attribute (the attribute loses to any display value), so
+ * visibility is gated with an explicit [hidden] override instead. */
 .package-banner {
-  display: block;
-  width: 100%;
-  color: var(--dim);
-  padding: 12px 20px;
+  display: flex;
+  justify-content: center;
+  /* 60px top padding = the empty main block (36px) + footer margin (24px) that sit BELOW this
+   * mount. Centering is exact only when top − bottom padding = 60px (the below-mount content
+   * shifts the header↔footer midpoint down by half of itself), so the bottom padding stays 0 —
+   * the hero's auto margins supply all remaining space. Verified: hero center = gap midpoint
+   * at 900px and 1100px viewports. */
+  min-height: calc(100vh - 200px);
+  padding: 60px 20px 0;
 }
+
+.package-banner[hidden] {
+  display: none;
+}
+
+/* Narrow content column, left-aligned inside it (the page centers the box, never the text). */
+.package-onboarding {
+  max-width: 660px;
+  width: 100%;
+  margin: auto; /* vertical centering within the flex mount */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.onboarding-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.onboarding-lead {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--dim);
+}
+
+.onboarding-list {
+  list-style: none;
+  margin: 0;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.onboarding-list portal-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 1px; /* optically centers the 20px glyph against the first text line */
+}
+
+.onboarding-list .snippet {
+  padding-top: .5rem;
+}
+
+/* Nested skill rows under the "suite of skills" bullet: indented to the bullet text's left edge,
+ * one skill per line, no icons — the parent glyph covers the whole group. */
+.onboarding-sublist {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: .5rem 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--dim);
+}
+
+/* The li is a flex row (icon + spans); the sublist must span full width under both, so it needs
+ * its own grid column. */
+.onboarding-list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  align-items: start;
+  font-size: var(--text-md);
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.onboarding-list li > portal-icon {
+  grid-column: 1;
+}
+
+.onboarding-list li > span,
+.onboarding-list li > ul {
+  grid-column: 2;
+}
+
 .package-banner strong {
   color: var(--ink);
 }
@@ -1181,25 +1268,12 @@ dialog#drawer::backdrop {
   vertical-align: -1px;
 }
 
-.package-not-installed-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.package-not-installed-banner header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
+/* CTA row: primary action left (visually first), details link secondary beside it. */
 .banner-links {
   display: flex;
-  gap: 8px;
+  gap: 14px;
   align-items: center;
-}
-.banner-sep {
-  color: var(--line);
+  margin-top: 4px;
 }
 
 /* Shared <option-dropdown> popover — used for the per-card priority picker and the mobile

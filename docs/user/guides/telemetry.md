@@ -106,8 +106,10 @@ The page is ordered most-actionable-first, top to bottom:
 
 ### Testing Efficiency
 
-Full vs. targeted test activity, redundant reruns, and how much of captured tool time goes to
-testing — the panel most likely to surface a debugging-loop problem worth fixing.
+Full vs. targeted test activity, redundant reruns, and how much of captured tokens (v2 report) or
+tool time (v1 dashboard) goes to testing — the panel most likely to surface a debugging-loop
+problem worth fixing. On the v2 report this includes the targeted-to-full ratio and full-suite
+reruns that reproduced an unchanged failure signature.
 
 ### Marker-Relative Comparison
 
@@ -133,8 +135,15 @@ alert use, so a number never means two different things depending on where you'r
 
 ## Session Detail
 
-Click any session row to open: model history, its configuration snapshot, a phase timeline, tool
-totals, and its outcome/task category if one was set.
+Click any session chip or flagged row on the Tokens page to open a drill-down popup: what the
+session was (opening prompt, repo, agent), what telemetry flagged in it — the same deterministic
+findings the Investigate sections show, with the recommended fix — and a ready-to-paste analysis
+prompt for your coding agent. When the transcript is still on disk, the heaviest turns are listed
+under "Heaviest turns in this chat."
+
+The v1 dashboard (`/tokens_v1`) opens the older detail modal instead: model history,
+configuration snapshot, a phase timeline, tool totals, and the outcome/task category if one was
+set.
 
 ```mermaid
 stateDiagram-v2

@@ -13,7 +13,7 @@ import { portalSetUpdatedAt, portalHideLoading } from "/portal/shared/api.js";
 import * as api from "./api.js";
 import * as tmpl from "./templates.js";
 import { createConfigModal } from "./panels.js";
-import { snapshotChanged, inspectChipSpecs } from "./state.js";
+import { snapshotChanged, inspectChipSpecs, setBulkInFlight, isBulkInFlight } from "./state.js";
 
 const modal = createConfigModal();
 
@@ -44,6 +44,35 @@ async function handleToggle(item, enabled) {
   if (data.config) applySnapshot(data.config); // re-render from the authoritative post-mutation snapshot
 }
 
+// Section-level batch (bulkToggle sections): one request for the whole section, server applies
+// mutations + the single reconcile pass and returns the fresh snapshot. While it runs, every
+// toggle in bulk sections is disabled (client flag + server 409 backstop), so nothing can
+// interleave. On any failure the flag clears and the switch reverts via the fresh snapshot —
+// the error surfaces on the group toggle's own status slot (errSlot) like per-row errors do.
+async function handleBulkToggle(section, items, enabled) {
+  setBulkInFlight(true);
+  try {
+    const data = await api.bulkTogglePackages(
+      items.map((item) => item.id),
+      enabled,
+    );
+    if (data.config) applySnapshot(data.config);
+  } catch (err) {
+    console.error(err);
+    if (err.status === 409) {
+      // Another batch won the race (second tab, or double-click that slipped past the disable).
+      // The poll/state it reflects is authoritative — re-sync instead of surfacing an error.
+      applySnapshot(await api.fetchConfig());
+    } else {
+      showError(err);
+    }
+  } finally {
+    setBulkInFlight(false);
+    // Re-enable controls even when the snapshot didn't change (e.g. rejected no-op batch).
+    render(lastSnapshot);
+  }
+}
+
 // --------------------------------------------------------------------------- section renderers
 
 function renderPermissionsSection(section) {
@@ -54,6 +83,7 @@ function renderStandardSection(section, contextCost) {
   return tmpl.standardSection(section, {
     onInspectClick: openSourceModal,
     onToggle: handleToggle,
+    onBulkToggle: handleBulkToggle,
     contextCost,
   });
 }
@@ -68,13 +98,20 @@ function render(snap) {
   const main = document.getElementById("main");
   // Section model comes straight from the server snapshot (buildBehaviorView), no client fork.
   const view = snap.behaviorView || [];
+  // Package-category sections (everything the packages intro describes) vs the non-package
+  // sections that follow. The intro sits between the harness file grid and the first package
+  // section; the harness-warning notice (no active harness) stays at the top of the page.
+  const packageSections = view.filter((section) => section.categoryId);
+  const otherSections = view.filter((section) => !section.categoryId);
   main.replaceChildren(
     ...[
-      tmpl.onboardingNotice(snap),
+      tmpl.harnessWarning(snap),
       tmpl.contextWarnings(snap),
       tmpl.configFiles(snap, { onInspectClick: openSourceModal }),
+      tmpl.packagesIntro(),
     ].filter(Boolean),
-    ...view.map((section) => renderSection(section, snap.contextCost)).filter(Boolean),
+    ...packageSections.map((section) => renderSection(section, snap.contextCost)).filter(Boolean),
+    ...otherSections.map((section) => renderSection(section, snap.contextCost)).filter(Boolean),
     // Last panel on the page: app-level lifecycle, well below the day-to-day controls.
     tmpl.maintenancePanel({
       onPreview: api.fetchUninstallPreview,
