@@ -45,6 +45,7 @@ import { buildRepositoryHashIndex } from "./telemetry-repository.mjs";
 import { privacyHash } from "./telemetry-schemas/hash.mjs";
 import { buildAnalysisPrompt } from "../harnesses/transcript-locate.mjs";
 import { insightsSummary } from "./telemetry-insights.mjs";
+import { deriveSessionFindings } from "./telemetry-session-findings.mjs";
 import { hookFilePath, writeHooksFile } from "./hook-composition.mjs";
 import { getHarnessProvider, hasHarnessProvider, listHarnessProviders, harnessDisplayName } from "../harnesses/registry.mjs";
 import { ensureInitialized, finalizeInitialization, describeNewerSchemaRefusal } from "./initialization-bootstrap.mjs";
@@ -771,7 +772,11 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     // the shared filter shape the CLI report will eventually reuse too.
     loadAnalysisJson: (window, harness, extra = {}) => cachedAnalysisJson(window, harness, extra),
     loadMockAnalysisJson: () => loadMockAnalysisJson(),
-    loadSession: (req) => loadSessionDetail({ ...req, spoolContext: sessionSpoolContext(req.id, readMarkers()) }),
+    loadSession: (req) => loadSessionDetail({
+      ...req,
+      spoolContext: sessionSpoolContext(req.id, readMarkers()),
+      reportRows: sessionReportRows(req),
+    }),
     loadInsightsLlm: () => loadInsightsLlm(),
     loadMarkers: () => readMarkers(),
     createMarkerFromRequest: (body) => createMarkerFromPortalRequest(body),
@@ -1453,17 +1458,46 @@ function sessionSpoolContext(sessionId, markers) {
   };
 }
 
+// Pull one session's rows out of the (cached) analyzed report so the session popup can show
+// deterministic "what happened" findings without re-running the pipeline. Rows live in the report
+// keyed by session_id; the testing summary is report-global so it rides along as-is. Returns null
+// when the report can't be computed (e.g. no spool) — the session endpoint still works, just
+// without findings.
+function sessionReportRows({ id, harness }) {
+  try {
+    const report = JSON.parse(cachedAnalysisJson(null, null));
+    const match = (rows) => (rows || []).filter((r) => r.session_id === id);
+    const harnessMatch = (rows) => match(rows).filter((r) => !harness || r.harness === harness);
+    return {
+      spikes: harnessMatch(report.spikes),
+      loops: harnessMatch(report.loops),
+      read_warnings: harnessMatch(report.read_warnings),
+      testing_efficiency: report.testing_efficiency || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Resolve a flagged event to its chat: find the transcript, surface the heaviest turns, and build a
 // paste-ready analysis prompt. Best-effort — a missing transcript returns found:false, never throws.
-function loadSessionDetail({ id, harness, finding, repo, spoolContext = null }) {
+// `reportRows` (optional) carries the session's own rows from the analyzed report (spikes, loops,
+// read warnings) plus the report-global testing summary, so deriveSessionFindings() can emit the
+// deterministic "what happened" prose alongside the transcript facts. When a caller has no report
+// in scope, findings are simply omitted — the transcript path still works unchanged.
+function loadSessionDetail({ id, harness, finding, repo, spoolContext = null, reportRows = null }) {
   const adapters = getHarnessProvider(harness).adapters;
   const transcriptPath = adapters.transcripts.locate(id);
+  const findings = reportRows
+    ? deriveSessionFindings({ sessionId: id, ...reportRows })
+    : null;
   if (!transcriptPath) {
     return {
       found: false,
       session_id: id,
       harness,
       analysis_prompt: buildAnalysisPrompt({ sessionId: id, harness, repo, finding, transcriptPath: null }),
+      findings,
       spool_context: spoolContext,
     };
   }
@@ -1476,6 +1510,7 @@ function loadSessionDetail({ id, harness, finding, repo, spoolContext = null }) 
     title,
     heavy_turns: heavyTurns,
     analysis_prompt: buildAnalysisPrompt({ sessionId: id, harness, repo, finding, transcriptPath }),
+    findings,
     spool_context: spoolContext,
   };
 }

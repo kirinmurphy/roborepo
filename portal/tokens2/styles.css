@@ -68,7 +68,7 @@ hr.banner-break { border: none; border-top: 1px solid var(--line); margin: 24px 
 
 /* ── Session chips + rich session tooltip ── */
 .session-chip code { font-size: 12px; color: var(--accent); background: var(--raised);
-  padding: 1px 6px; border-radius: 4px; cursor: help; }
+  padding: 1px 6px; border-radius: 4px; }
 .session-chip.session-unknown code { color: var(--desc-dim); cursor: default; }
 .session-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
 .session-tip-content { display: grid; gap: 6px; font-size: var(--text-2xs); max-width: 360px; }
@@ -272,3 +272,73 @@ hr.banner-break { border: none; border-top: 1px solid var(--line); margin: 24px 
 }
 .mock-disclaimer .mock-text code { font-size: 13px; color: var(--desc-dim);
   background: var(--raised); padding: 1px 5px; border-radius: 3px; }
+
+/* ── Frame-of-reference meta line ── */
+.t2-meta { color: var(--dim); font-size: var(--text-2xs); margin-bottom: 20px; }
+
+/* ── Session drill-down dialog ── */
+dialog#tokens2session-modal { background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 0; max-height: 85vh; box-shadow: 0 12px 48px var(--modal-shadow); }
+dialog#tokens2session-modal::backdrop { background: var(--backdrop); }
+/* Title and the repo·agent line STACK (title on top, sub below) — side-by-side read as two
+   unrelated columns when the title is a long sentence. */
+dialog#tokens2session-modal .modal-head { padding: 14px 18px; display: grid; gap: 3px; }
+dialog#tokens2session-modal .modal-head .modal-path { margin-left: 0; }
+dialog#tokens2session-modal .modal-head portal-close-button { position: absolute; top: 10px; right: 10px; }
+.t2-session-body { padding: 16px 18px 18px; overflow-y: auto; max-height: calc(85vh - 60px);
+  display: grid; gap: 16px; }
+.sess-who { display: grid; gap: 4px; }
+.sess-fact { display: grid; grid-template-columns: 76px 1fr; gap: 10px; font-size: var(--text-xs); }
+.sess-fact > span:first-child { color: var(--dim); }
+.sess-fact b { font-weight: 600; color: var(--ink); }
+.sess-findings { display: grid; gap: 12px; }
+.sess-finding { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px; }
+.sess-finding-summary { margin: 0; font-size: var(--text-sm); color: var(--ink); display: flex; gap: 8px; align-items: baseline; }
+.sess-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.sess-dot.dot-high { background: var(--danger); }
+.sess-dot.dot-warn { background: var(--warn); }
+.sess-finding-hint { margin: 0; font-size: var(--text-xs); color: var(--accent); }
+.sess-finding-jump { margin: 0; }
+.sess-evidence-link { background: none; border: none; padding: 0; font: inherit;
+  font-size: var(--text-2xs); color: var(--dim); cursor: pointer; text-decoration: underline dotted; }
+.sess-evidence-link:hover { color: var(--accent); }
+.sess-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.sess-why { margin: 0; font-size: var(--text-2xs); color: var(--dim); max-width: 52ch; }
+.sess-loading { color: var(--dim); font-size: var(--text-xs); padding: 12px 0; }
+.sess-turns { border-top: 1px solid var(--line); padding-top: 10px; }
+.sess-turns > summary { cursor: pointer; font-size: var(--text-xs); color: var(--dim); }
+.sess-turns[open] > summary { margin-bottom: 8px; }
+.sess-turn { border-top: 1px dashed var(--line); padding: 6px 0; font-size: var(--text-2xs); }
+.sess-turn-head { display: flex; justify-content: space-between; }
+.sess-turn-head .tool { color: var(--accent); }
+.sess-turn-head .dim { color: var(--dim); }
+.sess-turn-prev { color: var(--dim); margin-top: 3px; white-space: pre-wrap; word-break: break-word; opacity: .85; }
+
+/* Clickable session chips (drill-down) — cursor + hover cue beyond the tooltip. */
+.session-chip.session-link { cursor: pointer; }
+.session-chip.session-link:hover code { background: color-mix(in srgb, var(--accent) 15%, var(--raised)); }
+.session-tip-hint { color: var(--dim); font-size: var(--text-2xs); }
+
+/* ── Timeline strip: marks-only flagged-event view ── */
+.timeline-strip { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap; }
+.tl-day { display: grid; gap: 4px; justify-items: center; align-content: start; }
+.tl-mark { width: 18px; height: 18px; border-radius: 4px; border: none; cursor: pointer;
+  font-size: 10px; font-weight: 700; color: #fff; display: grid; place-items: center; padding: 0; }
+.tl-mark.tl-spike { background: var(--danger); }
+.tl-mark.tl-loop { background: var(--warn); }
+.tl-mark:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tl-day-label { font-size: var(--text-2xs); color: var(--dim); }
+.timeline-legend { margin: 8px 0 0; font-size: var(--text-2xs); color: var(--dim); }
+
+/* ── Per-tool detail rows inside the cost section ── */
+.cost-tool-row .cost-tool-name { font-weight: 400; color: var(--dim); }
+
+/* ── Finding next-step jump affordance ── */
+/* The whole next-step span reuses .waste-source-link for the shared jump-click contract, but the
+   dotted underline is wrong at this size — it draws under the FULL span (message + link) and
+   doesn't follow the text when the sentence wraps. .next-plain strips the border so only the
+   inner "see evidence ↓" affordance reads as clickable. */
+.finding-action .next.next-plain { border-bottom: none; cursor: pointer; }
+.finding-action .next .next-jump { color: var(--dim); font-size: var(--text-2xs);
+  text-decoration: underline dotted; margin-left: 4px; }
+.finding-action .next:hover .next-jump { color: var(--accent); }

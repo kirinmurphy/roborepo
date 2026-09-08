@@ -396,6 +396,7 @@ function cohortStats(cohort) {
 }
 
 function spikeRow(event, sessionsById) {
+  const { cause, hint } = spikeCause(event);
   return {
     ts: event.ts,
     session_id: event.session_id,
@@ -405,6 +406,8 @@ function spikeRow(event, sessionsById) {
     delta_tokens: event.delta_tokens || 0,
     total_tokens: event.tokens?.total ?? 0,
     harness: event.harness ?? null,
+    cause,
+    hint,
     context: sessionContext(event.session_id, sessionsById),
   };
 }

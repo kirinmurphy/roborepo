@@ -108,8 +108,9 @@ class PortalCopyMenu extends HTMLElement {
     });
   }
 
-  // The same floating "Copied ✓" the plain copy button shows, over the trigger this menu replaced.
-  // Positioned absolutely (see .copy-flash) so a dense row never reflows to make room for it.
+  // The same IN-PLACE confirmation the plain copy button uses: the trigger's copy glyph swaps to a
+  // check (color flips green via .copy-menu-trigger.copied) inside the same box — no overlay, no
+  // alignment drift.
   //
   // Tracked as state rather than toggled directly on the node: render() rebuilds the trigger on
   // every open/close, so a flag the renderer reads is what keeps the confirmation alive across the
@@ -125,8 +126,13 @@ class PortalCopyMenu extends HTMLElement {
   }
 
   #syncFlash() {
-    const flash = this.querySelector("[data-slot=flash]");
-    if (flash) flash.hidden = !this._flashing;
+    const trigger = this.querySelector(".copy-menu-trigger");
+    if (trigger) {
+      trigger.classList.toggle("copied", this._flashing);
+      trigger.setAttribute("aria-label", this._flashing ? "Copied" : "Copy");
+      const icon = trigger.querySelector('[data-slot="icon"]');
+      if (icon) icon.setAttribute("name", this._flashing ? "check" : "copy");
+    }
   }
 
   render() {

@@ -68,15 +68,11 @@
      one copies, so a "Copy" word on the trigger only repeated the first word of every item. -->
 <template id="tpl-copy-menu-trigger">
   <button type="button" class="copy-menu-trigger" aria-haspopup="true" aria-label="Copy">
-    <portal-icon name="copy" size="lg"></portal-icon
+    <portal-icon data-slot="icon" name="copy" size="lg"></portal-icon
     ><portal-icon name="chevron" size="sm" class="copy-menu-chevron"></portal-icon>
-    <!-- Confirmation floats OVER the trigger (absolutely positioned, see .copy-flash in base.css)
-         rather than replacing its contents: the trigger keeps its own width, so a dense row does
-         not reflow at the moment of copying. Shared with portal-copy-button so both controls
-         confirm identically. -->
-    <span class="copy-flash" data-slot="flash" role="status" aria-live="polite" hidden
-      >Copied<portal-icon name="check" size="sm"></portal-icon
-    ></span>
+    <!-- Copied confirmation is an IN-PLACE face swap (copy glyph → check, same box), matching
+         portal-copy-button — no overlay element, no alignment drift. copy-menu.js owns the swap;
+         .copy-menu-trigger.copied in base.css owns the color. -->
   </button>
 </template>
 <template id="tpl-copy-menu-panel">
@@ -89,16 +85,13 @@
 <!-- copy-button.js -->
 <template id="tpl-copy-button">
   <button type="button" class="copy-button">
-    <span class="copy-button-state copy-button-idle" data-slot="idle">
+    <span class="copy-button-state" data-slot="idle">
       <portal-icon data-slot="icon" size="sm"></portal-icon
       ><span data-slot="label"></span>
     </span>
-    <!-- Same floating confirmation as the copy-menu trigger (.copy-flash). An icon-only copy button
-         is narrower than the word "Copied", so stacking the two in one grid cell — as this did —
-         sized every such button to the confirmation it shows for five seconds out of every use. -->
-    <span class="copy-flash" data-slot="flash" role="status" aria-live="polite" hidden
-      >Copied<portal-icon name="check" size="sm"></portal-icon
-    ></span>
+    <!-- Copied state is an IN-PLACE face swap (icon → check, label → "Copied") inside this same
+         button box — no overlay element, so the wrapper never moves and alignment can't drift.
+         copy-button.js owns the swap; .copy-button-copied in base.css owns the color. -->
   </button>
 </template>
 

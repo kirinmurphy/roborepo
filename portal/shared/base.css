@@ -707,29 +707,36 @@ portal-close-button {
   background: var(--raised);
 }
 /* <portal-copy-button> — the shared copy-to-clipboard control (portal/shared/copy-button.js).
- * Confirmation is an absolutely-positioned overlay (.copy-flash) rather than a second grid-stacked
- * label: an icon-only copy button is far narrower than the word "Copied", and stacking the two in
- * one cell sized every such button to a state it shows only briefly. */
+ * Copied state is an IN-PLACE face swap (icon → check, label → "Copied") inside the same button
+ * box — no overlay, no second element whose alignment can drift (a prior floating-chip overlay
+ * measured half-a-button-height off vertically). The wrapper never resizes unless the caller's
+ * idle label is SHORTER than "Copied", in which case the box grows slightly — still no overlap.
+ * .copy-button-copied turns the face green; copy-button.js owns the text/icon swap. */
 .copy-button {
   display: inline-flex;
   position: relative;
   cursor: pointer;
+  font-size: var(--text-xs);
 }
 .copy-button-state {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  font-weight: 600;
 }
+/* Success face: green text + green border, same box. The button also holds a min-width equal to
+   its idle face so the swap to the shorter "Copied" never visibly shrinks it mid-interaction —
+   set from JS (copy-button.js) after the idle label is known, since only it knows that width. */
+.copy-button.copy-button-copied { color: var(--ok); border-color: var(--ok); }
 /* Stays fully opaque while disabled: the button is only ever disabled during its own confirmation,
    and dimming it there would read as "unavailable" rather than "just did the thing". */
 .copy-button:disabled {
   opacity: 1;
 }
-/* The shared "Copied ✓" confirmation, used by both <portal-copy-button> and the
- * <portal-copy-menu> trigger so every copy affordance acknowledges identically.
- *
- * Absolutely positioned and out of flow: it floats over its control, so the dense rows these sit in
+/* The shared "Copied ✓" confirmation for <portal-copy-menu>'s trigger — the plain
+ * <portal-copy-button> swaps its face in place instead (see copy-button.js). Absolutely positioned
+ * and out of flow: it floats over its control, so the dense rows these sit in
  * (a branch name and its copy control on one line) never reflow at the moment of copying. Anchored
  * to the control's right edge and vertically centered, growing leftward — the natural direction
  * when the control itself sits at the end of a row. */
@@ -741,15 +748,19 @@ portal-close-button {
   z-index: 5;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 3px;
-  padding: 2px 6px;
+  /* Fills the host button EXACTLY (same box, same font from .copy-button): the flash is a full
+     replacement face, not a small floating chip — no dimension difference between the two states. */
+  inset: -1px -1px; /* covers the host's 1px border too */
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
   border-radius: 4px;
   /* Opaque background, not a bare label: it overlaps the glyph underneath, which would otherwise
      show through the text. */
   background: var(--panel);
   border: 1px solid var(--ok);
   color: var(--ok);
-  font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;
   pointer-events: none;
@@ -779,6 +790,12 @@ portal-copy-menu {
 .copy-menu-trigger[aria-expanded="true"] {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+/* Copied confirmation: in-place face swap (copy glyph → check) with the success color, same box
+   as the idle trigger — matches portal-copy-button's copied state. */
+.copy-menu-trigger.copied {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
 }
 .copy-menu-chevron {
   /* Reads as a caret attached to the glyph, not as a second icon of equal weight. */

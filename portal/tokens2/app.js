@@ -4,10 +4,11 @@
 // finding headlines/details come from report.insights (deriveInsights templates), evidence
 // paragraphs interpolate report fields, and section framing is static UI copy.
 
-import { portalGetJson, portalPostJson, portalHideLoading, portalHideLoadingNow, portalSetUpdatedAt } from "/portal/shared/api.js";
+import { portalGetJson, portalPostJson, portalHideLoading, portalHideLoadingNow, portalSetUpdatedAt, portalWireBackdropClose } from "/portal/shared/api.js";
 import { pageState } from "/portal/telemetry/state.js";
 import { activePresentedHarnesses, formatHarnessList } from "/portal/shared/harness-cohort.js";
 import { harnessWarningElement } from "/portal/shared/harness-warning.js";
+import { createDocGuideModal } from "/portal/shared/doc-guide-modal.js";
 
 // ── State ──
 let firstLoad = true;
@@ -20,6 +21,9 @@ let pollTimer = null;
 // spool), so the no-data panel and the full report follow without a config change or reload.
 let lastSetup = null;
 let lastSetupState = null;
+// The most recent report object — session chips and timeline marks look sessions up here at
+// click time, so a click always acts on the live report rather than a stale closure.
+let lastSessionData = null;
 
 // ── Formatting helpers (local — no dependency on telemetry/state.js's fmt for tokens) ──
 const fmt = (n) => Number(n || 0).toLocaleString("en-US");
@@ -170,6 +174,7 @@ async function load(force) {
   if (firstLoad) { firstLoad = false; portalHideLoading(); }
   if (!force && data.version === lastVersion) return;
   lastVersion = data.version;
+  lastSessionData = data;
   // hasData reflects REAL captures only — the mock endpoint's spool always has records, and
   // letting it set hasData would advance the cascade to the real-data rung (hiding the no-data
   // panel and the mock disclaimer) before any real telemetry exists.
@@ -195,10 +200,45 @@ async function load(force) {
   if (mockBanner) mockBanner.style.display = showMockDisclaimer ? "" : "none";
 
   renderVerdict(data);
+  renderMeta(data);
   renderFindings(data.insights || []);
   renderAgentPrompt(data);
   renderInvestigationSections(data);
+  renderTimelineStrip(data);
   renderFullData(data);
+}
+
+// ── Frame-of-reference meta line (v1 renderMeta contract) ──
+// Sessions · captures · period — what the numbers below are drawn from. The Codex provider
+// rate limit (when the provider reports one) rides along as a dim clause; it's a real signal,
+// so it shares the line instead of earning its own stat card.
+function renderMeta(data) {
+  const el = document.getElementById("tokens2meta");
+  if (!el) return;
+  const sessions = data.sessions || [];
+  const parts = [
+    fmt(sessions.length) + " sessions",
+    fmt(data.capture_count ?? 0) + " captures",
+  ];
+  // Period: first session start → last session end (no precomputed field; derived here).
+  const firstTs = sessions.length ? sessions.reduce((m, s) => (s.first_ts < m ? s.first_ts : m), sessions[0].first_ts) : null;
+  const lastTs = sessions.length ? sessions.reduce((m, s) => (s.last_ts > m ? s.last_ts : m), sessions[0].last_ts) : null;
+  if (firstTs && lastTs) {
+    const day = (ts) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    parts.push(day(firstTs) + " – " + day(lastTs));
+  }
+  if (data.codex_provider_rate_limits) {
+    parts.push("Codex limit " + codexRateLimitLabel(data.codex_provider_rate_limits));
+  }
+  el.textContent = parts.join(" · ");
+}
+
+function codexRateLimitLabel(rateLimits) {
+  const rows = Array.isArray(rateLimits) ? rateLimits : [rateLimits];
+  const row = rows.find((limit) => typeof limit?.used_percent === "number") || rows[0];
+  if (!row) return "reported";
+  const used = typeof row.used_percent === "number" ? row.used_percent + "% used" : "reported";
+  return (row.name ? row.name + " · " : "") + used;
 }
 
 // ── Layer 1: Waste-stat dashboard (own section above Action items) ──
@@ -307,6 +347,206 @@ function wireWasteSourceLinks() {
   measureStickyHeader();
 }
 
+// ── Session drill-down: the popup behind every session chip and Investigate row ──
+// Four things, all deterministic (server's deriveSessionFindings supplies the prose):
+//   1. WHAT this session was — title, repo/branch, harness, when.
+//   2. WHAT happened — the findings rows ("Grep fired 22× in a row…").
+//   3. WHAT to do — each finding's hint.
+//   4. COPY PROMPT FOR AGENT — <portal-copy-button> with the server-built analysis prompt.
+// Jargon (session ids, transcript paths, model history) lives in the agent prompt, not here.
+// Transcript lookup is best-effort: heaviest turns render when the transcript is on disk; a
+// rotated-away transcript just means "no turns", the prompt still works.
+const sessionModal = document.getElementById("tokens2session-modal");
+const sessionModalBody = sessionModal.querySelector('[data-slot="body"]');
+// Close paths: the shared X button (its custom element renders the icon but does NOT self-wire
+// click behavior — the host page must listen, same as the v1/doc dialogs) and backdrop clicks.
+sessionModal.querySelector('[data-slot="close"]').addEventListener("click", () => sessionModal.close());
+portalWireBackdropClose(sessionModal, () => sessionModal.close());
+
+function openSessionModal(sessionId, harness, finding, contextTitle) {
+  sessionModal.querySelector('[data-slot="title"]').textContent = contextTitle || "Session detail";
+  sessionModal.querySelector('[data-slot="sub"]').textContent = "";
+  sessionModalBody.replaceChildren(loadingNote("loading session…"));
+  sessionModal.showModal();
+  loadSessionIntoModal(sessionId, harness, finding, contextTitle);
+}
+
+async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
+  let detail;
+  try {
+    const qs = `id=${encodeURIComponent(sessionId)}&harness=${encodeURIComponent(harness || "")}&finding=${encodeURIComponent(finding || "abnormal token usage")}`;
+    detail = await portalGetJson("/api/session?" + qs);
+  } catch (err) {
+    sessionModalBody.replaceChildren(loadingNote("could not load session: " + ((err && err.message) || err)));
+    return;
+  }
+  if (!sessionModal.open) return; // user closed it while the fetch was in flight
+
+  const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId) || {};
+  const frag = document.createDocumentFragment();
+
+  // 1. What this session was.
+  const who = document.createElement("div");
+  who.className = "sess-who";
+  const when = s.first_ts ? new Date(s.first_ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+  who.innerHTML = `<div class="sess-fact"><span>Where</span><span>${esc(s.repo || "unknown")}${s.branch ? ` · ${esc(s.branch)}` : ""}</span></div>
+    <div class="sess-fact"><span>Agent</span><span>${esc(s.harness || harness || "unknown")}</span></div>
+    ${when ? `<div class="sess-fact"><span>When</span><span>${esc(when)}</span></div>` : ""}
+    ${s.activity ? `<div class="sess-fact"><span>Activity</span><span>${esc(s.activity)}</span></div>` : ""}`;
+  frag.appendChild(who);
+
+  // 2+3. What happened + what to do (server-built deterministic findings; fallback to the one
+  // finding text the page already has when the server couldn't compute rows).
+  const findings = (detail && detail.findings) || [];
+  const whatHappened = document.createElement("div");
+  whatHappened.className = "sess-findings";
+  if (findings.length) {
+    for (const f of findings) {
+      const row = document.createElement("div");
+      row.className = "sess-finding";
+      row.innerHTML = `<p class="sess-finding-summary"><span class="sess-dot ${f.severity === "high" ? "dot-high" : "dot-warn"}"></span>${esc(f.summary)}</p>
+        ${f.hint ? `<p class="sess-finding-hint">Fix: ${esc(f.hint)}</p>` : ""}
+        <p class="sess-finding-jump">${f.section_key ? `<button type="button" class="sess-evidence-link" data-sec-key="${esc(f.section_key)}">see the evidence ↓</button>` : ""}</p>`;
+      row.querySelector(".sess-evidence-link")?.addEventListener("click", () => {
+        sessionModal.close();
+        const section = document.querySelector(`#invest-sections details[data-sec-key="${f.section_key}"]`);
+        if (section) scrollToSection(section);
+      });
+      whatHappened.appendChild(row);
+    }
+  } else {
+    whatHappened.innerHTML = `<div class="sess-finding"><p class="sess-finding-summary"><span class="sess-dot dot-warn"></span>${esc(finding || "This session used more tokens than similar sessions.")}</p>
+      <p class="sess-finding-hint">${detail && detail.found === false ? "The full transcript is no longer on disk (rotated out), but the agent prompt below still carries the facts." : ""}</p></div>`;
+  }
+  frag.appendChild(whatHappened);
+
+  // 4. Copy prompt — the reusable copy button, source set to the server-built prompt. The label
+  // is two words per the shared-button convention; a one-line note says what it does and why,
+  // so the button isn't a mystery instruction.
+  const actions = document.createElement("div");
+  actions.className = "sess-actions";
+  const copyBtn = document.createElement("portal-copy-button");
+  copyBtn.setAttribute("label", "Copy prompt");
+  copyBtn.copySource = detail.analysis_prompt || "";
+  actions.appendChild(copyBtn);
+  const why = document.createElement("p");
+  why.className = "sess-why";
+  why.textContent = "Paste this into a fresh chat: it tells your agent which session to open, what telemetry flagged, and what to conclude — so it can investigate the transcript and fix the pattern.";
+  actions.appendChild(why);
+  frag.appendChild(actions);
+
+  // Heaviest turns — evidence, shown when the transcript is on disk. Dim list, no jargon framing.
+  if (detail.found && (detail.heavy_turns || []).length) {
+    const turns = document.createElement("details");
+    turns.className = "sess-turns";
+    turns.innerHTML = `<summary>Heaviest turns in this chat</summary>`;
+    for (const t of detail.heavy_turns) {
+      const row = document.createElement("div");
+      row.className = "sess-turn";
+      const size = t.result_chars != null ? tokShort(Math.round(t.result_chars / 4)) + " tokens in" : "";
+      row.innerHTML = `<div class="sess-turn-head"><span class="tool">${esc(t.tool || t.event || "turn")}</span>${size ? `<span class="dim">${size}</span>` : ""}</div>
+        ${t.preview ? `<div class="sess-turn-prev">${esc(t.preview)}</div>` : ""}`;
+      turns.appendChild(row);
+    }
+    frag.appendChild(turns);
+  }
+
+  sessionModalBody.replaceChildren(frag);
+  sessionModal.querySelector('[data-slot="sub"]').textContent =
+    (s.repo || "unknown") + (harness ? ` · ${harness}` : "");
+}
+
+function loadingNote(text) {
+  const div = document.createElement("div");
+  div.className = "sess-loading";
+  div.textContent = text;
+  return div;
+}
+
+// One delegated listener opens the popup for every session chip / Investigate row on the page.
+// Chips render via sessionLink(); the handler looks up the session in the CURRENT report so the
+// click always acts on live data. Called once, at module end (after lastSessionData's declaration).
+function wireSessionChips() {
+  document.addEventListener("click", (e) => {
+    const chip = e.target.closest?.(".session-chip");
+    if (!chip || chip.classList.contains("session-unknown")) return;
+    const sessionId = chip.dataset.sessionId;
+    if (!sessionId) return;
+    e.preventDefault();
+    const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId);
+    const harness = s?.harness || chip.dataset.harness || "";
+    const finding = chip.dataset.finding || `total ${s?.total_tokens ?? "?"} tokens — investigate why this session used so much context`;
+    openSessionModal(sessionId, harness, finding, s?.title || null);
+  });
+}
+
+// ── Timeline strip: WHEN did flagged events happen ──
+// Marks-only — no day totals, no volume bars (that chart was removed as filler and stays gone).
+// The plotted quantity is a FLAGGED EVENT (a spike turn or a loop start), so the only coloring
+// question is which KIND of event it was — never a threshold comparison against a different unit.
+// Each mark is a button that opens that session's drill-down popup; days with no flags render no
+// mark at all. Hidden entirely when there are no flagged events — an empty strip is noise.
+function renderTimelineStrip(data) {
+  const sectionEl = document.getElementById("timeline-section");
+  const strip = document.getElementById("timeline-strip");
+  const legend = document.getElementById("timeline-legend");
+  if (!sectionEl || !strip) return;
+
+  const marks = [];
+  // Spikes: one mark per spike turn (data.spikes is already deduped to worst-per-session with a
+  // count; a session with 3 spikes gets one mark sized by count).
+  for (const s of data.spikes || []) {
+    marks.push({ ts: s.ts, kind: "spike", sessionId: s.session_id, harness: s.harness, count: s.spike_count || 1, label: `Spike — ${s.tool || "unknown tool"} · +${tokShort(s.delta_tokens)} tokens` });
+  }
+  for (const l of data.loops || []) {
+    marks.push({ ts: l.ts, kind: "loop", sessionId: l.session_id, harness: l.harness, count: 1, label: `Loop — ${l.tool} ×${l.max_repeat}` });
+  }
+  marks.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+
+  if (!marks.length) {
+    sectionEl.hidden = true;
+    strip.replaceChildren();
+    legend.textContent = "";
+    return;
+  }
+  sectionEl.hidden = false;
+
+  // One column per DAY that had at least one flag; marks stack vertically inside the day.
+  // Day boundaries derive from the marks' own timestamps — no volume axis, no totals.
+  const byDay = new Map();
+  for (const m of marks) {
+    const day = String(m.ts).slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(m);
+  }
+  const days = [...byDay.keys()].sort();
+
+  strip.replaceChildren();
+  for (const day of days) {
+    const col = document.createElement("div");
+    col.className = "tl-day";
+    for (const m of byDay.get(day)) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `tl-mark tl-${m.kind}`;
+      btn.title = `${m.label}${m.count > 1 ? ` (×${m.count})` : ""} — click to open the session`;
+      btn.setAttribute("aria-label", btn.title);
+      if (m.count > 1) btn.textContent = "×" + m.count;
+      btn.addEventListener("click", () => {
+        const s = (data.sessions || []).find((x) => x.session_id === m.sessionId);
+        openSessionModal(m.sessionId, m.harness || s?.harness || "", m.label, s?.title || null);
+      });
+      col.appendChild(btn);
+    }
+    const dayLabel = document.createElement("span");
+    dayLabel.className = "tl-day-label";
+    dayLabel.textContent = new Date(day + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    col.appendChild(dayLabel);
+    strip.appendChild(col);
+  }
+  legend.textContent = "each mark is a flagged event — red: spike turn, orange: runaway loop. Days with no flags show nothing.";
+}
+
 // Waste tokens attributable to the trailing N days, computed per-category from event
 // timestamps (not apportioned by volume share — that mathematically cancels out and makes
 // both cards identical). Spike excess and read warnings are timestamped; testing is
@@ -413,11 +653,31 @@ function renderFindings(insights) {
   }
 }
 
+// Insight kind → the Investigate section (data-sec-key) that holds its evidence. Findings whose
+// kind has no matching section keep PLAIN next-action text — no manufactured links.
+const FINDING_SECTION = {
+  spike_tail_risk: "spikes",
+  dominant_cost: "group-cost",
+  runaway_loop: "loops",
+  midpoint_regression: "regression",
+  heaviest_tool: "group-cost",
+};
+
 function findingCard(f) {
   const sevClass = f.severity === "high" ? "sev-high" : f.severity === "warn" ? "sev-warn" : "sev-info";
   const confClass = f.confidence === "strong signal" ? "strong" : "";
   const card = document.createElement("div");
   card.className = "finding";
+  // The next step becomes a jump link when its evidence section exists (item 3: dead "→ next
+  // step" text → clickable path to the evidence). The delegated waste-source listener handles
+  // .waste-source-link clicks, so the link reuses that exact jump contract — same class, same
+  // scroll-and-expand behavior, no second scroll mechanism.
+  const secKey = FINDING_SECTION[f.kind] || null;
+  const nextActionHtml = !f.next_action
+    ? ""
+    : secKey
+      ? `<span class="next waste-source-link next-plain" data-sec-key="${esc(secKey)}" tabindex="0" role="link" aria-label="jump to the evidence section">→ ${esc(f.next_action)} <span class="next-jump">see evidence ↓</span></span>`
+      : `<span class="next">→ ${esc(f.next_action)}</span>`;
   card.innerHTML = `<div class="finding-top">
       <div class="severity ${sevClass}"></div>
       <div class="finding-body">
@@ -428,7 +688,7 @@ function findingCard(f) {
       </div>
     </div>
     <div class="finding-action">
-      ${f.next_action ? `<span class="next">→ ${esc(f.next_action)}</span>` : ""}
+      ${nextActionHtml}
     </div>`;
   return card;
 }
@@ -528,7 +788,9 @@ function renderInvestigationSections(data) {
   }
 
   // 4g: Testing efficiency — badge is the direct yes/no the question asks; the number lives in
-  // the body. Threshold: ≥10% token share = yes (waste line's yellow band).
+  // the body. Threshold: ≥10% token share = yes (waste line's yellow band). Info icon → the
+  // guide's Testing Efficiency section, which describes exactly this panel (incl. the two
+  // sub-metrics below).
   if (data.testing_efficiency) {
     const te = data.testing_efficiency;
     const tokenShare = te["test.token_share"];
@@ -537,10 +799,11 @@ function renderInvestigationSections(data) {
       container.appendChild(investSection({
         key: "testing",
         title: "Are you over-testing?",
-        framing: "how much of your captured token traffic goes to test runs, full-suite reruns, and targeted-to-full balance",
+        framing: `how much of your captured token traffic goes to test runs, full-suite reruns, and targeted-to-full balance`,
         badge: overTesting ? `yes — ${tokenShare}%` : `no — ${tokenShare}%`,
         badgeClass: overTesting ? "warn" : "",
         bodyEl: testingEfficiencyBody(te),
+        docAnchor: "testing-efficiency",
       }));
     }
   }
@@ -550,14 +813,19 @@ function renderInvestigationSections(data) {
   // (marker_comparison, MOCK_MARKER) stay — the /tokens_v1 page and CLI still read them.
 }
 
-function investSection({ key, title, framing, badge, badgeClass, bodyEl }) {
+function investSection({ key, title, framing, badge, badgeClass, bodyEl, docAnchor }) {
   const details = document.createElement("details");
   details.className = "invest-section";
   if (key) details.dataset.secKey = key;
+  // Info icon (optional): opens the shared doc-guide popup at the section's anchor. Only set
+  // docAnchor where the guide genuinely describes this section — no icon beats a wrong one.
+  const iconHtml = docAnchor
+    ? `<portal-info-icon data-doc-anchor="${esc(docAnchor)}" aria-haspopup="dialog" aria-expanded="false" aria-label="what this section means" title="what this section means"></portal-info-icon>`
+    : "";
   details.innerHTML = `<summary>
     <span class="chev">▸</span>
     <span class="invest-head">
-      <span class="invest-title">${esc(title)}</span>
+      <span class="invest-title">${esc(title)} ${iconHtml}</span>
       <span class="invest-framing">${esc(framing)}</span>
     </span>
     <span class="invest-badge ${badgeClass}">${esc(badge)}</span>
@@ -722,6 +990,19 @@ function costComparisonBody(groupCost, toolCost) {
       <span class="cost-meta-group">${esc(g.group)}</span>
       <span class="cost-meta-detail">${fmt(g.calls)} calls · ${tokShort(g.total_tokens)} total · ${g.calls_per_session || "—"} calls/session</span>`;
     meta.appendChild(row);
+    // Per-tool detail inside the group: WHICH tool inside a heavy group to scope (the decision
+    // the section enables — "jcodemunch is 43% of tool tokens" becomes "the Read-within-group
+    // averaging 8k/call is what to narrow"). Top 3 tools by avg tokens per call; max shown so
+    // a single huge call isn't hidden by a low average.
+    const tools = (toolCost || []).filter((t) => t.group === g.group).sort((a, b) => b.avg_tokens - a.avg_tokens).slice(0, 3);
+    for (const t of tools) {
+      const toolRow = document.createElement("div");
+      toolRow.className = "cost-tool-row";
+      toolRow.innerHTML = `<span class="cost-meta-tag"></span>
+        <span class="cost-meta-group cost-tool-name">${esc(t.tool)}</span>
+        <span class="cost-meta-detail">${fmt(t.calls)} calls · avg ${tokShort(t.avg_tokens)} · up to ${tokShort(t.max_tokens)} in one call</span>`;
+      meta.appendChild(toolRow);
+    }
   }
   frag.appendChild(chart);
   frag.appendChild(meta);
@@ -784,6 +1065,30 @@ function testingEfficiencyBody(te) {
     detail: `<span class="num">${tokenShare != null ? tokenShare : "—"}%</span> of all captured tokens went to testing${redundantRounded >= 1 ? ` · <span class="num">${redundantRounded}</span> full-suite rerun${redundantRounded === 1 ? "" : "s"} without an intervening edit` : ""}.`,
     hint: "Run targeted tests (single file or --filter) between edits — save the full suite for the end.",
   }));
+  // Second item row: the remaining testing sub-metrics, each with its honest null state and
+  // honest rounding (a clause that rounds to zero is hidden, not printed as 0 — same treatment
+  // as the fractional rates above). targeted_to_full_ratio is a RATIO, not a percent.
+  const unchangedFailures = te["test.full_suite_unchanged_failure_signature"];
+  const targetedRatio = te["test.targeted_to_full_ratio"];
+  const subParts = [];
+  if (unchangedFailures != null && Math.round(unchangedFailures) >= 1) {
+    subParts.push(`<span class="num">${Math.round(unchangedFailures)}</span> full-suite rerun${Math.round(unchangedFailures) === 1 ? "" : "s"} got the same failure as before — nothing changed, but the suite ran anyway`);
+  }
+  if (targetedRatio != null) {
+    // Round honestly: <0.05 shows "<0.05", never a silent 0.
+    const shown = targetedRatio < 0.05 ? "&lt;0.05" : targetedRatio.toFixed(targetedRatio < 10 ? 2 : 0);
+    subParts.push(`you run <span class="num">${shown}</span> targeted runs for every full-suite run${targetedRatio < 1 ? " — mostly full suites" : ""}`);
+  }
+  if (subParts.length) {
+    frag.appendChild(itemRow({
+      dotColor: unchangedFailures >= 1 ? "var(--danger)" : "var(--accent)",
+      head: "Testing pattern detail",
+      // The clauses are internal templates (same trust level as every other detail string in
+      // itemRows) — no per-clause escaping, matching the file's existing convention.
+      detail: subParts.join(" · "),
+      hint: null,
+    }));
+  }
   return frag;
 }
 
@@ -960,6 +1265,23 @@ function renderFullData(data) {
       ]),
     ));
   }
+
+  // Per-package cost (MCP servers + a synthetic "native" bucket) and top MCP servers — demoted
+  // raw tables, neutral numbers (the MCP-vs-native NARRATIVE stays out; the data stays visible).
+  if (data.package_cost?.length) {
+    container.appendChild(rawTable("Cost per package", ["package", "calls", "avg tokens/call", "total tokens"],
+      data.package_cost.slice(0, 10).map((p) => [
+        esc(p.package || "unknown"), { num: p.calls }, { num: tokShort(p.avg_tokens) }, { num: tokShort(p.total_tokens) },
+      ]),
+    ));
+  }
+  if (data.top_mcp?.length) {
+    container.appendChild(rawTable("Top MCP servers by tokens", ["server", "captures", "tokens"],
+      data.top_mcp.slice(0, 10).map((m) => [
+        esc(m.key), { num: m.captures }, { num: tokShort(m.tokens) },
+      ]),
+    ));
+  }
 }
 
 function rawTable(title, headers, rows) {
@@ -988,24 +1310,48 @@ function sessionLink(sessionId, data, fallbackLabel) {
   const s = (data.sessions || []).find((x) => x.session_id === id);
   const label = fallbackLabel || id.slice(0, 8);
   if (!s) return `<span class="session-chip session-unknown"><code>${esc(label)}</code></span>`;
-  const tipId = `sess-tip-${id.replace(/[^a-z0-9-]/gi, "-")}`;
-  const when = new Date(s.first_ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const title = s.title ? esc(s.title) : "No opening prompt captured";
-  return `<span class="session-chip info-wrap" data-tip-html="#${tipId}" tabindex="0"><code>${esc(label)}</code><template id="${tipId}">
-    <span class="session-tip-content">
-      <strong class="session-tip-title">${title}</strong>
-      <span><strong>What it did</strong> ${esc(s.activity || "—")}</span>
-      <span><strong>Where</strong> ${esc(s.repo || "unknown")}${s.branch ? ` · ${esc(s.branch)}` : ""} <span class="session-tip-dim">(${esc(s.harness || "unknown harness")})</span></span>
-      <span><strong>When</strong> ${esc(when)}</span>
-      <span><strong>Size</strong> ${tokShort(s.total_tokens)} tokens · ${s.captures} tool calls</span>
-    </span>
-  </template></span>`;
+  // data-session-id is the click target — wireSessionChips' delegated listener opens the
+  // drill-down popup for any chip carrying it. Deliberately NO hover tooltip: the chip's only
+  // action is the popup, so hovering shouldn't imply the hover card is the whole story — and the
+  // popup carries everything the tooltip did, plus findings + the agent prompt.
+  return `<span class="session-chip session-link" data-session-id="${esc(id)}" data-harness="${esc(s.harness || "")}" tabindex="0" role="button" aria-label="open session detail"><code>${esc(label)}</code></span>`;
 }
 
-// One-time delegated listeners: waste-source links, "+N more" dropdown, sticky-header measure.
-// Declared functions hoist, but the `let stickyHeaderOffset` they touch does not — so the call
-// sits here, after every declaration, at module end.
+// One-time delegated listeners: waste-source links, session-chip drill-down, doc-guide info
+// icons, "+N more" dropdown, sticky-header measure. Declared functions hoist, but the
+// `let stickyHeaderOffset` they touch does not — so the calls sit here, after every declaration,
+// at module end.
 wireWasteSourceLinks();
+wireSessionChips();
+wireDocGuideIcons();
+
+// ── Doc-guide info icons ──
+// Same one-delegate pattern as the v1 dashboard: any <portal-info-icon data-doc-anchor> opens
+// the shared doc-guide popup pre-scrolled to that heading. The guide is server-rendered from
+// docs/user/guides/telemetry.md — the popup and the on-disk doc are always the same content.
+// Anchors are placed only where the guide section genuinely describes the tokens2 section
+// (testing-efficiency, session-detail); sections the guide doesn't cover get NO icon rather
+// than a mismatched one.
+const docModal = createDocGuideModal(document.getElementById("tokens2docmodal"), async () => {
+  try {
+    return await portalGetJson("/api/telemetry/guide");
+  } catch (err) {
+    return { ok: false, error: (err && err.message) || String(err) };
+  }
+});
+document.getElementById("tokens2docmodal").addEventListener("close", () => {
+  for (const icon of document.querySelectorAll("portal-info-icon[aria-expanded='true']")) {
+    icon.setAttribute("aria-expanded", "false");
+  }
+});
+function wireDocGuideIcons() {
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("portal-info-icon[data-doc-anchor]");
+    if (!trigger) return;
+    trigger.setAttribute("aria-expanded", "true");
+    docModal.open(trigger.dataset.docAnchor);
+  });
+}
 
 // ── Helpers ──
 function emptyMsg(msg) {
