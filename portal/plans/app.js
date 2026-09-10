@@ -168,7 +168,8 @@ function applySnapshot(snapshot) {
   // Onboarding is single-step: the enable banner shows whenever plan-docs is disabled, and the
   // "Add your first Project Folder" form appears only after it's enabled (one prompt at a time).
   rootsPanel.render(snapshot.settings.discoveryRoots, snapshot.planDocsPackage.enabled);
-  plansHeaderEl.hidden = snapshot.settings.discoveryRoots.length === 0;
+  plansHeaderEl.hidden =
+    !snapshot.planDocsPackage.enabled || snapshot.settings.discoveryRoots.length === 0;
   setPluralCount(plansCountTextEl, snapshot.plans.length, "Plan");
   setPluralCount(reposCountTextEl, snapshot.repositories.length, "Repo");
   populateFilters(snapshot);
@@ -208,13 +209,19 @@ function refreshFilterCounts(snapshot) {
 function render() {
   const snapshot = state.snapshot;
   if (!snapshot) return;
-  renderWarnings(snapshot);
   renderPackageBanner(snapshot);
+  if (!snapshot.planDocsPackage.enabled) {
+    warningsEl.hidden = true;
+    activeTasksBarEl.hidden = true;
+    groupsEl.replaceChildren();
+    return;
+  }
+  renderWarnings(snapshot);
   renderFilterChips(snapshot);
   refreshFilterCounts(snapshot);
   const allMatchingCurrentFilters = filteredPlans(snapshot.plans, state.filters);
   renderLifecycleTabs(allMatchingCurrentFilters);
-  nextPrompt.hidden = !snapshot.planDocsPackage.enabled;
+  nextPrompt.hidden = false;
   // Sorted here rather than inside filteredPlans: that result spans every lifecycle (the tabs read
   // it for counts, and visibleNextPromptKeys takes the top 20 across all of them in priority
   // order). Completion ordering is Active-only, so it applies to the visible slice, after the tab
