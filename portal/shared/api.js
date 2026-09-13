@@ -19,7 +19,7 @@ export async function portalPostJson(path, body) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Roborepo-Portal-Token": portalConfig().token,
+      "X-Cli-Portal-Token": portalConfig().token,
     },
     body: JSON.stringify(body),
   });

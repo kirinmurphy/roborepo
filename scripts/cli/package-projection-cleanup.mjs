@@ -3,7 +3,7 @@ import path from "node:path";
 import { harnessHome, repoRoot } from "./paths.mjs";
 import { loadPackageCatalog } from "./package-catalog.mjs";
 import { effectiveEnabledIds, knownHarnessIds } from "./rules-render.mjs";
-import { roborepoSkillsDir, roborepoStateDir } from "./state-paths.mjs";
+import { stateSkillsDir, stateDir } from "./state-paths.mjs";
 import { isMainModule } from "./roots.mjs";
 import { slashCommandLiveDir } from "./skill-command-config.mjs";
 import { runtimeAssetDestination } from "./package-harness-config.mjs";
@@ -88,7 +88,7 @@ function isManagedSkillPath(target) {
     const stat = fs.lstatSync(target);
     if (stat.isSymbolicLink()) {
       const link = fs.readlinkSync(target);
-      return link.startsWith(roborepoSkillsDir) || link.includes("/.roborepo/skills/");
+      return link.startsWith(stateSkillsDir) || link.includes("/.roborepo/skills/");
     }
     return stat.isDirectory() && fs.existsSync(path.join(target, MANAGED_SKILL_MARKER));
   } catch {
@@ -102,10 +102,10 @@ function pruneSkills({ desiredSkills, removeAll, dryRun }) {
 
   let cacheEntries = [];
   try {
-    cacheEntries = fs.readdirSync(roborepoSkillsDir, { withFileTypes: true });
+    cacheEntries = fs.readdirSync(stateSkillsDir, { withFileTypes: true });
   } catch {}
   for (const ent of cacheEntries) {
-    const target = path.join(roborepoSkillsDir, ent.name);
+    const target = path.join(stateSkillsDir, ent.name);
     if (!isManagedSkillPath(target)) continue;
     if (!removeAll && (desiredSkills.has(ent.name) || preservedSystemSkills.has(ent.name))) continue;
     removed += removePath(target, "managed skill", { dryRun }) ? 1 : 0;
@@ -154,7 +154,7 @@ function pruneCommands({ desiredCommands, removeAll, dryRun }) {
 }
 
 function pruneRuntimeAssets({ desiredRuntimeAssets, removeAll, dryRun }) {
-  const runtimeDir = path.join(roborepoStateDir, "runtime");
+  const runtimeDir = path.join(stateDir, "runtime");
   let removed = 0;
   let packages = [];
   try {

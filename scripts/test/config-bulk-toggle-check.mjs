@@ -79,13 +79,13 @@ const base = `http://127.0.0.1:${port}`;
 
 // Mutations require the per-server token; it's embedded in every served page's HTML.
 const pageHtml = await (await fetch(`${base}/config`)).text();
-const token = pageHtml.match(/roborepo-portal-token" content="([^"]+)"/)?.[1];
+const token = pageHtml.match(/cli-portal-token" content="([^"]+)"/)?.[1];
 assert.ok(token, "portal mutation token should be present in served HTML");
 
 async function postBulk(ids, enabled) {
   const res = await fetch(`${base}/api/config/packages/bulk`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Roborepo-Portal-Token": token },
+    headers: { "Content-Type": "application/json", "X-Cli-Portal-Token": token },
     body: JSON.stringify({ ids, enabled }),
   });
   return { status: res.status, body: await res.json() };
@@ -142,7 +142,7 @@ try {
   // ── validation: bad body -> 400 ──
   const bad = await fetch(`${base}/api/config/packages/bulk`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Roborepo-Portal-Token": token },
+    headers: { "Content-Type": "application/json", "X-Cli-Portal-Token": token },
     body: JSON.stringify({ ids: "plan-docs", enabled: true }),
   });
   assert.equal(bad.status, 400, "malformed body rejected");

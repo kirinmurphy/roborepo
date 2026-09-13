@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { repoRoot, sharedSkillsDir } from "./paths.mjs";
-import { roborepoSkillsDir } from "./state-paths.mjs";
+import { stateSkillsDir } from "./state-paths.mjs";
 import { listSourceSkills } from "./skill-lib.mjs";
 import { loadPackageCatalog } from "./package-catalog.mjs";
 import { listHarnessProviders } from "../harnesses/registry.mjs";
@@ -147,7 +147,7 @@ export function listSkillInventory() {
 export function inspectSkill(name) {
   const packageSource = packageSkillSources().get(name);
   const sourcePath = packageSource || path.join(sharedSkillsDir, name);
-  const cachePath = path.join(roborepoSkillsDir, name);
+  const cachePath = path.join(stateSkillsDir, name);
   const source = statInfo(sourcePath);
   const cache = statInfo(cachePath);
   const managedSource = source.exists && exists(path.join(sourcePath, "SKILL.md"));

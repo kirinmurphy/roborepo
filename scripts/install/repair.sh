@@ -131,7 +131,7 @@ repair_cleanup_rows() {
 # Per-skill copies: repair only re-materializes the base support skill. Optional skills are
 # controlled by onboarding/package toggles.
 repair_skill_links() {
-  link_global_skills "${1%/skills}" roborepo-support
+  link_global_skills "${1%/skills}" builtin-support
 }
 
 # Provider iteration (docs/plans/active/discoverable-harness-provider-architecture-plan.md Phase

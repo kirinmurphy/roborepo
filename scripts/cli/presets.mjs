@@ -594,14 +594,14 @@ function cleanupRow(row) {
 }
 
 
-// A root_config file is "roborepo-authored" once install has written its hooks/markers in. Backing
+// A root_config file is "builtin-authored" once install has written its hooks/markers in. Backing
 // such a file up as a "pre-install" original poisons the backup — a later uninstall would restore
-// roborepo hooks into a supposedly-clean file. Only ever back up a genuine pre-roborepo file.
+// roborepo hooks into a supposedly-clean file. Only ever back up a genuine pre-install file.
 // Also recognizes rendered_rules output (the "# Generated Harness Rules" header).
-function isRoborepoAuthored(file) {
+function isBuiltInAuthored(file) {
   try {
     const text = fs.readFileSync(file, "utf8");
-    return /roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:roborepo-code-style|BEGIN managed:roborepo-agents-import/.test(text);
+    return /roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:roborepo-agents-import/.test(text);
   } catch {
     return false;
   }
@@ -613,9 +613,9 @@ function savePreInstallBackup(row) {
   if (!pathExists(row.homeAbs)) return;
   const dest = path.join(os.homedir(), ".roborepo", "backups", "pre-install", row.harness, path.basename(row.homeAbs));
   if (fs.existsSync(dest)) return; // already have the user's original — never overwrite it
-  if (isRoborepoAuthored(row.homeAbs)) {
+  if (isBuiltInAuthored(row.homeAbs)) {
     // Live file is already roborepo's (prior install or stray apply) — skip so poison isn't captured.
-    console.log(`skip pre-install backup: ${row.homeAbs} is already roborepo-authored`);
+    console.log(`skip pre-install backup: ${row.homeAbs} is already builtin-authored`);
     return;
   }
   const source = path.join(repoRoot, row.srcRel);
@@ -726,7 +726,7 @@ function removeRenderedRulesRow(row) {
   removeHomeRules({ harness: row.harness });
 
   // Leave genuine user files. Remove only files we rendered.
-  if (!isRoborepoAuthored(row.homeAbs)) return;
+  if (!isBuiltInAuthored(row.homeAbs)) return;
   fs.rmSync(row.homeAbs, { recursive: true, force: true });
   console.log(`unlink: ${row.homeAbs}`);
   restorePreInstallBackup(row);

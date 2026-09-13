@@ -352,10 +352,10 @@ function testEveryDeclaredStatePathIsClassified() {
   const source = fs.readFileSync(path.join(repoRoot, "scripts/cli/state-paths.mjs"), "utf8");
   const classified = new Set([...OWNED_STATE_ENTRIES, ...PRESERVED_STATE_ENTRIES]);
 
-  // Both shapes that name a state-root child: path.join(roborepoStateDir, "<name>", ...) and the
+  // Both shapes that name a state-root child: path.join(stateDir, "<name>", ...) and the
   // portalPidPathForPort helper's joined form.
   const declared = new Set();
-  for (const match of source.matchAll(/path\.join\(\s*roborepoStateDir\s*,\s*"([^"]+)"/g)) {
+  for (const match of source.matchAll(/path\.join\(\s*stateDir\s*,\s*"([^"]+)"/g)) {
     declared.add(match[1]);
   }
   assert.ok(declared.size > 0, "failed to parse any state paths — the parser, not the code, is stale");

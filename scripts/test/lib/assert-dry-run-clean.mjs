@@ -100,7 +100,7 @@ export function assertDryRunClean({ label, argv, cwd, env, roots, expectStatus =
  * `source` line left in a profile and backup handling, neither of which lives under a harness home.
  * A watcher that skipped them would have been blind to exactly the class of bug that motivated it.
  */
-export function roborepoDryRunRoots({ home, stateRoot, workspaceRoot }) {
+export function dryRunRoots({ home, stateRoot, workspaceRoot }) {
   return [
     path.join(home, ".claude"),
     path.join(home, ".codex"),

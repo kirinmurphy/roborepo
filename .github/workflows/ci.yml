@@ -32,7 +32,7 @@ jobs:
 
       # The repo itself is zero-dependency (pure node + bash + curl). `expect` is a test-only
       # dependency: the install-collision suite drives the interactive installer through a pty and
-      # hard-fails without it, unlike test-roborepo.sh, whose pty checks skip when it is absent.
+      # hard-fails without it, unlike test-cli.sh, whose pty checks skip when it is absent.
       # macOS runners ship expect; Ubuntu runners do not. Installing it means those interactive
       # tests actually run on both, rather than the suite going quietly green with its pty coverage
       # skipped — which is the failure mode adding it to CI was meant to close.

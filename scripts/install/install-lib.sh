@@ -163,7 +163,7 @@ paths_equivalent_for_copy() {
   _paths_have_identical_content "${src}" "${dest}"
 }
 
-# Uninstall/backup-side: is ${dest} a roborepo-authored copy (adopt-mode install, or a legacy
+# Uninstall/backup-side: is ${dest} a builtin-authored copy (adopt-mode install, or a legacy
 # materialized link) rather than genuine user content? Additionally requires ${src} to exist —
 # with no repo source to compare against there is no basis to call ${dest} roborepo's.
 content_matches_repo_source() {
@@ -310,20 +310,20 @@ stage_update_item() {
   echo "stage: ${update_path} <- ${src}"
 }
 
-# A root_config file is "roborepo-authored" once install has written its hooks/markers into it.
+# A root_config file is "builtin-authored" once install has written its hooks/markers into it.
 # Backing such a file up as a "pre-install" original would poison the backup: a later uninstall would
 # restore roborepo hooks into a supposedly-clean file. Detect the install-injected signatures so we
-# only ever back up a genuine pre-roborepo file. Conservative: any hit means do-not-back-up.
+# only ever back up a genuine pre-install file. Conservative: any hit means do-not-back-up.
 # Package hook signatures (jcmwatch = jcodemunch, jdm-indexed = jdocmunch) guard against a partial-
 # uninstall state where package hooks survive in settings.json without the main roborepo markers.
 # Single source of truth: uninstall.sh sources this file rather than keeping its own copy.
-is_roborepo_authored() {
+is_builtin_authored() {
   local file="$1"
   [[ -f "${file}" ]] || return 1
-  grep -Eq "roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:roborepo-code-style|BEGIN managed:roborepo-agents-import|jcmwatch|jdm-indexed" "${file}" 2>/dev/null
+  grep -Eq "roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:roborepo-agents-import|jcmwatch|jdm-indexed" "${file}" 2>/dev/null
 }
 
-# Persist the user's genuine pre-roborepo file/dir at ${home_path} to
+# Persist the user's genuine pre-install file/dir at ${home_path} to
 # ~/.roborepo/backups/pre-install/<harness>/<basename>, exactly once, so uninstall can restore it
 # verbatim. Applies to both root_config files and managed link targets (CLAUDE.md, AGENTS.md, hooks,
 # rules, …) — anything roborepo replaces. Skips, so the backup can never be poisoned with roborepo
@@ -342,10 +342,10 @@ save_pre_install_backup() {
   if [[ -e "${pre_install_backup}" ]]; then
     return 0  # already have the user's original — never overwrite it
   fi
-  if is_roborepo_authored "${home_path}"; then
+  if is_builtin_authored "${home_path}"; then
     # The live file is already roborepo's (prior install or stray apply). Backing it up would
     # capture roborepo hooks as a fake "original" — skip, so a real original isn't replaced by poison.
-    echo "skip pre-install backup: ${home_path} is already roborepo-authored"
+    echo "skip pre-install backup: ${home_path} is already builtin-authored"
     return 0
   fi
   if content_matches_repo_source "${src}" "${home_path}"; then
@@ -361,17 +361,17 @@ save_pre_install_backup() {
   say "pre-install backup" "${home_path} -> ${pre_install_backup}"
 }
 
-# One-time, durable snapshot of the user's genuine pre-roborepo config: the small set of paths
+# One-time, durable snapshot of the user's genuine pre-install config: the small set of paths
 # roborepo can modify (manifest root_config + link targets for present harnesses, shell profiles, the
-# global gitignore). Written ONCE to ~/.roborepo-backups/pre-roborepo-original.tar.gz and never
+# global gitignore). Written ONCE to ~/.roborepo-backups/pre-install-original.tar.gz and never
 # overwritten or deleted by uninstall, so there is always a "this is what my machine looked like
 # before roborepo" image to inspect or hand-restore from (`tar xzf <archive> -C ~`). This is an
 # escape hatch, NOT the uninstall restore path — uninstall still restores per-file surgically.
-# Captures only real, user-authored paths: skips roborepo symlinks, roborepo-authored files, and
+# Captures only real, user-authored paths: skips roborepo symlinks, builtin-authored files, and
 # content byte-identical to the repo, so the archive can never be poisoned with roborepo's own
 # content. Best-effort: silently no-ops without tar. Needs ${repo_root}, ${dry_run}, manifest_rows.
-snapshot_pre_roborepo_original() {
-  local archive="${HOME}/.roborepo-backups/pre-roborepo-original.tar.gz"
+snapshot_pre_install_original() {
+  local archive="${HOME}/.roborepo-backups/pre-install-original.tar.gz"
   [[ -e "${archive}" ]] && return 0           # once only — never overwrite the pristine image
   command -v tar >/dev/null 2>&1 || return 0
 
@@ -381,7 +381,7 @@ snapshot_pre_roborepo_original() {
     case "${kind}" in root_config|link|managed_copy|rendered_rules) ;; *) continue ;; esac
     src="${repo_root}/${src_rel}"
     [[ -e "${home_abs}" && ! -L "${home_abs}" ]] || continue   # absent or our symlink — nothing to keep
-    is_roborepo_authored "${home_abs}" && continue
+    is_builtin_authored "${home_abs}" && continue
     content_matches_repo_source "${src}" "${home_abs}" && continue
     candidates+=("${home_abs}")
   done < <(manifest_rows)
@@ -495,7 +495,7 @@ install_link_item() {
     return 1
   fi
 
-  # Persist a genuine pre-roborepo target before we move it aside below, so uninstall can restore it.
+  # Persist a genuine pre-install target before we move it aside below, so uninstall can restore it.
   # No-op for symlinks/absent targets and roborepo's own content (see save_pre_install_backup).
   save_pre_install_backup "${home_path}" "${harness}" "${src}"
 
@@ -752,7 +752,7 @@ export_user_config() {
   # Drift-aware collision routing (docs/plans/completed/root-config-layered-inheritance.md, and
   # config-collision-handling.md): a *drifted* root config is one the user hand-edited after
   # roborepo's last write (sidecar hash mismatch). For a fresh adopt ("unwritten") or a
-  # roborepo-clean file, the non-destructive merge below is correct and policy-agnostic. But once a
+  # builtin-clean file, the non-destructive merge below is correct and policy-agnostic. But once a
   # file has genuinely drifted, the merge must NOT silently fold the baseline into the user's edits
   # and — critically — must not record a fresh "clean" write that hides the drift on the next run.
   #   keep      -> leave home_path exactly as the user has it; stage the repo candidate as a
@@ -1077,8 +1077,8 @@ link_global_skills() {
 
 list_global_skill_sources() {
   local skill_dir name rel
-  if [[ -f "${repo_root}/globals/system/skills/roborepo-support/SKILL.md" ]]; then
-    printf 'roborepo-support\tglobals/system/skills/roborepo-support\n'
+  if [[ -f "${repo_root}/globals/system/skills/builtin-support/SKILL.md" ]]; then
+    printf 'builtin-support\tglobals/system/skills/builtin-support\n'
   fi
   for skill_dir in "${repo_root}"/globals/packages/*/skills/*; do
     [[ -d "${skill_dir}" && -f "${skill_dir}/SKILL.md" ]] || continue

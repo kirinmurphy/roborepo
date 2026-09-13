@@ -5,7 +5,7 @@ set -euo pipefail
 # lifecycle dispatch).
 # Runs subcommands against throwaway temp repos and fake HOME roots, then asserts on results.
 #
-# Usage: scripts/test/test-roborepo.sh
+# Usage: scripts/test/test-cli.sh
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cli="${repo_root}/scripts/cli/main.mjs"
@@ -22,7 +22,7 @@ for arg in "$@"; do
   esac
 done
 
-work="$(mktemp -d "${TMPDIR:-/tmp}/roborepo-test.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/cli-test.XXXXXX")"
 # Baseline for the generated/ guard below. Captured BEFORE any test runs so the guard reports what
 # THIS run changed: a developer who is mid-edit on generated/ would otherwise see their own
 # uncommitted work reported as a suite defect on every invocation.
@@ -502,7 +502,7 @@ assert "skill export-to-project: creates .codex/skills even when only .claude ex
   test -f "${claude_only_repo}/.codex/skills/test-harness/SKILL.md"
 
 assert "skill export-to-project: internal skill NOT exported (firewall)" \
-  bash -c "! test -e '${export_repo}/.claude/skills/roborepo-development'"
+  bash -c "! test -e '${export_repo}/.claude/skills/builtin-development'"
 
 assert "skill export-to-project: refuses to run in source repo" \
   bash -c "cd '${repo_root}' && ! node '${cli}' skill export-to-project --yes >/dev/null 2>&1"
@@ -582,7 +582,7 @@ assert "config: enable wires package-owned Codex tool approvals" \
   bash -c "grep -A1 '^\\[mcp_servers\\.jcodemunch\\.tools\\.register_edit\\]' '${cfg_home}/.codex/config.toml' | grep -q 'approval_mode = \"auto\"'"
 assert "config: enable wires CLAUDE.md rules" test -f "${cfg_home}/.claude/CLAUDE.md"
 assert "config: Claude rules use managed inline block" \
-  bash -c "grep -q 'BEGIN managed:roborepo-code-style' '${cfg_home}/.claude/CLAUDE.md' && grep -q 'Generated Harness Rules' '${cfg_home}/.claude/CLAUDE.md'"
+  bash -c "grep -q 'BEGIN managed:builtin-code-style' '${cfg_home}/.claude/CLAUDE.md' && grep -q 'Generated Harness Rules' '${cfg_home}/.claude/CLAUDE.md'"
 assert "config: Claude rules no longer use managed import block" \
   bash -c "! grep -q 'BEGIN managed:roborepo-agents-import' '${cfg_home}/.claude/CLAUDE.md' && ! test -e '${cfg_home}/.roborepo/rules/generated-rules.md'"
 assert "config: package snapshot includes runtime status and component status" \
@@ -657,7 +657,7 @@ assert "config: rules pkg merges into Claude CLAUDE.md" \
 assert "config: rules pkg merges into Codex AGENTS.md (both-harness parity)" \
   bash -c "grep -q 'Impact Awareness' '${cfg_home}/.codex/AGENTS.md'"
 assert "config: Codex rules use managed inline block" \
-  bash -c "grep -q 'BEGIN managed:roborepo-code-style' '${cfg_home}/.codex/AGENTS.md'"
+  bash -c "grep -q 'BEGIN managed:builtin-code-style' '${cfg_home}/.codex/AGENTS.md'"
 assert "config: existing Codex override also gets managed rules without losing user text" \
   bash -c "grep -q 'Impact Awareness' '${cfg_home}/.codex/AGENTS.override.md' && grep -q 'override custom' '${cfg_home}/.codex/AGENTS.override.md'"
 assert "config: rules pkg reports enabled in snapshot" \
@@ -678,10 +678,10 @@ bash -c "${cfg_env} node '${cli}' package disable skill-visibility >/dev/null 2>
 
 broken_home="${work}/broken-rules-home"
 mkdir -p "${broken_home}/.codex"
-printf '<!-- BEGIN managed:roborepo-code-style -->\n' > "${broken_home}/.codex/AGENTS.md"
+printf '<!-- BEGIN managed:builtin-code-style -->\n' > "${broken_home}/.codex/AGENTS.md"
 assert "config: managed rules fail safely on broken marker" \
   bash -c "! HOME='${broken_home}' ROBOREPO_STATE_DIR='${broken_home}/.roborepo' node '${cli}' package enable impact-awareness >'${broken_home}/out' 2>&1 && grep -q 'incomplete Roborepo managed block' '${broken_home}/out'"
-printf '<!-- END managed:roborepo-code-style -->\nuser text\n<!-- BEGIN managed:roborepo-code-style -->\n' > "${broken_home}/.codex/AGENTS.md"
+printf '<!-- END managed:builtin-code-style -->\nuser text\n<!-- BEGIN managed:builtin-code-style -->\n' > "${broken_home}/.codex/AGENTS.md"
 assert "config: managed rules fail safely on reversed markers" \
   bash -c "! HOME='${broken_home}' ROBOREPO_STATE_DIR='${broken_home}/.roborepo' node '${cli}' package enable impact-awareness >'${broken_home}/out-reversed' 2>&1 && grep -q 'incomplete Roborepo managed block' '${broken_home}/out-reversed'"
 
@@ -690,7 +690,7 @@ mkdir -p "${legacy_import_home}/.claude" "${legacy_import_home}/.roborepo/rules"
 printf '<!-- BEGIN managed:roborepo-agents-import -->\n@~/.roborepo/rules/generated-rules.md\n<!-- END managed:roborepo-agents-import -->\nuser text\n' > "${legacy_import_home}/.claude/CLAUDE.md"
 printf '# Generated Harness Rules\n\nold render\n' > "${legacy_import_home}/.roborepo/rules/generated-rules.md"
 assert "config: Claude legacy import block migrates to inline rules" \
-  bash -c "HOME='${legacy_import_home}' ROBOREPO_STATE_DIR='${legacy_import_home}/.roborepo' node '${cli}' rules render >/dev/null && grep -q 'BEGIN managed:roborepo-code-style' '${legacy_import_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:roborepo-agents-import' '${legacy_import_home}/.claude/CLAUDE.md' && grep -q 'user text' '${legacy_import_home}/.claude/CLAUDE.md' && ! test -e '${legacy_import_home}/.roborepo/rules/generated-rules.md'"
+  bash -c "HOME='${legacy_import_home}' ROBOREPO_STATE_DIR='${legacy_import_home}/.roborepo' node '${cli}' rules render >/dev/null && grep -q 'BEGIN managed:builtin-code-style' '${legacy_import_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:roborepo-agents-import' '${legacy_import_home}/.claude/CLAUDE.md' && grep -q 'user text' '${legacy_import_home}/.claude/CLAUDE.md' && ! test -e '${legacy_import_home}/.roborepo/rules/generated-rules.md'"
 
 # Service component (telemetry as a package): enable via the generic package path flips its state +
 # snapshot, disable reverses. The service handler owns telemetry's bespoke install (hooks + spool).
@@ -806,27 +806,27 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   # a plain "does it serve afterwards" check passes either way, which is why the bug went unseen.
   assert "config: web --detach adopts a healthy portal instead of restarting it" \
     bash -c "${cfg_env} node '${cli}' web --detach --no-open --port '${cfg_port}' >'${cfg_home}/portal-detach.log' 2>&1 && test \"\$(curl -s 'http://127.0.0.1:${cfg_port}/api/portal/status' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{process.stdout.write(String(JSON.parse(s).pid))})\")\" = '${cfg_srv}'"
-  cfg_token="$(curl -s "http://127.0.0.1:${cfg_port}/config" | sed -n 's/.*name="roborepo-portal-token" content="\([^"]*\)".*/\1/p' | head -1)"
+  cfg_token="$(curl -s "http://127.0.0.1:${cfg_port}/config" | sed -n 's/.*name="cli-portal-token" content="\([^"]*\)".*/\1/p' | head -1)"
   assert "config: portal exposes mutation token only in served HTML" \
     bash -c "test -n '${cfg_token}'"
   # Capture the JSON to a file so the snapshot body (which contains apostrophes in skill descriptions)
   # never has to round-trip through a shell-quoted string.
-  curl -s -X POST "http://127.0.0.1:${cfg_port}/api/config/skills" -H 'Content-Type: application/json' -H "X-Roborepo-Portal-Token: ${cfg_token}" \
+  curl -s -X POST "http://127.0.0.1:${cfg_port}/api/config/skills" -H 'Content-Type: application/json' -H "X-Cli-Portal-Token: ${cfg_token}" \
     -d "{\"id\":\"${cfg_skill}\",\"enabled\":true}" > "${cfg_home}/post-skill.json"
   assert "config: POST /api/config/skills installs and returns snapshot" \
     bash -c "node -e \"const j=require('${cfg_home}/post-skill.json');process.exit(j.ok&&j.config&&Array.isArray(j.config.tools)?0:1)\" && test -d '${cfg_home}/.claude/skills/${cfg_skill}' && test -e '${cfg_home}/.claude/skills/${cfg_skill}/.roborepo-managed'"
   assert "config: post-mutation snapshot still carries contextCost" \
     bash -c "node -e \"const j=require('${cfg_home}/post-skill.json');process.exit(j.config&&j.config.contextCost&&j.config.contextCost.harnesses?0:1)\""
   assert "config: POST with bad body returns 400" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/skills' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"id\":123}')\" = 400 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/skills' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"id\":123}')\" = 400 ]"
   assert "config: POST without portal token returns 403" \
     bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/skills' -H 'Content-Type: application/json' -d '{\"id\":\"${cfg_skill}\",\"enabled\":false}')\" = 403 ]"
   assert "config: POST unknown skill returns ok:false" \
-    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/skills' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"id\":\"zzz\",\"enabled\":true}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok===false?0:1)})\""
+    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/skills' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"id\":\"zzz\",\"enabled\":true}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok===false?0:1)})\""
   assert "config: GET /config still served" \
     bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:${cfg_port}/config')\" = 200 ]"
   assert "localhoster: GET /localhoster served with token" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/localhoster' | grep -q 'roborepo-portal-token'"
+    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/localhoster' | grep -q 'cli-portal-token'"
   assert "localhoster: notice template includes docs link target" \
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/localhoster' | grep -q '/docs/user/reference/localhoster.md'"
   assert "localhoster: docs markdown route is served" \
@@ -836,9 +836,9 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   assert "localhoster: refresh rejects missing token" \
     bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/localhoster/refresh' -H 'Content-Type: application/json' -d '{}')\" = 403 ]"
   assert "localhoster: mutation rejects cross-origin request" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/localhoster/project' -H 'Origin: http://example.com' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{}')\" = 403 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/localhoster/project' -H 'Origin: http://example.com' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{}')\" = 403 ]"
   cfg_lh_rev="$(node -e "const j=require('${cfg_home}/localhoster-get.json');process.stdout.write(String(j.settingsRevision))")"
-  curl -s -X POST "http://127.0.0.1:${cfg_port}/api/localhoster/project" -H 'Content-Type: application/json' -H "X-Roborepo-Portal-Token: ${cfg_token}" \
+  curl -s -X POST "http://127.0.0.1:${cfg_port}/api/localhoster/project" -H 'Content-Type: application/json' -H "X-Cli-Portal-Token: ${cfg_token}" \
     -d "{\"revision\":${cfg_lh_rev},\"projectIdentity\":\"roborepo:portal\",\"name\":\"RoboRepo\",\"appId\":\"web\",\"appName\":\"Portal\",\"originPreference\":\"localhost\"}" > "${cfg_home}/localhoster-project.json"
   assert "localhoster: valid project mutation returns fresh snapshot" \
     bash -c "node -e \"const j=require('${cfg_home}/localhoster-project.json');process.exit(j.ok&&j.localhoster?.settingsRevision===${cfg_lh_rev}+1?0:1)\""
@@ -884,19 +884,19 @@ if [[ -n "${cfg_port:-}" ]]; then
   # Permission POST endpoint: named behavior (200), arbitrary command (200), invalid bucket (400),
   # missing identifier (400).
   assert "config: POST /api/config/permissions sets a named behavior (200)" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"behaviorId\":\"go-online\",\"bucket\":\"allow\"}')\" = 200 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"behaviorId\":\"go-online\",\"bucket\":\"allow\"}')\" = 200 ]"
   assert "config: POST /api/config/permissions sets an arbitrary command (200)" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"tokens\":[\"curl\"],\"bucket\":\"ask\"}')\" = 200 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"tokens\":[\"curl\"],\"bucket\":\"ask\"}')\" = 200 ]"
   assert "config: POST permissions invalid bucket returns 400" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"behaviorId\":\"go-online\",\"bucket\":\"bogus\"}')\" = 400 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"behaviorId\":\"go-online\",\"bucket\":\"bogus\"}')\" = 400 ]"
   assert "config: POST permissions missing identifier returns 400" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"bucket\":\"allow\"}')\" = 400 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/config/permissions' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"bucket\":\"allow\"}')\" = 400 ]"
 
   # Telemetry is a package via a service component: it toggles through the generic package endpoint.
   assert "config: POST package telemetry (service component) enables + flips snapshot" \
-    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/packages' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"id\":\"telemetry\",\"enabled\":true}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.config?.telemetry?.enabled===true&&j.config?.packages?.find(p=>p.id==='telemetry')?.enabled===true?0:1)})\""
+    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/packages' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"id\":\"telemetry\",\"enabled\":true}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.config?.telemetry?.enabled===true&&j.config?.packages?.find(p=>p.id==='telemetry')?.enabled===true?0:1)})\""
   assert "config: POST package telemetry disable flips snapshot" \
-    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/packages' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"id\":\"telemetry\",\"enabled\":false}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.config?.telemetry?.enabled===false?0:1)})\""
+    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/packages' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"id\":\"telemetry\",\"enabled\":false}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.config?.telemetry?.enabled===false?0:1)})\""
 
   # Phase 6 of docs/plans/active/roborepo-telemetry-events-experiments-plan.md: portal marker/
   # experiment/analysis endpoints. Real HTTP calls against the running loopback server (per the
@@ -912,21 +912,21 @@ if [[ -n "${cfg_port:-}" ]]; then
   assert "telemetry: POST /api/telemetry/markers without token returns 403" \
     bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/markers' -H 'Content-Type: application/json' -d '{\"type\":\"note\",\"title\":\"x\"}')\" = 403 ]"
   assert "telemetry: POST /api/telemetry/markers creates a marker" \
-    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/markers' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"type\":\"change\",\"title\":\"portal marker test\",\"metric\":\"tokens.total\",\"expected_direction\":\"decrease\"}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&/^mark_[a-f0-9]{16}\$/.test(j.marker.marker_id)?0:1)})\""
+    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/markers' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"type\":\"change\",\"title\":\"portal marker test\",\"metric\":\"tokens.total\",\"expected_direction\":\"decrease\"}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&/^mark_[a-f0-9]{16}\$/.test(j.marker.marker_id)?0:1)})\""
   assert "telemetry: POST /api/telemetry/markers rejects invalid type (400)" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/markers' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"type\":\"bogus\",\"title\":\"x\"}')\" = 400 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/markers' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"type\":\"bogus\",\"title\":\"x\"}')\" = 400 ]"
   assert "telemetry: GET /api/data reflects the created marker in the markers array" \
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/data' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.markers.some(m=>m.title==='portal marker test')?0:1)})\""
   assert "telemetry: POST /api/telemetry/experiments starts an experiment" \
-    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/experiments' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"title\":\"portal exp test\",\"metric\":\"tokens.total\",\"expected_direction\":\"decrease\"}' > '${cfg_home}/exp-start.json' && node -e \"const j=require('${cfg_home}/exp-start.json');process.exit(j.ok&&/^exp_[a-f0-9]{16}\$/.test(j.experiment.experiment_id)?0:1)\""
+    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/experiments' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"title\":\"portal exp test\",\"metric\":\"tokens.total\",\"expected_direction\":\"decrease\"}' > '${cfg_home}/exp-start.json' && node -e \"const j=require('${cfg_home}/exp-start.json');process.exit(j.ok&&/^exp_[a-f0-9]{16}\$/.test(j.experiment.experiment_id)?0:1)\""
   assert "telemetry: GET /api/telemetry/experiments reports readiness fields" \
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/telemetry/experiments' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);const e=j.experiments.find(x=>x.title==='portal exp test');process.exit(e&&typeof e.ready==='boolean'&&Array.isArray(e.data_quality_warnings)?0:1)})\""
   assert "telemetry: POST /api/telemetry/experiments/:id/end ends the experiment" \
-    bash -c "id=\$(node -e \"console.log(require('${cfg_home}/exp-start.json').experiment.experiment_id)\") && curl -s -X POST \"http://127.0.0.1:${cfg_port}/api/telemetry/experiments/\${id}/end\" -H 'X-Roborepo-Portal-Token: ${cfg_token}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.experiment.end_marker_id?0:1)})\""
+    bash -c "id=\$(node -e \"console.log(require('${cfg_home}/exp-start.json').experiment.experiment_id)\") && curl -s -X POST \"http://127.0.0.1:${cfg_port}/api/telemetry/experiments/\${id}/end\" -H 'X-Cli-Portal-Token: ${cfg_token}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.experiment.end_marker_id?0:1)})\""
   assert "telemetry: POST /api/telemetry/analysis rejects unknown metric (400)" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/analysis' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"metric\":\"bogus.metric\"}')\" = 400 ]"
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/analysis' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"metric\":\"bogus.metric\"}')\" = 400 ]"
   assert "telemetry: POST /api/telemetry/analysis with no marker compares two cohorts" \
-    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/analysis' -H 'Content-Type: application/json' -H 'X-Roborepo-Portal-Token: ${cfg_token}' -d '{\"metric\":\"tokens.total\",\"cohort_a\":{},\"cohort_b\":{}}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.finding.cohort_a&&j.finding.cohort_b?0:1)})\""
+    bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/telemetry/analysis' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"metric\":\"tokens.total\",\"cohort_a\":{},\"cohort_b\":{}}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.finding.cohort_a&&j.finding.cohort_b?0:1)})\""
 
   kill "${cfg_srv}" 2>/dev/null || true
   cfg_srv=""
@@ -1248,7 +1248,7 @@ assert "lifecycle: roborepo doctor is concise by default" \
 assert "lifecycle: roborepo doctor --verbose reports per-check detail" \
   bash -c "node '${cli}' doctor --verbose >'${work}/doctor-verbose.out' 2>&1 && grep -q '^ok: generated/codex/AGENTS.md exists' '${work}/doctor-verbose.out' && grep -q '^doctor passed (' '${work}/doctor-verbose.out'"
 
-# Package mode: dev-only source files (local/skills, scripts/test/test-roborepo.sh) are excluded
+# Package mode: dev-only source files (local/skills, scripts/test/test-cli.sh) are excluded
 # from the npm artifact, so doctor must not fail on their absence. Build a stripped tracked-file copy
 # that mirrors the packaged layout, then run doctor against it with ROBOREPO_MODE=package.
 pkg_doctor_root="${work}/pkg-doctor-root"
@@ -1264,7 +1264,7 @@ mkdir -p "${pkg_doctor_root}"
 pkg_doctor_out="${work}/pkg-doctor.out"
 ROBOREPO_MODE=package bash "${pkg_doctor_root}/scripts/doctor.sh" >"${pkg_doctor_out}" 2>&1 || true
 assert "package mode: doctor does not fail on dev-only source files" \
-  bash -c "! grep -qE 'fail: (local/skills|scripts/test/test-roborepo\.sh) missing' '${pkg_doctor_out}'"
+  bash -c "! grep -qE 'fail: (local/skills|scripts/test/test-cli\.sh) missing' '${pkg_doctor_out}'"
 # Assert the whole run passed, not just that two known messages are absent. Naming individual
 # failure strings only catches regressions someone already thought of: a development-only check
 # added to doctor without a package-mode guard fails here with a message this file has never heard
@@ -1287,7 +1287,7 @@ cp "${repo_root}/generated/codex/config.toml" "${update_legacy_home}/.codex/conf
 printf '<!-- BEGIN managed:roborepo-agents-import -->\n@~/.roborepo/rules/generated-rules.md\n<!-- END managed:roborepo-agents-import -->\n' > "${update_legacy_home}/.claude/CLAUDE.md"
 printf '# Generated Harness Rules\n\nlegacy render\n' > "${update_legacy_home}/.roborepo/rules/generated-rules.md"
 assert "lifecycle: roborepo update rewrites legacy Claude import wrapper" \
-  bash -c "HOME='${update_legacy_home}' ROBOREPO_STATE_DIR='${update_legacy_home}/.roborepo' node '${cli}' update >/dev/null 2>&1 && grep -q 'BEGIN managed:roborepo-code-style' '${update_legacy_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:roborepo-agents-import' '${update_legacy_home}/.claude/CLAUDE.md' && ! test -e '${update_legacy_home}/.roborepo/rules/generated-rules.md'"
+  bash -c "HOME='${update_legacy_home}' ROBOREPO_STATE_DIR='${update_legacy_home}/.roborepo' node '${cli}' update >/dev/null 2>&1 && grep -q 'BEGIN managed:builtin-code-style' '${update_legacy_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:roborepo-agents-import' '${update_legacy_home}/.claude/CLAUDE.md' && ! test -e '${update_legacy_home}/.roborepo/rules/generated-rules.md'"
 assert "lifecycle: roborepo sync alias removed" \
   bash -c "! HOME='${update_home}' node '${cli}' sync --bad-flag >/dev/null 2>&1"
 assert "lifecycle: roborepo install verb removed (first install is the shell bootstrap)" \
@@ -1437,9 +1437,9 @@ HOME="${rp_home}" ROBOREPO_STATE_DIR="${rp_state}" \
 assert "repair: bin link healed to new checkout" \
   bash -c "test \"\$(readlink '${rp_home}/.local/bin/roborepo')\" = '${rp_new}/bin/roborepo'"
 assert "repair: base Claude support skill cache link created after repair" \
-  bash -c "test -L '${rp_home}/.claude/skills/roborepo-support' && test \"\$(readlink '${rp_home}/.claude/skills/roborepo-support')\" = '${rp_home}/.roborepo/skills/roborepo-support' && test -d '${rp_home}/.roborepo/skills/roborepo-support' && test -e '${rp_home}/.roborepo/skills/roborepo-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${rp_new}/globals/system/skills/roborepo-support' '${rp_home}/.roborepo/skills/roborepo-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.claude/skills/case-study'"
+  bash -c "test -L '${rp_home}/.claude/skills/builtin-support' && test \"\$(readlink '${rp_home}/.claude/skills/builtin-support')\" = '${rp_home}/.roborepo/skills/builtin-support' && test -d '${rp_home}/.roborepo/skills/builtin-support' && test -e '${rp_home}/.roborepo/skills/builtin-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${rp_new}/globals/system/skills/builtin-support' '${rp_home}/.roborepo/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.claude/skills/case-study'"
 assert "repair: base Codex support skill cache link created after repair" \
-  bash -c "test -L '${rp_home}/.codex/skills/roborepo-support' && test \"\$(readlink '${rp_home}/.codex/skills/roborepo-support')\" = '${rp_home}/.roborepo/skills/roborepo-support' && test -d '${rp_home}/.roborepo/skills/roborepo-support' && test -e '${rp_home}/.roborepo/skills/roborepo-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${rp_new}/globals/system/skills/roborepo-support' '${rp_home}/.roborepo/skills/roborepo-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.codex/skills/case-study'"
+  bash -c "test -L '${rp_home}/.codex/skills/builtin-support' && test \"\$(readlink '${rp_home}/.codex/skills/builtin-support')\" = '${rp_home}/.roborepo/skills/builtin-support' && test -d '${rp_home}/.roborepo/skills/builtin-support' && test -e '${rp_home}/.roborepo/skills/builtin-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${rp_new}/globals/system/skills/builtin-support' '${rp_home}/.roborepo/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.codex/skills/case-study'"
 assert "repair: install state records the new checkout path" \
   grep -q "\"repo\": \"${rp_new}\"" "${rp_state}/install-state.json"
 # Idempotent: a second repair reclaims nothing (everything already points at the new checkout).
@@ -1455,7 +1455,7 @@ HOME="${rp_codex_only_home}" ROBOREPO_STATE_DIR="${rp_codex_only_state}" \
 assert "repair: Codex-only repair does not create Claude home" \
   bash -c "! test -e '${rp_codex_only_home}/.claude'"
 assert "repair: Codex-only repair still restores Codex skill link" \
-  bash -c "test -L '${rp_codex_only_home}/.codex/skills/roborepo-support'"
+  bash -c "test -L '${rp_codex_only_home}/.codex/skills/builtin-support'"
 
 # -- repair ignores copied content dirs and still heals the moved checkout --
 rp_keep_home="${reloc_root}/reloc-repair-keep/home"
@@ -1502,7 +1502,7 @@ HOME="${la_home}" ROBOREPO_STATE_DIR="${la_home}/.roborepo" ROBOREPO_ASSUME_INTE
 assert "legacy: managed ~/.agents/skills link removed after install" \
   bash -c "! test -L '${la_home}/.agents/skills'"
 assert "legacy: base Codex support skill cache link created in place of the legacy dir link" \
-  bash -c "test -d '${la_home}/.codex/skills/roborepo-support' && test -e '${la_home}/.codex/skills/roborepo-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${repo_root}/globals/system/skills/roborepo-support' '${la_home}/.codex/skills/roborepo-support' >/dev/null 2>&1 && ! test -e '${la_home}/.codex/skills/case-study'"
+  bash -c "test -d '${la_home}/.codex/skills/builtin-support' && test -e '${la_home}/.codex/skills/builtin-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${repo_root}/globals/system/skills/builtin-support' '${la_home}/.codex/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${la_home}/.codex/skills/case-study'"
 
 # A user's real ~/.agents/skills (not a managed symlink) must be left untouched.
 lu_home="${reloc_root}/legacy-agents-userdir/home"
@@ -1540,7 +1540,7 @@ assert "install: Claude-only presence does not crash" \
 assert "install: Claude-only summary shows Claude available" \
   bash -c "echo '${claude_only_out}' | grep -q 'Claude Code.*available'"
 assert "install: Claude-only links the base skill into .claude" \
-  bash -c "test -e '${claude_only_home}/.claude/skills/roborepo-support'"
+  bash -c "test -e '${claude_only_home}/.claude/skills/builtin-support'"
 
 codex_only_home="${reloc_root}/presence-codex-only/home"
 mkdir -p "${codex_only_home}/.codex" "${codex_only_home}/.local/bin"
@@ -1551,7 +1551,7 @@ assert "install: Codex-only presence does not crash" \
 assert "install: Codex-only summary shows Codex available" \
   bash -c "echo '${codex_only_out}' | grep -q 'Codex.*available'"
 assert "install: Codex-only links the base skill into .codex" \
-  bash -c "test -e '${codex_only_home}/.codex/skills/roborepo-support'"
+  bash -c "test -e '${codex_only_home}/.codex/skills/builtin-support'"
 
 # ---------------------------------------------------------------------------
 # `roborepo harness withdraw <id>` (Phase 4): actively unmerges RoboRepo's content from ONE
@@ -1573,9 +1573,9 @@ assert "harness withdraw: removes the target provider's root config" \
 assert "harness withdraw: leaves the sibling provider's root config untouched" \
   bash -c "test -f '${wd_home}/.codex/config.toml'"
 assert "harness withdraw: removes the target provider's linked base skill" \
-  bash -c "! test -e '${wd_home}/.claude/skills/roborepo-support'"
+  bash -c "! test -e '${wd_home}/.claude/skills/builtin-support'"
 assert "harness withdraw: leaves the sibling provider's linked base skill untouched" \
-  bash -c "test -e '${wd_home}/.codex/skills/roborepo-support'"
+  bash -c "test -e '${wd_home}/.codex/skills/builtin-support'"
 withdraw_codex_out="$(HOME="${wd_home}" ROBOREPO_STATE_DIR="${wd_home}/.roborepo" node "${cli}" harness withdraw codex --yes 2>&1)"
 assert "harness withdraw: unsupported hooks.write capability is reported for codex" \
   bash -c "echo '${withdraw_codex_out}' | grep -q 'unsupported: hooks.write has no codex adapter'"

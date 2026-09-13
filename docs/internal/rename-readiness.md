@@ -16,13 +16,13 @@ Snapshot date: 2026-09-13 · branch: `rename-prep` · counts from `git ls-files`
 | localStorage key / custom event | `roborepo-theme` / `roborepo:themechange` | `portal/shared/theme.js` |
 | Generated policy filename | `generated/gemini/policies/roborepo-permissions.toml` (+ `commandPrefix = "roborepo dev"`) | renderer + generated output |
 | Managed-file markers | `MANAGED_BY_ROBOREPO.md`, `.roborepo-managed` marker files, `roborepo-write-guard` hook | `globals/harnesses/*`, `manifests/platform/manifest.tsv`, `scripts/install/*.sh`, hooks |
-| Ownership predicates | `is_roborepo_authored()`, `is_roborepo_managed` | `scripts/install/install-lib.sh` (+ consumers) |
+| Ownership predicates | `is_builtin_authored()`, `is_roborepo_managed` | `scripts/install/install-lib.sh` (+ consumers) |
 | Shell PID/state paths | `~/.local/state/roborepo/...` | `scripts/cli/state-paths.mjs`, install scripts |
 | Package-internal dirs | `~/.roborepo/workspace` (workspaceRoot default) | `scripts/cli/roots.mjs` |
 | Test fixtures | `codethings-roborepo-alpha` fixture dirs, `github.com/kirinmurphy/roborepo` fixture URLs | `scripts/test/*` |
-| Telemetry identity | `version` reported as `roborepo_version`, repo label `roborepo` | telemetry modules |
+| Telemetry identity | `version` reported as `app_version`, repo label `roborepo` | telemetry modules |
 
-Non-code surfaces: `docs/user/reference/roborepo{,-cli,-skills}.md` (185 refs), README (44), docs/plans (2,868 refs, historical), skill dirs `roborepo-support` / `roborepo-development` / `roborepo-code-style`, generated harness output, `docs/plans/backlog/roborepo-repository-plans.zip`.
+Non-code surfaces: `docs/user/reference/roborepo{,-cli,-skills}.md` (185 refs), README (44), docs/plans (2,868 refs, historical), skill dirs `builtin-support` / `builtin-development` / `builtin-code-style`, generated harness output, `docs/plans/backlog/roborepo-repository-plans.zip`.
 
 ## Classification
 
@@ -44,19 +44,19 @@ Fixed in this cleanup (commit 1):
 - `scripts/cli/roots.mjs:72` — `requireDevelopmentCheckout` error: "this roborepo install is running in package mode" → "this install is running in package mode" (user-facing message that gains nothing from the brand).
 - `scripts/cli/roots.mjs:9-11` comment — `~/.roborepo/workspace` prose stays (it names the real path, see §4).
 
-Deliberately NOT reworded (prose that legitimately names the product): README, user-guide docs, portal home/config copy ("Welcome to RoboRepo", "Uninstall RoboRepo"), `MANAGED_BY_ROBOREPO.md` (it IS the branding artifact), `globals/system/skills/roborepo-support/SKILL.md`, plan docs.
+Deliberately NOT reworded (prose that legitimately names the product): README, user-guide docs, portal home/config copy ("Welcome to RoboRepo", "Uninstall RoboRepo"), `MANAGED_BY_ROBOREPO.md` (it IS the branding artifact), `globals/system/skills/builtin-support/SKILL.md`, plan docs.
 
 ### 4. Identifiers that cannot be abstracted — explicit migration later
 These are real persisted identifiers; a rename must handle them deliberately (they are enumerated in the rename manifest, never swept):
 1. `~/.roborepo` — existing installs' state dir. Every state path derives from `stateRoot`; the tool moves the dir + writes a pointer, or a compat fallback reads the old path. **Proposed simplest strategy: one-time migrate-on-first-run in `roots.mjs` (if new dir missing and old exists → rename dir), no parallel-path compat layer.**
 2. `codethings-roborepo-alpha` — npm package identity. Changing it breaks `npm install -g` for existing users (old install keeps working but never updates). Migration = new package + `npm deprecate` on the old.
 3. `bin/roborepo` + package.json `bin` — old global symlink remains after update; uninstall path in `uninstall-lib.sh` knows both layouts.
-4. `.roborepo-managed` marker files — written into harness skill dirs; old markers must still be *recognized* by `install-lib.sh` ownership checks or old installs' content looks un-owned (see `is_roborepo_authored`). **Simplest strategy: recognize both markers, write only the new one.**
+4. `.roborepo-managed` marker files — written into harness skill dirs; old markers must still be *recognized* by `install-lib.sh` ownership checks or old installs' content looks un-owned (see `is_builtin_authored`). **Simplest strategy: recognize both markers, write only the new one.**
 5. `MANAGED_BY_ROBOREPO.md` — filename is content-addressed in `manifests/platform/manifest.tsv` (managed_copy rows) and referenced by presets; rename is a manifest+file rename in lockstep, plus a cleanup row for the old name.
 6. `X-Roborepo-Portal-Token` / `window.ROBOREPO_PORTAL` / `roborepo-theme` — internal (same-repo server+client), safe to rename atomically; no persisted data except localStorage key (cosmetic: users lose saved theme once).
 7. `roborepo-write-guard` hook name + `roborepo-permissions.toml` filename — referenced in harness config files already applied on user machines; rename requires regenerate + cleanup of old files (manifest.tsv cleanup rows handle this pattern already).
 8. Env vars `ROBOREPO_*` — test harnesses, installers, and user shells may export them. Rename manifest maps each family; keep `ROBOREPO_STATE_DIR` as a read fallback for one release if we want zero user action.
-9. Telemetry persisted identity: `roborepo_version` field name and `git:github.com/kirinmurphy/roborepo` repo IDs in machine-local registries — changing the field name orphans existing spool data; changing repo IDs is NOT desirable (they track real repos). Manifest marks these intentionally-unchanged or versioned.
+9. Telemetry persisted identity: `app_version` field name and `git:github.com/kirinmurphy/roborepo` repo IDs in machine-local registries — changing the field name orphans existing spool data; changing repo IDs is NOT desirable (they track real repos). Manifest marks these intentionally-unchanged or versioned.
 10. `github.com/kirinmurphy/roborepo` remote/URLs in test fixtures — external identity, rename only when the GitHub repo itself is renamed.
 
 ## Remaining canonical naming surfaces after Phase 1 (the rename manifest's job)
@@ -69,7 +69,7 @@ Exactly these definition points remain (all others derive or are prose):
 5. `scripts/cli/state-paths.mjs` (`~/.local/state/roborepo` legacy PID path)
 6. `scripts/cli/uninstall.mjs` (`NPM_PACKAGE` const)
 7. `scripts/install/uninstall-lib.sh` (npm layout matchers)
-8. `scripts/install/install-lib.sh` / manifests (`MANAGED_BY_ROBOREPO.md`, `.roborepo-managed`, `is_roborepo_authored`)
+8. `scripts/install/install-lib.sh` / manifests (`MANAGED_BY_ROBOREPO.md`, `.roborepo-managed`, `is_builtin_authored`)
 9. `scripts/cli/portal-server.mjs` + `portal/shared/{api,theme}.js` (`ROBOREPO_PORTAL`, `X-Roborepo-Portal-Token`, `roborepo-theme`, `roborepo:themechange`)
 10. `~/.local/state/roborepo` + `generated/gemini/policies/roborepo-permissions.toml` filename references
 11. Docs/skill display-name prose (README, docs/user, portal HTML copy) — free-text sweep

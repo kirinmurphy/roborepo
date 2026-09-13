@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { packageMode, repoRoot, harnessHome } from "./paths.mjs";
-import { enabledPackagesPath, roborepoSkillsDir } from "./state-paths.mjs";
+import { enabledPackagesPath, stateSkillsDir } from "./state-paths.mjs";
 import { buildLocalConfigRepairPlans } from "./local-config-repair.mjs";
 import { findOrphanSkillLinks } from "./skill-prune-orphans.mjs";
 
@@ -139,9 +139,9 @@ function labelForRow(row) {
 // alone, and is snapshotted separately from the per-harness pointers below.
 function snapshotSkillBodies() {
   const entries = [];
-  if (!fs.existsSync(roborepoSkillsDir)) return entries;
-  for (const name of fs.readdirSync(roborepoSkillsDir).sort()) {
-    const skillDir = path.join(roborepoSkillsDir, name);
+  if (!fs.existsSync(stateSkillsDir)) return entries;
+  for (const name of fs.readdirSync(stateSkillsDir).sort()) {
+    const skillDir = path.join(stateSkillsDir, name);
     if (!isDirectorySafe(skillDir)) continue;
     entries.push({
       key: name,
@@ -190,7 +190,7 @@ function isDirectorySafe(target) {
 function isManagedSkillLink(skillDir) {
   try {
     if (fs.lstatSync(skillDir).isSymbolicLink()) {
-      return path.resolve(path.dirname(skillDir), fs.readlinkSync(skillDir)).startsWith(roborepoSkillsDir);
+      return path.resolve(path.dirname(skillDir), fs.readlinkSync(skillDir)).startsWith(stateSkillsDir);
     }
   } catch {
     return false;

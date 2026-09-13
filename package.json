@@ -31,7 +31,7 @@
   "scripts": {
     "build": "npm run --silent pack:dry-run",
     "check": "bash scripts/test/ci.sh",
-    "test": "scripts/test/test-roborepo.sh --quiet",
+    "test": "scripts/test/test-cli.sh --quiet",
     "test:install-collisions": "scripts/test/test-install-collisions.sh",
     "test:install-smoke": "node scripts/test/install-smoke.mjs",
     "test:telemetry": "node scripts/test/telemetry-correctness-check.mjs && node scripts/test/telemetry-time-axis-check.mjs",

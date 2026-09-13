@@ -1,5 +1,5 @@
 ---
-name: roborepo-support
+name: builtin-support
 description: >
   Work with roborepo-managed global agent config from any repo. Use when adding or editing
   shared/exportable skills, skill-backed slash commands, global rules, hooks, settings,
@@ -7,7 +7,7 @@ description: >
   "edit global rules", "roborepo support", "harness config", "skill authoring",
   "skill triggers", "roborepo update", "roborepo doctor". SKIP for changing roborepo's
   own installer, CLI internals, package/apply engine, portal, telemetry, or local/skills/;
-  use the repo-local roborepo-development skill for that.
+  use the repo-local builtin-development skill for that.
 ---
 
 # Roborepo Support & Skill Authoring
@@ -19,7 +19,7 @@ local machine without pulling in the repo-internal platform manual.
 
 If the task changes roborepo implementation internals (`scripts/cli/`, installer
 plumbing, package/apply/workspace state, portal, telemetry, local repo-only skills), load
-the repo-local `roborepo-development` skill instead.
+the repo-local `builtin-development` skill instead.
 
 **Read these first when relevant** (they are the source of truth):
 - `README.md` — overview of what's shared and per-harness.
@@ -33,7 +33,7 @@ the repo-local `roborepo-development` skill instead.
 
 The canonical shared source is a package-owned skill resource at
 **`globals/packages/<package>/skills/<name>/`**. The required base support skill is the only current
-system skill under **`globals/system/skills/roborepo-support/`**. Roborepo materializes shared
+system skill under **`globals/system/skills/builtin-support/`**. Roborepo materializes shared
 skills into the machine-local cache at `~/.roborepo/skills/<name>`, then both harnesses read from
 their native skill dir via symlink:
 

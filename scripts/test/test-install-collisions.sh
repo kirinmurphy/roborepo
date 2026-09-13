@@ -270,7 +270,7 @@ test_direct_harness_installers_export_root_configs() {
   assert_regular_file_contains "$home_dir/.codex/config.toml" "approval_policy" "direct Codex installer copies root config as local file"
   assert_not_symlink "$home_dir/.claude/CLAUDE.md" "direct Claude installer copies read-mostly assets (not symlinks)"
   assert_not_symlink "$home_dir/.codex/AGENTS.md" "direct Codex installer copies read-mostly assets (not symlinks)"
-  assert_managed_skill "$home_dir" "$home_dir/.codex/skills/roborepo-support" "$repo_root/globals/system/skills/roborepo-support" "direct Codex installer links base support skill through ~/.roborepo/skills"
+  assert_managed_skill "$home_dir" "$home_dir/.codex/skills/builtin-support" "$repo_root/globals/system/skills/builtin-support" "direct Codex installer links base support skill through ~/.roborepo/skills"
   assert_absent "$home_dir/.codex/skills/case-study" "direct Codex installer does not copy optional skills by default"
 }
 
@@ -318,8 +318,8 @@ test_old_repo_managed_symlinks_are_migrated() {
   # Old dir-level ~/.claude/skills symlink is cleaned up by the migration cleanup row.
   # Old ~/.agents/skills and transitional ~/.codex/skills dir-level symlinks are no longer managed.
   # After install, ~/.codex/skills/ and ~/.claude/skills/ point at the machine-local cache.
-  assert_managed_skill "$home_dir" "$home_dir/.codex/skills/roborepo-support" "$repo_root/globals/system/skills/roborepo-support" "old machine migrated: base Codex support skill cache link created"
-  assert_managed_skill "$home_dir" "$home_dir/.claude/skills/roborepo-support" "$repo_root/globals/system/skills/roborepo-support" "old machine migrated: base Claude support skill cache link created"
+  assert_managed_skill "$home_dir" "$home_dir/.codex/skills/builtin-support" "$repo_root/globals/system/skills/builtin-support" "old machine migrated: base Codex support skill cache link created"
+  assert_managed_skill "$home_dir" "$home_dir/.claude/skills/builtin-support" "$repo_root/globals/system/skills/builtin-support" "old machine migrated: base Claude support skill cache link created"
   assert_absent "$home_dir/.codex/skills/case-study" "old machine migrated: optional Codex skill not copied by default"
   assert_absent "$home_dir/.claude/skills/case-study" "old machine migrated: optional Claude skill not copied by default"
 }
@@ -726,7 +726,7 @@ test_uninstall_check_clean_reports_remnant() {
 # Entry-point guards must compare real paths. `process.argv[1] === fileURLToPath(import.meta.url)`
 # is false whenever the invoking path and the resolved module path differ by a symlink — on macOS a
 # checkout under /var resolves to /private/var, so every one of these CLIs silently did nothing and
-# exited 0. That made `uninstall.sh` leave roborepo-authored CLAUDE.md/AGENTS.md behind and then
+# exited 0. That made `uninstall.sh` leave builtin-authored CLAUDE.md/AGENTS.md behind and then
 # fail its own remnant check. Runs each script through a symlinked repo root, which reproduces the
 # mismatch without depending on the platform's temp-dir layout.
 test_cli_entry_points_run_through_symlinked_path() {
@@ -735,13 +735,13 @@ test_cli_entry_points_run_through_symlinked_path() {
   link_root="$home_dir/linked-repo"
   ln -s "$repo_root" "$link_root"
 
-  printf '<!-- BEGIN managed:roborepo-code-style -->\nGENERATED\n<!-- END managed:roborepo-code-style -->\nuser tail\n' \
+  printf '<!-- BEGIN managed:builtin-code-style -->\nGENERATED\n<!-- END managed:builtin-code-style -->\nuser tail\n' \
     > "$home_dir/.claude/CLAUDE.md"
 
   HOME="$home_dir" ROBOREPO_STATE_DIR="$home_dir/.roborepo" \
     node "$link_root/scripts/cli/rules-render.mjs" --remove-managed claude >"$home_dir/rr.out" 2>&1
 
-  assert_file_not_contains "$home_dir/.claude/CLAUDE.md" "BEGIN managed:roborepo-code-style" \
+  assert_file_not_contains "$home_dir/.claude/CLAUDE.md" "BEGIN managed:builtin-code-style" \
     "rules-render --remove-managed runs when invoked through a symlinked path"
   assert_file_contains "$home_dir/.claude/CLAUDE.md" "user tail" \
     "rules-render --remove-managed preserves user content outside the block"
@@ -792,9 +792,9 @@ test_uninstall_stops_repo_owned_processes() {
 test_install_writes_durable_original_snapshot() {
   local home_dir archive
   home_dir="$(make_home)"
-  archive="$home_dir/.roborepo-backups/pre-roborepo-original.tar.gz"
+  archive="$home_dir/.roborepo-backups/pre-install-original.tar.gz"
 
-  # Genuine pre-roborepo originals the snapshot must capture.
+  # Genuine pre-install originals the snapshot must capture.
   seed_user_configs "$home_dir"
   printf 'my own claude rules\n' > "$home_dir/.claude/CLAUDE.md"
   printf '# my shell\n' > "$home_dir/.zshrc"
@@ -802,8 +802,8 @@ test_install_writes_durable_original_snapshot() {
   run_harness_install_args "$home_dir" "$home_dir/install.out" --on-conflict keep
 
   [[ -f "$archive" ]] \
-    && pass "install writes durable pre-roborepo snapshot" \
-    || fail "install writes durable pre-roborepo snapshot" "$home_dir/install.out"
+    && pass "install writes durable pre-install snapshot" \
+    || fail "install writes durable pre-install snapshot" "$home_dir/install.out"
   local listing
   listing="$(tar tzf "$archive" 2>/dev/null)"
   grep -q '\.claude/CLAUDE.md$' <<<"$listing" && grep -q '\.claude/settings.json$' <<<"$listing" \
@@ -904,7 +904,7 @@ test_root_config_drift_silent_update_vs_real_collision() {
 # Regression test: export_user_config must NOT record a write when install_copy_item took the
 # "keep" branch, since "keep" leaves home_path exactly as the user had it (stages the repo
 # candidate as a *_update_TIMESTAMP sibling instead). Recording a write there would falsely mark a
-# drifted, user-owned file as roborepo-clean, permanently hiding the drift on the next check.
+# drifted, user-owned file as builtin-clean, permanently hiding the drift on the next check.
 test_root_config_keep_policy_does_not_record_false_clean() {
   local home_dir
   home_dir="$(make_home)"
@@ -935,8 +935,8 @@ test_root_config_keep_policy_does_not_record_false_clean() {
 
 # Uninstall drift-awareness (docs/plans/completed/root-config-layered-inheritance.md, "Uninstall", step 5):
 # a root_config the user hand-edited after roborepo's last write (sidecar hash no longer matches)
-# must be left in place with its path reported, not deleted — even though is_roborepo_authored still
-# matches the markers underneath the edit. A clean roborepo-written root_config is still removed.
+# must be left in place with its path reported, not deleted — even though is_builtin_authored still
+# matches the markers underneath the edit. A clean builtin-written root_config is still removed.
 test_uninstall_preserves_drifted_root_config() {
   local home_dir
   home_dir="$(make_home)"
@@ -948,7 +948,7 @@ test_uninstall_preserves_drifted_root_config() {
     || fail "install records a clean root-config baseline"
 
   # User edits the installed Claude config after install — real drift against the sidecar hash. The
-  # edit keeps a roborepo marker so is_roborepo_authored still matches, isolating the drift gate as
+  # edit keeps a roborepo marker so is_builtin_authored still matches, isolating the drift gate as
   # the only reason the file survives. Codex config is left untouched (stays clean) as the control.
   printf '{"MANAGED_BY_ROBOREPO":true,"user":"edited after install"}\n' > "$home_dir/.claude/settings.json"
   HOME="$home_dir" node "$repo_root/scripts/cli/root-config-state.mjs" check claude "$home_dir/.claude/settings.json" \
@@ -978,7 +978,7 @@ test_uninstall_check_clean_tolerates_drifted_root_config() {
   home_dir="$(make_home)"
 
   run_harness_install_args "$home_dir" "$home_dir/install.out" --on-conflict overwrite
-  # Drift the Claude config; keep a roborepo marker so is_roborepo_authored still matches (that is
+  # Drift the Claude config; keep a roborepo marker so is_builtin_authored still matches (that is
   # what would otherwise make check-clean call it a remnant).
   printf '{"MANAGED_BY_ROBOREPO":true,"user":"edited after install"}\n' > "$home_dir/.claude/settings.json"
 
@@ -1075,7 +1075,7 @@ test_repo_local_codex_skill_layer_present() {
   # link-skills.sh is the source of truth: --check must pass and both per-harness links must
   # resolve to the local source.
   "$repo_root/scripts/build/link-skills.sh" --check >/dev/null
-  local name="roborepo-development"
+  local name="builtin-development"
   [[ "$(readlink "$repo_root/.claude/skills/$name" 2>/dev/null)" == "../../local/skills/$name" ]] \
     && pass "repo-local .claude skill link resolves to local source" \
     || fail "repo-local .claude skill link resolves to local source"

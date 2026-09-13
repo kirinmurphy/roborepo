@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assertDryRunClean, roborepoDryRunRoots } from "./lib/assert-dry-run-clean.mjs";
+import { assertDryRunClean, dryRunRoots } from "./lib/assert-dry-run-clean.mjs";
 
 // Every command that accepts --dry-run makes the same promise: preview, mutate nothing. That was
 // asserted per-command by hand, so it held only for the paths a given test happened to snapshot —
@@ -74,7 +74,7 @@ function testWatcherSeesEveryRoot() {
   const dirs = sandbox("watcher-self-check");
   // A pre-existing profile, so the file branch is exercised as an append rather than a create.
   fs.writeFileSync(path.join(dirs.home, ".zshrc"), "existing\n");
-  const roots = roborepoDryRunRoots(dirs);
+  const roots = dryRunRoots(dirs);
 
   const blind = [];
   for (const root of roots) {
@@ -136,7 +136,7 @@ function runCase(name, tokens) {
     argv: [process.execPath, cli, ...tokens, "--dry-run"],
     cwd: repoRoot,
     env: envFor(dirs),
-    roots: roborepoDryRunRoots(dirs),
+    roots: dryRunRoots(dirs),
   }));
 }
 
@@ -147,7 +147,7 @@ function runModuleCase(name, argv) {
     argv: [process.execPath, ...argv, "--dry-run"],
     cwd: repoRoot,
     env: envFor(dirs),
-    roots: roborepoDryRunRoots(dirs),
+    roots: dryRunRoots(dirs),
   }));
 }
 

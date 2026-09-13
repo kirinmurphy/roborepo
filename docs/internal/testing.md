@@ -16,7 +16,7 @@ test command/suite.
 | Layer | Command | Covers | Notes |
 | --- | --- | --- | --- |
 | Repo health | `bash scripts/doctor.sh --quiet` | generated-file drift, manifest data, links, script health | `roborepo doctor --installed` adds live installed-path checks. |
-| Main smoke suite | `npm test` | fast repository behavior and simulated package mode | Alias for `scripts/test/test-roborepo.sh --quiet`. |
+| Main smoke suite | `npm test` | fast repository behavior and simulated package mode | Alias for `scripts/test/test-cli.sh --quiet`. |
 | Install/uninstall collisions | `bash scripts/test/test-install-collisions.sh` | conflict policy, managed-copy reclaim, uninstall cleanliness against real fixture homes | Not covered by `npm test`. The only layer that proves uninstall leaves no remnants. |
 | Live install smoke | `npm run test:install-smoke` | whether *this machine's* install matches the repo: hook scripts byte-current and registered, package rules rendered, enabled ids real, skill links resolve | Read-only, and deliberately not in `npm test` or CI — there is no live install to inspect there. Run it after `roborepo update`. Complements `doctor --installed`, which does not check installed hook scripts at all. |
 | Package artifact smoke | `npm run test:package-install` | real `npm pack`, isolated global install, package-mode lifecycle, appRoot immutability | Requires a clean worktree only when retaining an artifact with `--output-dir`. |
@@ -118,7 +118,7 @@ that no real browser was used.
 ## Adding A Test
 
 Write the check, then wire it into a runner. `scripts/doctor.sh` fails when any file under
-`scripts/test/` is invoked by neither `test-roborepo.sh`, an `npm run test:*` script that CI directly
+`scripts/test/` is invoked by neither `test-cli.sh`, an `npm run test:*` script that CI directly
 calls, nor a CI job — because a test nothing runs asserts nothing, which is exactly how an uninstall
 defect once survived a full review pass. A `package.json` script by itself is only a named entry
 point; it must still be reached by CI or the main test runner.

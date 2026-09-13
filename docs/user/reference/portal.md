@@ -252,7 +252,7 @@ Telemetry's "turn on telemetry" button, which previously POSTed without the toke
 
 ## Checks to Run
 
-- `npm test` (`scripts/test/test-roborepo.sh`) — starts the portal server, asserts
+- `npm test` (`scripts/test/test-cli.sh`) — starts the portal server, asserts
   `/api/portal/status`, token exposure, mutating POST success/400/403 responses, and that each
   served `app.js` parses (`node --check`).
 - `roborepo web` — click through Home → Agents → Plans → Localhoster → Tokens, confirm nav highlighting, and

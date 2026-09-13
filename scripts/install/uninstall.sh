@@ -19,7 +19,7 @@ source "${repo_root}/scripts/lib/manifests-data.sh"
 # shellcheck source=scripts/install/state-lib.sh
 source "${repo_root}/scripts/install/state-lib.sh"
 # shellcheck source=scripts/install/install-lib.sh
-# Provides is_roborepo_authored and content_matches_repo_source — single source of truth shared
+# Provides is_builtin_authored and content_matches_repo_source — single source of truth shared
 # with install.sh's mutation path instead of two hand-kept-in-sync copies.
 source "${repo_root}/scripts/install/install-lib.sh"
 # shellcheck source=scripts/install/uninstall-lib.sh
@@ -33,7 +33,7 @@ if [[ "${check_clean}" -eq 1 ]]; then
   exit $?
 fi
 
-stop_roborepo_processes
+stop_cli_processes
 
 while IFS=$'\t' read -r _h kind src_rel home_abs _flags; do
   case "${kind}" in
@@ -62,7 +62,7 @@ done < <(harness_detected_rows)
 remove_file_if_repo_symlink "${HOME}/.local/bin/roborepo" "${repo_root}/bin/roborepo"
 remove_shell_wiring
 
-state_file="$(roborepo_state_file)"
+state_file="$(cli_state_file)"
 if [[ -f "${state_file}" ]]; then
   if [[ "${dry_run}" -eq 1 ]]; then
     echo "remove: ${state_file}"

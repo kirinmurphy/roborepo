@@ -3,7 +3,7 @@
 //
 // Boots the REAL portal server the hermetic way — temp HOME + ROBOREPO_STATE_DIR, a
 // ROBOREPO_PORTAL_READY_FILE ready-file, and `web --no-open --port 0 --allow-zero-port` — the
-// same recipe scripts/test/test-roborepo.sh uses around its portal HTTP block. The server is a
+// same recipe scripts/test/test-cli.sh uses around its portal HTTP block. The server is a
 // sibling process (not a Playwright webServer fixture), so the suite exercises the exact startup
 // path a user gets from `roborepo web`, and the port comes from the ready-file so nothing is
 // hard-coded.

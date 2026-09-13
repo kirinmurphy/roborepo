@@ -11,7 +11,7 @@ import {
   resolveBehaviors,
   resolveArbitraryCommands,
 } from "./permissions-render.mjs";
-import { commandOverridesPath, roborepoSkillsDir } from "./state-paths.mjs";
+import { commandOverridesPath, stateSkillsDir } from "./state-paths.mjs";
 import { listHarnessProviders } from "../harnesses/registry.mjs";
 import { resolveHarnessPath } from "../harnesses/paths.mjs";
 
@@ -23,7 +23,7 @@ import { resolveHarnessPath } from "../harnesses/paths.mjs";
 const SHARED_SKILLS_DIR = path.join(repoRoot, "globals", "system", "skills");
 // Machine-local skill cache. Harness skill dirs point at these copies; the cache is the thing that
 // survives across harness presence/absence and gives us one shared install source per machine.
-const ROBOREPO_SKILLS_DIR = roborepoSkillsDir;
+const ROBOREPO_SKILLS_DIR = stateSkillsDir;
 // Every registered provider's live skills dir (~/.claude/skills, ~/.codex/skills, ...), resolved
 // through the provider manifest's "skills" path — a live filesystem location this machine actually
 // reads/writes, so the expanded absolute path (not the raw "~/..." string) is correct here, unlike

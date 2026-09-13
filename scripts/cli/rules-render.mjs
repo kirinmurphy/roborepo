@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./paths.mjs";
 import { isMainModule } from "./roots.mjs";
-import { enabledPackagesPath, roborepoStateDir } from "./state-paths.mjs";
+import { enabledPackagesPath, stateDir } from "./state-paths.mjs";
 import { loadPackageCatalog } from "./package-catalog.mjs";
 import { listHarnessProviders, getHarnessProvider } from "../harnesses/registry.mjs";
 import { resolveHarnessPath, hasHarnessPath } from "../harnesses/paths.mjs";
@@ -39,10 +39,10 @@ function homeRulesPath(harness) {
 
 // Marker that distinguishes roborepo render output from user-authored content.
 const RENDER_HEADER = "# Generated Harness Rules";
-const CODE_STYLE_BLOCK = "roborepo-code-style";
+const CODE_STYLE_BLOCK = "builtin-code-style";
 // Legacy Claude wrapper marker. Kept so updates/uninstalls can replace old import blocks safely.
 const AGENTS_IMPORT_BLOCK = "roborepo-agents-import";
-const LEGACY_ROBOREPO_RULES_FILE = path.join(roborepoStateDir, "rules", "generated-rules.md");
+const LEGACY_ROBOREPO_RULES_FILE = path.join(stateDir, "rules", "generated-rules.md");
 
 // --------------------------------------------------------------------------- registry
 

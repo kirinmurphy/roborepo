@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Shared install-state helpers. Source this file, do not execute directly.
 
-roborepo_state_dir() {
+cli_state_dir() {
   echo "${ROBOREPO_STATE_ROOT:-${ROBOREPO_STATE_DIR:-${HOME}/.roborepo}}"
 }
 
-roborepo_state_file() {
-  echo "$(roborepo_state_dir)/install-state.json"
+cli_state_file() {
+  echo "$(cli_state_dir)/install-state.json"
 }
 
 read_install_repo() {
   local state_file
-  state_file="$(roborepo_state_file)"
+  state_file="$(cli_state_file)"
   [[ -f "${state_file}" ]] || return 1
 
   node -e '
@@ -29,7 +29,7 @@ process.exit(1);
 
 read_install_on_conflict() {
   local state_file
-  state_file="$(roborepo_state_file)"
+  state_file="$(cli_state_file)"
   [[ -f "${state_file}" ]] || return 1
 
   node -e '
@@ -48,8 +48,8 @@ process.exit(1);
 write_install_state() {
   local on_conflict="${1:-}"
   local state_file state_dir
-  state_dir="$(roborepo_state_dir)"
-  state_file="$(roborepo_state_file)"
+  state_dir="$(cli_state_dir)"
+  state_file="$(cli_state_file)"
 
   if [[ "${dry_run:-0}" -eq 1 ]]; then
     echo "state: would record install state at ${state_file}"

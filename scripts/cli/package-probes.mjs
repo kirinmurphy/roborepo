@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { repoRoot } from "./paths.mjs";
-import { roborepoSkillsDir, telemetryDir } from "./state-paths.mjs";
+import { stateSkillsDir, telemetryDir } from "./state-paths.mjs";
 import { codexStatusLineIncludes, readHarnessConfig, runtimeAssetDestination } from "./package-harness-config.mjs";
 import { effectiveEnabledIds, knownHarnessIds } from "./rules-render.mjs";
 
@@ -267,7 +267,7 @@ function skillCommandNamesByHarness(pkg, skillId) {
 }
 
 function probeSkill(component, desired, pkg) {
-  const cachePath = path.join(roborepoSkillsDir, component.id);
+  const cachePath = path.join(stateSkillsDir, component.id);
   const observed = fs.existsSync(cachePath);
   const managed = fs.existsSync(path.join(cachePath, ".roborepo-managed"));
 

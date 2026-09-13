@@ -15,7 +15,7 @@ run() {
 }
 
 run bash scripts/doctor.sh --quiet
-run bash scripts/test/test-roborepo.sh --quiet
+run bash scripts/test/test-cli.sh --quiet
 run bash scripts/test/test-install-collisions.sh
 
 run npm run --silent test:unit -- --group ci

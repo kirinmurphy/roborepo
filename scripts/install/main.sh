@@ -146,9 +146,9 @@ preflight_shell_setup() {
 }
 
 
-# Durable, once-only snapshot of the user's genuine pre-roborepo config — taken before the first
+# Durable, once-only snapshot of the user's genuine pre-install config — taken before the first
 # mutation below so uninstall/reinstall cycles always have a pristine image to fall back on.
-snapshot_pre_roborepo_original
+snapshot_pre_install_original
 
 install_section "Shell & PATH"
 if [[ "${package_mode}" == "1" ]]; then
@@ -172,7 +172,7 @@ install_section "Base Skill"
 if [[ $dry_run -eq 0 && "${#present_harness_rows[@]}" -gt 0 ]]; then
   for row in "${present_harness_rows[@]}"; do
     IFS=$'\t' read -r _id home_path _present _display_name _root_config_path <<< "${row}"
-    link_global_skills "${home_path}" --preserve-existing roborepo-support
+    link_global_skills "${home_path}" --preserve-existing builtin-support
   done
 fi
 
@@ -185,7 +185,7 @@ try {
 } catch {
   process.exit(1);
 }
-' "$(roborepo_state_dir)/presets/state.json"
+' "$(cli_state_dir)/presets/state.json"
 }
 
 # After core install, apply the minimal default bundle set (just `base`), then hand off to the
@@ -214,7 +214,7 @@ run_post_install_onboarding() {
   while IFS=$'\t' read -r _id home_path present _display_name _root_config_path; do
     [[ -z "${_id}" ]] && continue
     [[ "${present}" == "1" ]] || continue
-    link_global_skills "${home_path}" --preserve-existing roborepo-support
+    link_global_skills "${home_path}" --preserve-existing builtin-support
   done < <(harness_detected_rows)
 
   if presets_onboarded; then

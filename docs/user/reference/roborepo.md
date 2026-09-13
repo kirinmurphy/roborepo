@@ -445,7 +445,7 @@ touching anything.
 
 ## Tests
 
-`scripts/test/test-roborepo.sh` smoke-tests the subcommands (skill link-project/sync-global/inspect/prune/uninstall/
+`scripts/test/test-cli.sh` smoke-tests the subcommands (skill link-project/sync-global/inspect/prune/uninstall/
 conflict, `skill new` scaffolds, native escape-hatch guide, audit check, export/override/firewall/self-pollution guard, slash-command render checks,
 `package manage`/`bundle` onboarding/apply/remove/status, `telemetry` enable/status/report, run, `mcp add` dry-runs + real
 Codex/Claude writes against a throwaway harness root, lifecycle/rules dispatch, menu fallback) against throwaway

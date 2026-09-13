@@ -127,7 +127,7 @@ const pageHtml = (page, token) =>
     .replace("{{WIDGET_TEMPLATES}}", renderWidgetTemplates())
     .replace(
       "</head>",
-      `<meta name="roborepo-portal-token" content="${token}" />\n` +
+      `<meta name="cli-portal-token" content="${token}" />\n` +
         `<script>window.ROBOREPO_PORTAL = ${JSON.stringify({ token, pages: pageManifest() })};</script>\n</head>`,
     );
 
@@ -188,7 +188,7 @@ function originAllowed(req) {
 }
 
 function mutationTokenAllowed(req, token) {
-  return req.headers["x-roborepo-portal-token"] === token;
+  return req.headers["x-cli-portal-token"] === token;
 }
 
 // Any non-read method mutates and must clear the origin+token guard. Today only POST endpoints

@@ -39,9 +39,9 @@ try {
       fs.writeFileSync(path.join(home, ".codex", "AGENTS.override.md"), "# my overrides\n\nuser content\n");
       runRender(appRoot, home);
       const agentsMd = fs.readFileSync(path.join(home, ".codex", "AGENTS.md"), "utf8");
-      assert.match(agentsMd, /# Generated Harness Rules|roborepo-code-style/, "AGENTS.md gets the managed block");
+      assert.match(agentsMd, /# Generated Harness Rules|builtin-code-style/, "AGENTS.md gets the managed block");
       const override = fs.readFileSync(path.join(home, ".codex", "AGENTS.override.md"), "utf8");
-      assert.match(override, /roborepo-code-style/, "AGENTS.override.md, when present, also gets the managed block mirrored into it");
+      assert.match(override, /builtin-code-style/, "AGENTS.override.md, when present, also gets the managed block mirrored into it");
       assert.match(override, /user content/, "AGENTS.override.md's pre-existing user content is preserved outside the managed block");
     } finally {
       fs.rmSync(home, { recursive: true, force: true });

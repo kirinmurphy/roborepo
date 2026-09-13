@@ -18,7 +18,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-fake_home="$(mktemp -d "${TMPDIR:-/tmp}/roborepo-hermetic-home.XXXXXX")"
+fake_home="$(mktemp -d "${TMPDIR:-/tmp}/cli-hermetic-home.XXXXXX")"
 cleanup() {
   local status=$?
   chmod -R u+rwx "${fake_home}" 2>/dev/null || true
@@ -47,4 +47,4 @@ env -i \
   TMPDIR="${TMPDIR:-/tmp}" \
   TERM="${TERM:-dumb}" \
   CI=1 \
-  bash "${repo_root}/scripts/test/test-roborepo.sh" "$@"
+  bash "${repo_root}/scripts/test/test-cli.sh" "$@"

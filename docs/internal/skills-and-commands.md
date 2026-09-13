@@ -204,7 +204,7 @@ generated command files together.
 
 Package-owned skills live at `globals/packages/<package>/skills/<name>/SKILL.md` in version control.
 The required base support skill remains a system skill at
-`globals/system/skills/roborepo-support/SKILL.md`.
+`globals/system/skills/builtin-support/SKILL.md`.
 At install/update time, enabled shared skills are materialized into
 `~/.roborepo/skills/<name>` and each harness's native skills dir symlinks to that cache entry:
 `~/.claude/skills/<name>` and `~/.codex/skills/<name>`. Roborepo-owned cache entries carry a
