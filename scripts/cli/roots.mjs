@@ -69,7 +69,7 @@ export const workspaceOverridesDir = path.join(workspaceRoot, "overrides");
 export function requireDevelopmentCheckout(action) {
   if (!packageMode) return;
   const suffix = action ? ` for ${action}` : "";
-  console.error(`requires development checkout${suffix}: this roborepo install is running in package mode.`);
+  console.error(`requires development checkout${suffix}: this install is running in package mode.`);
   console.error(`appRoot: ${appRoot}`);
   console.error("Use a Git checkout for built-in source changes, or write custom content to the workspace.");
   process.exit(1);

@@ -5,7 +5,7 @@ import { stateRoot } from "./roots.mjs";
 
 export const roborepoStateDir = stateRoot;
 
-// Shared JSON state read/write, since roborepo has several small state files (install state,
+// Shared JSON state read/write, since the CLI has several small state files (install state,
 // presets state, enabled packages, root-config state) that all need the same
 // try/catch-with-fallback read and mkdir+write shape.
 export function readJsonState(filePath, fallback) {
