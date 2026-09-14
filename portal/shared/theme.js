@@ -1,6 +1,6 @@
 // Shared portal chrome: renders the global header, footer, nav, and theme toggle. Every page loads
 // this before its own app.js. Adding a portal page = add one entry to PAGES in
-// scripts/cli/portal-server.mjs — the server injects it into window.ROBOREPO_PORTAL and the nav
+// scripts/cli/portal-server.mjs — the server injects it into window.PORTAL_MANIFEST and the nav
 // below picks it up on every page, so there is nothing to hand-sync here.
 //
 // The no-flash theme *init* is NOT here: it must run before first paint, so it stays as a tiny
@@ -14,12 +14,12 @@
 // script runs.
 import { portalTpl as tpl } from "/portal/shared/api.js";
 
-if (!window.ROBOREPO_PORTAL) {
+if (!window.PORTAL_MANIFEST) {
   throw new Error(
-    "portal manifest missing: window.ROBOREPO_PORTAL was not injected into this page",
+    "portal manifest missing: window.PORTAL_MANIFEST was not injected into this page",
   );
 }
-const PORTAL_PAGES = window.ROBOREPO_PORTAL.pages;
+const PORTAL_PAGES = window.PORTAL_MANIFEST.pages;
 
 (function renderChrome() {
   if (!document.querySelector(".portal-header")) {
@@ -46,7 +46,7 @@ const PORTAL_PAGES = window.ROBOREPO_PORTAL.pages;
 
 // Theme toggle: sun glyph in dark mode (click -> light), moon in light mode. Choice persists in
 // localStorage (key shared with the head init script) and is applied across all portal pages.
-// On change we dispatch "roborepo:themechange" on <html> so a page can react (e.g. the telemetry
+// On change we dispatch "portal:themechange" on <html> so a page can react (e.g. the telemetry
 // dashboard redraws its canvas, whose colors are resolved from CSS vars at draw time).
 (function themeToggle() {
   const btn = document.getElementById("theme-toggle");
@@ -61,11 +61,11 @@ const PORTAL_PAGES = window.ROBOREPO_PORTAL.pages;
       document.documentElement.dataset.theme === "light" ? "dark" : "light";
     document.documentElement.dataset.theme = next;
     try {
-      localStorage.setItem("roborepo-theme", next);
+      localStorage.setItem("portal-theme", next);
     } catch (e) {}
     render();
     document.documentElement.dispatchEvent(
-      new CustomEvent("roborepo:themechange", { detail: { theme: next } }),
+      new CustomEvent("portal:themechange", { detail: { theme: next } }),
     );
   });
   render();

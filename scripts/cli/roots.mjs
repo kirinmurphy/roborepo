@@ -91,7 +91,7 @@ export function initializeWorkspace({ root = workspaceRoot, dryRun = false } = {
   const manifestPath = workspaceManifestPath(root);
   const manifest = {
     schemaVersion: 1,
-    kind: "roborepo-workspace",
+    kind: "managed-workspace",
     directories: {
       skills: "skills",
       commands: "commands",

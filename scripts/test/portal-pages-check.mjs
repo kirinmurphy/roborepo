@@ -5,7 +5,7 @@
 // `/config`, and PAGES order defines the global nav (Home, Agents, Plans, Tokens, Localhost).
 // This check pins the manifest invariants that a future routing refactor could silently break:
 // canonical paths, exactly one default page, and the nav order that theme.js renders from
-// window.ROBOREPO_PORTAL.
+// window.PORTAL_MANIFEST.
 //
 // Importing PAGES from portal-server.mjs also runs validateRouteTables() at module load, so an
 // invalid route table fails loudly here even before any browser assertion.

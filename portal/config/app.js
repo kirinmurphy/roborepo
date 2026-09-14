@@ -152,4 +152,4 @@ const POLL_INTERVAL_MS = 10000;
 load();
 setInterval(load, POLL_INTERVAL_MS);
 // Theme toggle + nav live in the shared /portal/shared/theme.js. The config page has no
-// canvas to redraw, so it needs no "roborepo:themechange" listener.
+// canvas to redraw, so it needs no "portal:themechange" listener.

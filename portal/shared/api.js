@@ -3,8 +3,8 @@
 // helpers. Pages import from here instead of reimplementing fetch/token/clipboard plumbing per page.
 
 export function portalConfig() {
-  if (!window.ROBOREPO_PORTAL) throw new Error("portal manifest missing");
-  return window.ROBOREPO_PORTAL;
+  if (!window.PORTAL_MANIFEST) throw new Error("portal manifest missing");
+  return window.PORTAL_MANIFEST;
 }
 
 export async function portalGetJson(path) {

@@ -37,7 +37,7 @@ function providersWith(capability, pathKey) {
 }
 
 const OVERRIDES_FILE = path.join(workspaceOverridesDir, "resources.json");
-const WORKSPACE_COMMAND_MARKER = "<!-- roborepo-workspace-command -->";
+const WORKSPACE_COMMAND_MARKER = "<!-- managed-workspace-command -->";
 const MANAGED_MARKER = ".roborepo-managed";
 const SUPPORTED_REPLACE_TYPES = new Set(["package", "mcp-server"]);
 

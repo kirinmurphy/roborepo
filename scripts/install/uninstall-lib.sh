@@ -168,7 +168,7 @@ reclaim_rendered_rules_target() {
   remove_repo_symlink "${home_abs}"
 
   if [[ -e "${home_abs}" && ! -L "${home_abs}" ]]; then
-    if grep -Eq "BEGIN managed:builtin-code-style|BEGIN managed:roborepo-agents-import" "${home_abs}" 2>/dev/null; then
+    if grep -Eq "BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import" "${home_abs}" 2>/dev/null; then
       if command -v node >/dev/null 2>&1; then
         if [[ "${dry_run}" -eq 1 ]]; then
           node "${repo_root}/scripts/cli/rules-render.mjs" --remove-managed --dry-run "${harness}"

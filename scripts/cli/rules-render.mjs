@@ -41,7 +41,7 @@ function homeRulesPath(harness) {
 const RENDER_HEADER = "# Generated Harness Rules";
 const CODE_STYLE_BLOCK = "builtin-code-style";
 // Legacy Claude wrapper marker. Kept so updates/uninstalls can replace old import blocks safely.
-const AGENTS_IMPORT_BLOCK = "roborepo-agents-import";
+const AGENTS_IMPORT_BLOCK = "managed-agents-import";
 const LEGACY_ROBOREPO_RULES_FILE = path.join(stateDir, "rules", "generated-rules.md");
 
 // --------------------------------------------------------------------------- registry

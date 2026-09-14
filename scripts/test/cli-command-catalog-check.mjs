@@ -207,7 +207,7 @@ assert.ok(catalog.nodes.package.children.dev, "package dev is a separate namespa
     );
     assert.match(
       fs.readFileSync(path.join(home, ".codex", "config.toml"), "utf8"),
-      /default_permissions = "roborepo-workspace"/,
+      /default_permissions = "managed-workspace"/,
       "package-mode config permissions writes Codex live permissions",
     );
     assert.match(

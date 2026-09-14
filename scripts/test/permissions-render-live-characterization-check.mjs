@@ -176,8 +176,8 @@ function makeHome() {
 
     const codexToml = fs.readFileSync(path.join(home, ".codex", "config.toml"), "utf8");
     assert.match(codexToml, /BEGIN GENERATED AGENT PERMISSIONS/, "Codex config gets the generated permissions block");
-    assert.match(codexToml, /default_permissions = "roborepo-workspace"/, "Codex uses a named permission profile");
-    assert.match(codexToml, /\[permissions\.roborepo-workspace\.workspace_roots\]/, "Codex profile has workspace roots");
+    assert.match(codexToml, /default_permissions = "managed-workspace"/, "Codex uses a named permission profile");
+    assert.match(codexToml, /\[permissions\.managed-workspace\.workspace_roots\]/, "Codex profile has workspace roots");
     assert.match(codexToml, /"~\/\.worktrees\/roborepo" = true/, "Codex profile includes this repo's plans-config worktree root");
     assert.doesNotMatch(codexToml, /^sandbox_mode =/m, "Codex profile render must not emit legacy sandbox_mode");
     assert.match(codexToml, /model_reasoning_effort = "high"/, "unrelated existing Codex config content is preserved");

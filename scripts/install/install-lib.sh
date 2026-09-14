@@ -320,7 +320,7 @@ stage_update_item() {
 is_builtin_authored() {
   local file="$1"
   [[ -f "${file}" ]] || return 1
-  grep -Eq "roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:roborepo-agents-import|jcmwatch|jdm-indexed" "${file}" 2>/dev/null
+  grep -Eq "roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import|jcmwatch|jdm-indexed" "${file}" 2>/dev/null
 }
 
 # Persist the user's genuine pre-install file/dir at ${home_path} to

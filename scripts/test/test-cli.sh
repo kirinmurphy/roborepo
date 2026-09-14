@@ -584,7 +584,7 @@ assert "config: enable wires CLAUDE.md rules" test -f "${cfg_home}/.claude/CLAUD
 assert "config: Claude rules use managed inline block" \
   bash -c "grep -q 'BEGIN managed:builtin-code-style' '${cfg_home}/.claude/CLAUDE.md' && grep -q 'Generated Harness Rules' '${cfg_home}/.claude/CLAUDE.md'"
 assert "config: Claude rules no longer use managed import block" \
-  bash -c "! grep -q 'BEGIN managed:roborepo-agents-import' '${cfg_home}/.claude/CLAUDE.md' && ! test -e '${cfg_home}/.roborepo/rules/generated-rules.md'"
+  bash -c "! grep -q 'BEGIN managed:managed-agents-import' '${cfg_home}/.claude/CLAUDE.md' && ! test -e '${cfg_home}/.roborepo/rules/generated-rules.md'"
 assert "config: package snapshot includes runtime status and component status" \
   bash -c "${cfg_env} node -e \"import('${repo_root}/scripts/cli/config.mjs').then(c=>{const p=c.readConfigSnapshot().packages.find(x=>x.id==='jcodemunch');process.exit(p?.enabled===true&&p?.status==='partial'&&Array.isArray(p.componentStatus)&&p.componentStatus.some(x=>x.type==='mcp'&&x.state==='missing')?0:1)})\""
 assert "config: package snapshot tracks package-owned Codex tool approvals" \
@@ -687,10 +687,10 @@ assert "config: managed rules fail safely on reversed markers" \
 
 legacy_import_home="${work}/legacy-import-home"
 mkdir -p "${legacy_import_home}/.claude" "${legacy_import_home}/.roborepo/rules"
-printf '<!-- BEGIN managed:roborepo-agents-import -->\n@~/.roborepo/rules/generated-rules.md\n<!-- END managed:roborepo-agents-import -->\nuser text\n' > "${legacy_import_home}/.claude/CLAUDE.md"
+printf '<!-- BEGIN managed:managed-agents-import -->\n@~/.roborepo/rules/generated-rules.md\n<!-- END managed:managed-agents-import -->\nuser text\n' > "${legacy_import_home}/.claude/CLAUDE.md"
 printf '# Generated Harness Rules\n\nold render\n' > "${legacy_import_home}/.roborepo/rules/generated-rules.md"
 assert "config: Claude legacy import block migrates to inline rules" \
-  bash -c "HOME='${legacy_import_home}' ROBOREPO_STATE_DIR='${legacy_import_home}/.roborepo' node '${cli}' rules render >/dev/null && grep -q 'BEGIN managed:builtin-code-style' '${legacy_import_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:roborepo-agents-import' '${legacy_import_home}/.claude/CLAUDE.md' && grep -q 'user text' '${legacy_import_home}/.claude/CLAUDE.md' && ! test -e '${legacy_import_home}/.roborepo/rules/generated-rules.md'"
+  bash -c "HOME='${legacy_import_home}' ROBOREPO_STATE_DIR='${legacy_import_home}/.roborepo' node '${cli}' rules render >/dev/null && grep -q 'BEGIN managed:builtin-code-style' '${legacy_import_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:managed-agents-import' '${legacy_import_home}/.claude/CLAUDE.md' && grep -q 'user text' '${legacy_import_home}/.claude/CLAUDE.md' && ! test -e '${legacy_import_home}/.roborepo/rules/generated-rules.md'"
 
 # Service component (telemetry as a package): enable via the generic package path flips its state +
 # snapshot, disable reverses. The service handler owns telemetry's bespoke install (hooks + spool).
@@ -1284,10 +1284,10 @@ update_legacy_home="${work}/update-legacy-home"
 mkdir -p "${update_legacy_home}/.claude" "${update_legacy_home}/.codex" "${update_legacy_home}/.roborepo/rules"
 cp "${repo_root}/generated/claude/settings.json" "${update_legacy_home}/.claude/settings.json"
 cp "${repo_root}/generated/codex/config.toml" "${update_legacy_home}/.codex/config.toml"
-printf '<!-- BEGIN managed:roborepo-agents-import -->\n@~/.roborepo/rules/generated-rules.md\n<!-- END managed:roborepo-agents-import -->\n' > "${update_legacy_home}/.claude/CLAUDE.md"
+printf '<!-- BEGIN managed:managed-agents-import -->\n@~/.roborepo/rules/generated-rules.md\n<!-- END managed:managed-agents-import -->\n' > "${update_legacy_home}/.claude/CLAUDE.md"
 printf '# Generated Harness Rules\n\nlegacy render\n' > "${update_legacy_home}/.roborepo/rules/generated-rules.md"
 assert "lifecycle: roborepo update rewrites legacy Claude import wrapper" \
-  bash -c "HOME='${update_legacy_home}' ROBOREPO_STATE_DIR='${update_legacy_home}/.roborepo' node '${cli}' update >/dev/null 2>&1 && grep -q 'BEGIN managed:builtin-code-style' '${update_legacy_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:roborepo-agents-import' '${update_legacy_home}/.claude/CLAUDE.md' && ! test -e '${update_legacy_home}/.roborepo/rules/generated-rules.md'"
+  bash -c "HOME='${update_legacy_home}' ROBOREPO_STATE_DIR='${update_legacy_home}/.roborepo' node '${cli}' update >/dev/null 2>&1 && grep -q 'BEGIN managed:builtin-code-style' '${update_legacy_home}/.claude/CLAUDE.md' && ! grep -q 'BEGIN managed:managed-agents-import' '${update_legacy_home}/.claude/CLAUDE.md' && ! test -e '${update_legacy_home}/.roborepo/rules/generated-rules.md'"
 assert "lifecycle: roborepo sync alias removed" \
   bash -c "! HOME='${update_home}' node '${cli}' sync --bad-flag >/dev/null 2>&1"
 assert "lifecycle: roborepo install verb removed (first install is the shell bootstrap)" \

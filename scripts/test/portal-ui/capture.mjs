@@ -16,7 +16,7 @@
 //   - `--detach` rewrites the ready-file path, so we parse the printed port instead.
 //   - The capture half needs the REAL $HOME (Playwright browser cache) while the server
 //     keeps its hermetic HOME — handled by spawning the server with a modified env only.
-//   - Theme switching is data-attribute + localStorage (`roborepo-theme`), not media emulation.
+//   - Theme switching is data-attribute + localStorage (`portal-theme`), not media emulation.
 //   - `roborepo web stop` cleans any stale server before boot.
 
 import { spawn, execSync } from "node:child_process";
@@ -101,7 +101,7 @@ await page.waitForTimeout(1200); // async fetch/render after networkidle
 await page.screenshot({ path: path.join(outDir, "capture-dark.png"), fullPage: true });
 await page.evaluate(() => {
   document.documentElement.dataset.theme = "light";
-  localStorage.setItem("roborepo-theme", "light");
+  localStorage.setItem("portal-theme", "light");
 });
 await page.waitForTimeout(300);
 await page.screenshot({ path: path.join(outDir, "capture-light.png"), fullPage: true });

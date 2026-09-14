@@ -605,6 +605,6 @@ window.addEventListener("resize", () => redrawChart());
 // The theme toggle + nav are wired by the shared /portal/shared/theme.js. Canvas colors are
 // resolved from CSS vars at draw time, so redraw when the shared toggle flips the theme (mirrors
 // the resize handler).
-document.documentElement.addEventListener("roborepo:themechange", () => {
+document.documentElement.addEventListener("portal:themechange", () => {
   try { redrawChart(); } catch (e) {}
 });

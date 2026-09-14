@@ -77,7 +77,7 @@ function codexNetworkAccess(behaviors) {
 
 function renderCodexWorkspaceProfile(behaviors, workspaceRoots = []) {
   const roots = [...new Set(workspaceRoots.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim()))];
-  const profile = "roborepo-workspace";
+  const profile = "managed-workspace";
   const lines = [
     `default_permissions = ${quoteToml(profile)}`,
     "",
