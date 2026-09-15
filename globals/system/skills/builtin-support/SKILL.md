@@ -1,7 +1,7 @@
 ---
 name: builtin-support
 description: >
-  Work with roborepo-managed global agent config from any repo. Use when adding or editing
+  Work with builtin-managed global agent config from any repo. Use when adding or editing
   shared/exportable skills, skill-backed slash commands, global rules, hooks, settings,
   package-enabled behaviors, MCP entries, or Claude/Codex parity. Triggers: "add a skill",
   "edit global rules", "roborepo support", "harness config", "skill authoring",
@@ -12,7 +12,7 @@ description: >
 
 # Roborepo Support & Skill Authoring
 
-For work with roborepo-managed Claude + Codex configuration: shared skills, generated
+For work with builtin-managed Claude + Codex configuration: shared skills, generated
 rules, hooks, settings, MCP registration, package-enabled behaviors, and cross-harness
 parity. This skill is shared/exportable; it should help users operate roborepo from a
 local machine without pulling in the repo-internal platform manual.
@@ -43,7 +43,7 @@ their native skill dir via symlink:
 These managed cache entries are created by the installer's enumerate-step
 (`install-lib.sh:link_global_skills`), called from `install-harness.sh` (once per detected harness),
 and `scripts/build/link-global-skills.sh` (run by `skill new`). Each managed cache entry carries a
-`.roborepo-managed` marker. There is no intermediate `globals/claude/skills/` directory.
+`.builtin-managed` marker. There is no intermediate `globals/claude/skills/` directory.
 
 `roborepo doctor --installed` verifies the live cache entry and harness symlinks are current.
 `roborepo doctor` (without `--installed`) checks that source dirs exist in the repo.
@@ -78,7 +78,7 @@ Manual add (for reference only — prefer the commands above):
 5. Update README/docs tables when the user-facing surface changes
 6. Verify: `scripts/doctor.sh --installed --quiet`
 
-A `Write|Edit` PreToolUse hook (`globals/claude/hooks/roborepo-write-guard.mjs`,
+A `Write|Edit` PreToolUse hook (`globals/claude/hooks/write-guard.mjs`,
 registered in `globals/claude/settings.json`) fires from any repo when a path under
 `~/.claude` or `~/.codex` is written. For roborepo-owned assets, it reminds that the
 repo source is canonical and `roborepo update` refreshes HOME. For mutable root config (`~/.claude/settings.json`,

@@ -84,7 +84,7 @@ function collectContextFiles(baseDir, relDir, files) {
     return;
   }
   for (const entry of entries) {
-    if (entry.name === "SKILL.md" || entry.name === ".roborepo-managed" || entry.name === ".DS_Store") continue;
+    if (entry.name === "SKILL.md" || entry.name === ".builtin-managed" || entry.name === ".DS_Store") continue;
     const rel = path.join(relDir, entry.name);
     if (entry.isDirectory()) {
       collectContextFiles(baseDir, rel, files);
@@ -114,7 +114,7 @@ function classifyPath(skillPath, cachePath) {
   if (!info.exists) return { ...info, state: "absent", ownership: "absent", managed: false };
 
   const cacheInfo = statInfo(cachePath);
-  const managedMarker = exists(path.join(info.realpath || skillPath, ".roborepo-managed"));
+  const managedMarker = exists(path.join(info.realpath || skillPath, ".builtin-managed"));
   const pointsAtCache = Boolean(cacheInfo.exists && info.realpath && cacheInfo.realpath && info.realpath === cacheInfo.realpath);
   const managed = pointsAtCache && managedMarker;
   return {
@@ -151,7 +151,7 @@ export function inspectSkill(name) {
   const source = statInfo(sourcePath);
   const cache = statInfo(cachePath);
   const managedSource = source.exists && exists(path.join(sourcePath, "SKILL.md"));
-  const cacheManaged = cache.exists && exists(path.join(cache.realpath || cachePath, ".roborepo-managed"));
+  const cacheManaged = cache.exists && exists(path.join(cache.realpath || cachePath, ".builtin-managed"));
   const harnesses = {};
   const nativeCollisions = [];
 

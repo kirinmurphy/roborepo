@@ -97,7 +97,7 @@ roborepo doctor --quiet
 roborepo config permissions
 test -f "$HOME/.claude/settings.json" || { echo "FAIL: claude root config not created from a home-without-config start" >&2; exit 1; }
 test -f "$HOME/.codex/config.toml" || { echo "FAIL: codex root config not created from a home-without-config start" >&2; exit 1; }
-test -f "$HOME/.gemini/policies/roborepo-permissions.toml" || { echo "FAIL: gemini root config not created from a home-without-config start" >&2; exit 1; }
+test -f "$HOME/.gemini/policies/generated-permissions.toml" || { echo "FAIL: gemini root config not created from a home-without-config start" >&2; exit 1; }
 echo "case 5: OK"
 
 # --- Case 6: a state directory shaped like an older roborepo release left it -- an

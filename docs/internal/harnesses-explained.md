@@ -219,7 +219,7 @@ surface.
 Gemini adds a third shape, and it's the interesting one: rather than a single settings file with a
 generated block, Gemini's Policy Engine loads **every** `*.toml` file inside `~/.gemini/policies/`
 and combines their rules. So the renderer doesn't need a marked-block-inside-a-shared-file merge at
-all — it owns one whole file, `roborepo-permissions.toml`, and fully regenerates it on every render.
+all — it owns one whole file, `generated-permissions.toml`, and fully regenerates it on every render.
 Anything else a user drops in that directory is simply another file the engine also loads, never
 touched by roborepo. That's a fourth parity shape this doc hadn't needed yet: not "generate a block
 inside a file you don't fully own" (Codex) and not "generate the file whole because it's the only

@@ -61,7 +61,7 @@ roborepo config permissions
 
 claude_settings="$HOME/.claude/settings.json"
 codex_config="$HOME/.codex/config.toml"
-gemini_policy="$HOME/.gemini/policies/roborepo-permissions.toml"
+gemini_policy="$HOME/.gemini/policies/generated-permissions.toml"
 
 test -f "$claude_settings"
 test -f "$codex_config"

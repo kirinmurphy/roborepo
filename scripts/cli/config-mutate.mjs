@@ -30,12 +30,12 @@ const SKILLS_DIR = stateSkillsDir;
 // skill-command-config.mjs's skillFilePath which renders that same path as portable text into a
 // repo-committed generated file. Only present roots are touched below.
 const HARNESS_SKILL_DIRS = listHarnessProviders().map((provider) => resolveHarnessPath(provider.manifest, "skills"));
-// Ownership marker written inside each roborepo-managed skill copy. Copies (not symlinks) carry no
+// Ownership marker written inside each builtin-managed skill copy. Copies (not symlinks) carry no
 // intrinsic "this is ours" signal, so the marker is how prune / native-skill detection tell a
 // roborepo copy apart from a user's native skill of the same name.
-const MANAGED_MARKER = ".roborepo-managed";
+const MANAGED_MARKER = ".builtin-managed";
 
-// A target is a roborepo-managed skill if it carries our marker inside the machine-local cache or
+// A target is a builtin-managed skill if it carries our marker inside the machine-local cache or
 // is a legacy symlink into the shared source (a pre-cache install we should migrate or remove).
 function isManagedSkill(target) {
   try {

@@ -80,11 +80,11 @@ try {
     try {
       const nativeDir = path.join(home, ".claude", "skills", "__char_test_skill__");
       fs.mkdirSync(nativeDir, { recursive: true });
-      fs.writeFileSync(path.join(nativeDir, "SKILL.md"), "native, not roborepo-managed\n");
+      fs.writeFileSync(path.join(nativeDir, "SKILL.md"), "native, not builtin-managed\n");
       run(appRoot, home, enableExpr);
       assert.match(
         fs.readFileSync(path.join(nativeDir, "SKILL.md"), "utf8"),
-        /native, not roborepo-managed/,
+        /native, not builtin-managed/,
         "a pre-existing native (unmanaged) skill directory must not be overwritten",
       );
     } finally {

@@ -77,7 +77,7 @@ for (const pkgId of packageIds) {
   try {
     const staleSkillCache = path.join(tmp, ".roborepo", "skills", "vanished-package-skill");
     fs.mkdirSync(staleSkillCache, { recursive: true });
-    fs.writeFileSync(path.join(staleSkillCache, ".roborepo-managed"), "");
+    fs.writeFileSync(path.join(staleSkillCache, ".builtin-managed"), "");
     fs.mkdirSync(path.join(tmp, ".claude", "skills"), { recursive: true });
     fs.symlinkSync(staleSkillCache, path.join(tmp, ".claude", "skills", "vanished-package-skill"));
     const staleCommand = writeOwnedCommand(tmp, "claude", "vanished-command", "vanished-package");

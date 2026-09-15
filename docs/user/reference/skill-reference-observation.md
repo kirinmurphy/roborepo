@@ -30,7 +30,7 @@ flowchart LR
 Anything else — a read outside a skill root, a `SKILL.md`, a malformed payload — exits 0 with no
 output. The hook never blocks, rewrites, or delays a tool call.
 
-`globals/system/hooks/claude/roborepo-write-guard.mjs` uses the same injection mechanism on
+`globals/system/hooks/claude/write-guard.mjs` uses the same injection mechanism on
 `PreToolUse`, and is the older example of the pattern.
 
 ## Match the literal path, never the resolved one

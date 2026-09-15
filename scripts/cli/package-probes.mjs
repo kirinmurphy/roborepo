@@ -269,7 +269,7 @@ function skillCommandNamesByHarness(pkg, skillId) {
 function probeSkill(component, desired, pkg) {
   const cachePath = path.join(stateSkillsDir, component.id);
   const observed = fs.existsSync(cachePath);
-  const managed = fs.existsSync(path.join(cachePath, ".roborepo-managed"));
+  const managed = fs.existsSync(path.join(cachePath, ".builtin-managed"));
 
   // Command-wrapper presence is a separate signal from cache presence: it must not change whether
   // this component reads as "external" (cache-only adopt-live detection depends on that), only

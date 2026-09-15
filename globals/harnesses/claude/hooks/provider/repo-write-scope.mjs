@@ -98,7 +98,7 @@ const filePath = toolInput.file_path || ''
 if (!filePath) noop()
 
 // Locations that are correct to write regardless of which repository is in use: agent scratch
-// space, and the managed harness homes (roborepo-write-guard.mjs already annotates those writes;
+// space, and the managed harness homes (write-guard.mjs already annotates those writes;
 // prompting for them as well would be noise on top of a reminder).
 const home = os.homedir()
 const alwaysAllowed = [

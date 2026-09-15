@@ -135,8 +135,8 @@ check_active_file() {
   fi
 }
 
-# A roborepo-managed skill is a symlink into the machine-local cache at ~/.roborepo/skills,
-# and that cache entry carries the '.roborepo-managed' marker.
+# A builtin-managed skill is a symlink into the machine-local cache at ~/.roborepo/skills,
+# and that cache entry carries the '.builtin-managed' marker.
 check_managed_skill() {
   local repo_rel="$1"
   local home_path="$2"
@@ -144,7 +144,7 @@ check_managed_skill() {
   local cache_path="${HOME}/${STATE_DIRNAME}/skills/$(basename "${home_path}")"
 
   if [[ ! -L "${home_path}" ]]; then
-    fail "${home_path} is not a roborepo-managed skill symlink"
+    fail "${home_path} is not a builtin-managed skill symlink"
     return 0
   fi
 
@@ -164,11 +164,11 @@ PY
     fail "${home_path} -> ${actual}; expected ${expected_cache}"
     return 0
   fi
-  if [[ ! -d "${cache_path}" || ! -e "${cache_path}/.roborepo-managed" ]]; then
-    fail "${cache_path} is not a roborepo-managed skill cache"
+  if [[ ! -d "${cache_path}" || ! -e "${cache_path}/.builtin-managed" ]]; then
+    fail "${cache_path} is not a builtin-managed skill cache"
     return 0
   fi
-  if diff -rq -x '.roborepo-managed' "${expected}" "${cache_path}" >/dev/null 2>&1; then
+  if diff -rq -x '.builtin-managed' "${expected}" "${cache_path}" >/dev/null 2>&1; then
     ok "${home_path} (cache link to ${cache_path})"
   else
     case "
@@ -606,7 +606,7 @@ if [[ "${check_installed}" -eq 1 ]]; then
       skill_name="$(basename "${skill_dir%/}")"
       case "${skill_name}" in .*) continue ;; esac  # skip dotfolders
       [[ -L "${skills_home}/${skill_name}" ]] && continue  # managed view
-      [[ -e "${skills_home}/${skill_name}/.roborepo-managed" ]] && continue  # legacy managed copy
+      [[ -e "${skills_home}/${skill_name}/.builtin-managed" ]] && continue  # legacy managed copy
       echo "drift: ${skill_dir} is unmanaged — run: roborepo skill adopt ${skill_name}"
       drift_count=$((drift_count + 1))
     done

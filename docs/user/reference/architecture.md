@@ -104,7 +104,7 @@ Repo files are source input. The global harness path receives concrete files or 
 ~/.claude/commands              # managed_copy
 ~/.claude/hooks                 # managed_copy
 ~/.claude/skills/<name>         # symlink to ~/.roborepo/skills/<name>
-~/.roborepo/skills/<name>       # managed skill cache with .roborepo-managed marker
+~/.roborepo/skills/<name>       # managed skill cache with .builtin-managed marker
 ```
 
 Implication: updates become active only after `roborepo update`, package enable/disable, or another explicit render/copy action.
@@ -217,7 +217,7 @@ that cache entry:
 - **Claude** reads `~/.claude/skills`. The installer links enabled shared skills to the same
   cache entry, and `~/.claude/skills/<name>` points at it too.
 
-The cache entries carry the `.roborepo-managed` marker. Skills are materialized by enumerating the
+The cache entries carry the `.builtin-managed` marker. Skills are materialized by enumerating the
 package catalog plus the required system support skill, not by legacy skill manifest rows.
 `scripts/doctor.sh --installed` checks the live cache entry and harness symlinks; `scripts/doctor.sh`
 checks that source dirs exist in the repo.

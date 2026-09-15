@@ -303,7 +303,7 @@ chronological), so the file can't fill the disk.
 `roborepo telemetry disable` turns capture off; `roborepo web`
 opens the detached portal. `roborepo web stop` stops the detached server without changing
 capture state. The detached server's PID is tracked in
-`~/.local/state/roborepo/portal-server.pid`; a stale PID file (process gone) is detected and
+`~/.local/state/cli/portal-server.pid`; a stale PID file (process gone) is detected and
 cleaned up. `web` can browse historical spool data with capture off.
 
 **Telemetry-only install.** `roborepo telemetry install` formalizes a standalone telemetry setup
@@ -315,7 +315,7 @@ install. (Note: `telemetry enable` applies the full telemetry *preset* including
 hooks, which is correct for a full install — `telemetry install` intentionally bypasses that.)
 
 **Codex hook trust.** Codex only runs hooks the user has trusted. After install, the next Codex
-session prompts to trust the roborepo-managed `~/.codex/hooks.json` — approve it once and capture (and
+session prompts to trust the builtin-managed `~/.codex/hooks.json` — approve it once and capture (and
 the shell-output minimization hook) fire from then on. This is normal Codex UX, not a roborepo step;
 sessions started *before* the hooks were installed won't have them (Codex loads hooks at session
 start), so a brand-new session is needed the first time. The install does not bypass Codex's

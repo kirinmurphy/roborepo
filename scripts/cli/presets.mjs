@@ -601,7 +601,7 @@ function cleanupRow(row) {
 function isBuiltInAuthored(file) {
   try {
     const text = fs.readFileSync(file, "utf8");
-    return /roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import/.test(text);
+    return /roborepo telemetry capture|write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import/.test(text);
   } catch {
     return false;
   }

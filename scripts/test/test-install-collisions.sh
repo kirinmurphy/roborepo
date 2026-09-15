@@ -79,8 +79,8 @@ assert_regular_file_contains() {
   assert_file_contains "$file" "$pattern" "$label"
 }
 
-# A roborepo-managed skill is a symlink in the harness view pointing at the machine-local cache.
-# The cache copy itself carries the '.roborepo-managed' marker.
+# A builtin-managed skill is a symlink in the harness view pointing at the machine-local cache.
+# The cache copy itself carries the '.builtin-managed' marker.
 assert_managed_skill() {
   local home_dir="$1"
   local skill_path="$2"
@@ -89,8 +89,8 @@ assert_managed_skill() {
 
   local cache_path="${home_dir}/.roborepo/skills/$(basename "$skill_path")"
   if [[ -L "$skill_path" && "$(readlink "$skill_path")" == "$cache_path" ]] \
-    && [[ -d "$cache_path" && -e "$cache_path/.roborepo-managed" ]] \
-    && diff -rq -x '.roborepo-managed' "$source_dir" "$cache_path" >/dev/null 2>&1; then
+    && [[ -d "$cache_path" && -e "$cache_path/.builtin-managed" ]] \
+    && diff -rq -x '.builtin-managed' "$source_dir" "$cache_path" >/dev/null 2>&1; then
     pass "$label"
   else
     fail "$label"
@@ -687,14 +687,14 @@ test_uninstall_removes_runtime_state_and_backups() {
     "$home_dir/.roborepo/telemetry/spool" \
     "$home_dir/.roborepo/telemetry-backups/telemetry-old" \
     "$home_dir/.roborepo/backups/pre-install/claude" \
-    "$home_dir/.local/state/roborepo" \
+    "$home_dir/.local/state/cli" \
     "$home_dir/.cli-backups/20260621-174033"
   printf '{"behaviors":{"delete-files":"allow"},"commands":{}}\n' > "$home_dir/.roborepo/command-overrides.json"
   printf '{"packages":["jcodemunch"]}\n' > "$home_dir/.roborepo/enabled-packages.json"
   printf '{"enabled":true}\n' > "$home_dir/.roborepo/telemetry/state.json"
   printf 'event\n' > "$home_dir/.roborepo/telemetry/spool/claude.jsonl"
-  printf '12345\n' > "$home_dir/.local/state/roborepo/portal-server.pid"
-  printf '12345\n' > "$home_dir/.local/state/roborepo/telemetry-server.pid"
+  printf '12345\n' > "$home_dir/.local/state/cli/portal-server.pid"
+  printf '12345\n' > "$home_dir/.local/state/cli/telemetry-server.pid"
   printf 'backup\n' > "$home_dir/.cli-backups/20260621-174033/file"
 
   HOME="$home_dir" "$repo_root/scripts/install/uninstall.sh" >"$home_dir/uninstall.out"
@@ -703,8 +703,8 @@ test_uninstall_removes_runtime_state_and_backups() {
   assert_absent "$home_dir/.roborepo/enabled-packages.json" "uninstall removes enabled packages state"
   assert_absent "$home_dir/.roborepo/telemetry" "uninstall removes telemetry data"
   assert_absent "$home_dir/.roborepo/telemetry-backups" "uninstall removes telemetry backups"
-  assert_absent "$home_dir/.local/state/roborepo/portal-server.pid" "uninstall removes portal PID file"
-  assert_absent "$home_dir/.local/state/roborepo/telemetry-server.pid" "uninstall removes legacy telemetry PID file"
+  assert_absent "$home_dir/.local/state/cli/portal-server.pid" "uninstall removes portal PID file"
+  assert_absent "$home_dir/.local/state/cli/telemetry-server.pid" "uninstall removes legacy telemetry PID file"
   assert_absent "$home_dir/.cli-backups" "uninstall removes durable install backups"
   HOME="$home_dir" "$repo_root/scripts/install/uninstall.sh" --check-clean >"$home_dir/check.out" \
     && pass "check-clean passes after uninstall" \
@@ -1091,9 +1091,9 @@ test_write_guard_root_config_message() {
   skill_out="$home_dir/skill-guard.out"
 
   printf '{"tool_input":{"file_path":"%s/.codex/config.toml"}}\n' "$home_dir" \
-    | HOME="$home_dir" node "$repo_root/globals/system/hooks/claude/roborepo-write-guard.mjs" >"$root_out"
+    | HOME="$home_dir" node "$repo_root/globals/system/hooks/claude/write-guard.mjs" >"$root_out"
   printf '{"tool_input":{"file_path":"%s/.claude/skills/new-skill/SKILL.md"}}\n' "$home_dir" \
-    | HOME="$home_dir" node "$repo_root/globals/system/hooks/claude/roborepo-write-guard.mjs" >"$skill_out"
+    | HOME="$home_dir" node "$repo_root/globals/system/hooks/claude/write-guard.mjs" >"$skill_out"
 
   assert_file_contains "$root_out" "mutable active root config" "write guard identifies root config as local"
   assert_file_contains "$root_out" "not a repo symlink" "write guard does not call root config a symlink"

@@ -212,8 +212,8 @@ assert_skill_cache_link() {
   local cache="${home_dir}/.roborepo/skills/${skill}"
 
   if [[ -L "${view}" && "$(realpath "${view}")" == "$(realpath "${cache}")" ]] \
-    && [[ -d "${cache}" && -e "${cache}/.roborepo-managed" ]] \
-    && diff -rq -x '.roborepo-managed' "${source_dir}" "${cache}" >/dev/null 2>&1; then
+    && [[ -d "${cache}" && -e "${cache}/.builtin-managed" ]] \
+    && diff -rq -x '.builtin-managed' "${source_dir}" "${cache}" >/dev/null 2>&1; then
     return 0
   fi
   return 1
@@ -642,7 +642,7 @@ mkdir -p "${adopt_skill_home}/.claude" "${adopt_skill_home}/.codex" "${adopt_ski
 echo '{}' > "${adopt_skill_home}/.claude/settings.json"
 printf '' > "${adopt_skill_home}/.codex/config.toml"
 cp -R "${repo_root}/globals/packages/case-study-pack/skills/case-study" "${adopt_skill_home}/.roborepo/skills/case-study"
-touch "${adopt_skill_home}/.roborepo/skills/case-study/.roborepo-managed"
+touch "${adopt_skill_home}/.roborepo/skills/case-study/.builtin-managed"
 adopt_skill_env="HOME='${adopt_skill_home}' ROBOREPO_STATE_DIR='${adopt_skill_home}/.roborepo' SKIP_MCP=1"
 assert "package adopt-live marks external skill-component package as enabled" \
   bash -c "${adopt_skill_env} node '${cli}' package adopt-live >/dev/null && grep -q '\"case-study-pack\"' '${adopt_skill_home}/.roborepo/enabled-packages.json'"
@@ -756,7 +756,7 @@ assert "config: snapshot exposes a package's requires list" \
 cfg_skill="case-study"
 cfg_skill_source="${repo_root}/globals/packages/case-study-pack/skills/case-study"
 assert "config: setSkillInstalled links both harness views" \
-  bash -c "${cfg_env} node -e \"import('${repo_root}/scripts/cli/config-mutate.mjs').then(m=>{const r=m.setSkillInstalled('${cfg_skill}',true);process.exit(r.ok?0:1)})\" && test -d '${cfg_home}/.roborepo/skills/${cfg_skill}' && test -e '${cfg_home}/.roborepo/skills/${cfg_skill}/.roborepo-managed'"
+  bash -c "${cfg_env} node -e \"import('${repo_root}/scripts/cli/config-mutate.mjs').then(m=>{const r=m.setSkillInstalled('${cfg_skill}',true);process.exit(r.ok?0:1)})\" && test -d '${cfg_home}/.roborepo/skills/${cfg_skill}' && test -e '${cfg_home}/.roborepo/skills/${cfg_skill}/.builtin-managed'"
 assert "package snapshot: direct skill install is external until package desired state is set" \
   bash -c "${cfg_env} node -e \"import('${repo_root}/scripts/cli/config.mjs').then(c=>{const p=c.readConfigSnapshot().packages.find(x=>x.id==='case-study-pack');process.exit(p?.enabled===false&&p?.desired===false&&p?.status==='external'&&p.componentStatus?.[0]?.state==='external'?0:1)})\""
 assert "config: Claude skill view points at the cache" \
@@ -814,7 +814,7 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   curl -s -X POST "http://127.0.0.1:${cfg_port}/api/config/skills" -H 'Content-Type: application/json' -H "X-Cli-Portal-Token: ${cfg_token}" \
     -d "{\"id\":\"${cfg_skill}\",\"enabled\":true}" > "${cfg_home}/post-skill.json"
   assert "config: POST /api/config/skills installs and returns snapshot" \
-    bash -c "node -e \"const j=require('${cfg_home}/post-skill.json');process.exit(j.ok&&j.config&&Array.isArray(j.config.tools)?0:1)\" && test -d '${cfg_home}/.claude/skills/${cfg_skill}' && test -e '${cfg_home}/.claude/skills/${cfg_skill}/.roborepo-managed'"
+    bash -c "node -e \"const j=require('${cfg_home}/post-skill.json');process.exit(j.ok&&j.config&&Array.isArray(j.config.tools)?0:1)\" && test -d '${cfg_home}/.claude/skills/${cfg_skill}' && test -e '${cfg_home}/.claude/skills/${cfg_skill}/.builtin-managed'"
   assert "config: post-mutation snapshot still carries contextCost" \
     bash -c "node -e \"const j=require('${cfg_home}/post-skill.json');process.exit(j.config&&j.config.contextCost&&j.config.contextCost.harnesses?0:1)\""
   assert "config: POST with bad body returns 400" \
@@ -1437,9 +1437,9 @@ HOME="${rp_home}" ROBOREPO_STATE_DIR="${rp_state}" \
 assert "repair: bin link healed to new checkout" \
   bash -c "test \"\$(readlink '${rp_home}/.local/bin/roborepo')\" = '${rp_new}/bin/roborepo'"
 assert "repair: base Claude support skill cache link created after repair" \
-  bash -c "test -L '${rp_home}/.claude/skills/builtin-support' && test \"\$(readlink '${rp_home}/.claude/skills/builtin-support')\" = '${rp_home}/.roborepo/skills/builtin-support' && test -d '${rp_home}/.roborepo/skills/builtin-support' && test -e '${rp_home}/.roborepo/skills/builtin-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${rp_new}/globals/system/skills/builtin-support' '${rp_home}/.roborepo/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.claude/skills/case-study'"
+  bash -c "test -L '${rp_home}/.claude/skills/builtin-support' && test \"\$(readlink '${rp_home}/.claude/skills/builtin-support')\" = '${rp_home}/.roborepo/skills/builtin-support' && test -d '${rp_home}/.roborepo/skills/builtin-support' && test -e '${rp_home}/.roborepo/skills/builtin-support/.builtin-managed' && diff -rq -x .builtin-managed '${rp_new}/globals/system/skills/builtin-support' '${rp_home}/.roborepo/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.claude/skills/case-study'"
 assert "repair: base Codex support skill cache link created after repair" \
-  bash -c "test -L '${rp_home}/.codex/skills/builtin-support' && test \"\$(readlink '${rp_home}/.codex/skills/builtin-support')\" = '${rp_home}/.roborepo/skills/builtin-support' && test -d '${rp_home}/.roborepo/skills/builtin-support' && test -e '${rp_home}/.roborepo/skills/builtin-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${rp_new}/globals/system/skills/builtin-support' '${rp_home}/.roborepo/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.codex/skills/case-study'"
+  bash -c "test -L '${rp_home}/.codex/skills/builtin-support' && test \"\$(readlink '${rp_home}/.codex/skills/builtin-support')\" = '${rp_home}/.roborepo/skills/builtin-support' && test -d '${rp_home}/.roborepo/skills/builtin-support' && test -e '${rp_home}/.roborepo/skills/builtin-support/.builtin-managed' && diff -rq -x .builtin-managed '${rp_new}/globals/system/skills/builtin-support' '${rp_home}/.roborepo/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${rp_home}/.codex/skills/case-study'"
 assert "repair: install state records the new checkout path" \
   grep -q "\"repo\": \"${rp_new}\"" "${rp_state}/install-state.json"
 # Idempotent: a second repair reclaims nothing (everything already points at the new checkout).
@@ -1502,7 +1502,7 @@ HOME="${la_home}" ROBOREPO_STATE_DIR="${la_home}/.roborepo" ROBOREPO_ASSUME_INTE
 assert "legacy: managed ~/.agents/skills link removed after install" \
   bash -c "! test -L '${la_home}/.agents/skills'"
 assert "legacy: base Codex support skill cache link created in place of the legacy dir link" \
-  bash -c "test -d '${la_home}/.codex/skills/builtin-support' && test -e '${la_home}/.codex/skills/builtin-support/.roborepo-managed' && diff -rq -x .roborepo-managed '${repo_root}/globals/system/skills/builtin-support' '${la_home}/.codex/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${la_home}/.codex/skills/case-study'"
+  bash -c "test -d '${la_home}/.codex/skills/builtin-support' && test -e '${la_home}/.codex/skills/builtin-support/.builtin-managed' && diff -rq -x .builtin-managed '${repo_root}/globals/system/skills/builtin-support' '${la_home}/.codex/skills/builtin-support' >/dev/null 2>&1 && ! test -e '${la_home}/.codex/skills/case-study'"
 
 # A user's real ~/.agents/skills (not a managed symlink) must be left untouched.
 lu_home="${reloc_root}/legacy-agents-userdir/home"

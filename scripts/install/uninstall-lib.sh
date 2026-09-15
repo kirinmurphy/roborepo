@@ -505,8 +505,8 @@ remove_runtime_state() {
   # unrecognized user content) still lives inside it.
   remove_empty_dir "${state_dir}"
 
-  local pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}"
-  local legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"
+  local pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/portal-server.pid}}"
+  local legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/telemetry-server.pid}"
   remove_path "${pid_path}" "remove"
   remove_path "${legacy_pid_path}" "remove"
   remove_empty_dir "$(dirname "${pid_path}")"
@@ -532,8 +532,8 @@ stop_cli_processes() {
   local pids=()
   local pid
   local pid_path legacy_pid_path
-  pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}"
-  legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"
+  pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/portal-server.pid}}"
+  legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/telemetry-server.pid}"
   for path in "${pid_path}" "${legacy_pid_path}"; do
     if [[ -f "${path}" ]]; then
       pid="$(tr -cd '0-9' < "${path}" 2>/dev/null || true)"
@@ -605,8 +605,8 @@ check_no_active_remnants() {
     "${state_dir}/backups" \
     "${HOME}/.cli-backups" \
     "${state_dir}/initialization.json" \
-    "${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}" \
-    "${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"; do
+    "${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/portal-server.pid}}" \
+    "${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/telemetry-server.pid}"; do
     if [[ -n "${package_bin}" && "${path}" == "${package_bin}" ]]; then
       continue
     fi
@@ -706,7 +706,7 @@ check_no_active_remnants() {
     [[ -d "${skills_home}" ]] || continue
     for entry in "${skills_home}"/*; do
       [[ -e "${entry}" || -L "${entry}" ]] || continue
-      if [[ -e "${entry}/.roborepo-managed" ]] || is_builtin_skill_link "${entry}"; then
+      if [[ -e "${entry}/.builtin-managed" ]] || is_builtin_skill_link "${entry}"; then
         echo "remnant: ${entry}" >&2
         failed=1
       fi
@@ -763,8 +763,8 @@ is_builtin_skill_link() {
   return 1
 }
 
-# Remove roborepo-managed skills: cache entries carrying the '.roborepo-managed' marker, plus
-# symlinks that point into the roborepo-managed cache or legacy repo source. Never touches a
+# Remove builtin-managed skills: cache entries carrying the '.builtin-managed' marker, plus
+# symlinks that point into the builtin-managed cache or legacy repo source. Never touches a
 # user's native skill (a real dir without the marker).
 remove_skill_links() {
   local skills_home="$1"
@@ -780,7 +780,7 @@ remove_skill_links() {
           echo "remove: ${entry}"
         fi
       fi
-    elif [[ -e "${entry}/.roborepo-managed" ]]; then
+    elif [[ -e "${entry}/.builtin-managed" ]]; then
       if [[ "${dry_run}" -eq 1 ]]; then
         echo "remove: ${entry}"
       else

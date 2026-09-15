@@ -225,7 +225,7 @@ assert.ok(catalog.nodes.package.children.dev, "package dev is a separate namespa
       "package-mode config permissions copies Claude hook scripts referenced by generated settings",
     );
     assert.ok(
-      fs.existsSync(path.join(home, ".gemini", "policies", "roborepo-permissions.toml")),
+      fs.existsSync(path.join(home, ".gemini", "policies", "generated-permissions.toml")),
       "package-mode config permissions writes Gemini live permissions",
     );
   } finally {

@@ -105,7 +105,7 @@ if (sub) {
     ["CLI invocations (roborepo <cmd> / bin/roborepo)", /usage: roborepo|bin\/roborepo|`roborepo[ `]|['"]roborepo[ '"\\)]|roborepo \w+|Bash\(roborepo|commandPrefix/],
     ["npm package name", /codethings-roborepo-alpha/],
     ["GitHub URLs", /kirinmurphy\/roborepo/],
-    ["product-surface filenames", /MANAGED_BY_ROBOREPO|roborepo-managed|roborepo-write-guard|roborepo-permissions|ROBOREPO_[A-Z_]/],
+    ["product-surface filenames", /MANAGED_BY_ROBOREPO|builtin-managed|write-guard|generated-permissions|ROBOREPO_[A-Z_]/],
     ["doc filename references", /roborepo(-cli|-skills)?\.md/],
   ];
   const subs = new Map(); const unmatchedFiles = new Map(); const samples = [];

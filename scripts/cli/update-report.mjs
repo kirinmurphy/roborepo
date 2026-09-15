@@ -10,7 +10,7 @@ import { findOrphanSkillLinks } from "./skill-prune-orphans.mjs";
 
 const HARNESS_HOME = harnessHome;
 
-const MANAGED_MARKER = ".roborepo-managed";
+const MANAGED_MARKER = ".builtin-managed";
 
 export async function runUpdateWithReport(commandConfig, args) {
   const { installArgs, verbose } = parseReportArgs(args);

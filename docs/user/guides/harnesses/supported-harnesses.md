@@ -102,7 +102,7 @@ roborepo harness inspect <id>      # one harness's manifest, capabilities, and s
 roborepo harness enable <id>       # manage this harness
 roborepo harness disable <id>      # stop managing it, without uninstalling roborepo
 roborepo harness refresh           # re-run discovery
-roborepo harness withdraw <id>     # strip roborepo-managed artifacts from that harness
+roborepo harness withdraw <id>     # strip builtin-managed artifacts from that harness
 ```
 
 `disable` and `withdraw` differ: `disable` stops future delivery and leaves existing files alone;

@@ -327,7 +327,7 @@ stage_update_item() {
 is_builtin_authored() {
   local file="$1"
   [[ -f "${file}" ]] || return 1
-  grep -Eq "roborepo telemetry capture|roborepo-write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import|jcmwatch|jdm-indexed" "${file}" 2>/dev/null
+  grep -Eq "roborepo telemetry capture|write-guard|BEGIN GENERATED AGENT PERMISSIONS|MANAGED_BY_ROBOREPO|# Generated Harness Rules|BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import|jcmwatch|jdm-indexed" "${file}" 2>/dev/null
 }
 
 # Persist the user's genuine pre-install file/dir at ${home_path} to
@@ -869,7 +869,7 @@ link_skill_item() {
   local repo_rel="$1"
   local cache_path="$2"
   local src="${repo_root}/${repo_rel}"
-  local marker="${cache_path}/.roborepo-managed"
+  local marker="${cache_path}/.builtin-managed"
 
   if [[ ! -e "${src}" ]]; then
     echo "missing source: ${src}" >&2
@@ -907,7 +907,7 @@ link_skill_item() {
   fi
 
   if [[ -e "${marker}" ]]; then
-    if diff -rq -x '.roborepo-managed' "${src}" "${cache_path}" >/dev/null 2>&1; then
+    if diff -rq -x '.builtin-managed' "${src}" "${cache_path}" >/dev/null 2>&1; then
       say ok "${cache_path}"
       return 0
     fi
@@ -956,7 +956,7 @@ link_skill_view() {
   fi
 
   if [[ -e "${home_path}" || -L "${home_path}" ]]; then
-    if [[ -e "${home_path}/.roborepo-managed" ]]; then
+    if [[ -e "${home_path}/.builtin-managed" ]]; then
       if [[ "${dry_run}" -eq 0 ]]; then
         rm -rf "${home_path}"
         ln -s "${cache_path}" "${home_path}"
@@ -979,7 +979,7 @@ link_skill_view() {
 # Pre-native-alignment, roborepo fanned skills into ~/.agents/skills via a single dir-level managed
 # symlink (agents link globals/agents/skills -> ~/.agents/skills), and Codex also scans ~/.agents.
 # Now that skills are linked per-skill into each harness's native dir, a leftover ~/.agents/skills
-# link makes Codex discover the same skills twice. Reclaim it only when it is a roborepo-managed
+# link makes Codex discover the same skills twice. Reclaim it only when it is a builtin-managed
 # symlink into the repo (back up first, mirroring remove_repo_link); never touch a user's real
 # ~/.agents content (a real dir/file is left alone). Idempotent: a no-op once removed.
 # Self-contained (provides defaults for backup_root/dry_run) so it is safe from every call site.
@@ -1047,7 +1047,7 @@ link_global_skills() {
   [[ -d "${cache_home}" ]] || return 0
   local entry skill_name
   for entry in "${cache_home}"/*; do
-    [[ -d "${entry}" && -e "${entry}/.roborepo-managed" ]] || continue
+    [[ -d "${entry}" && -e "${entry}/.builtin-managed" ]] || continue
     skill_name="$(basename "${entry}")"
     if [[ "${#allowed_names[@]}" -gt 0 ]]; then
       local still_allowed=0 allowed

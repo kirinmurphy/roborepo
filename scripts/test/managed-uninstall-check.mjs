@@ -18,7 +18,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const cli = path.join(repoRoot, "scripts/cli/main.mjs");
 const uninstallSh = path.join(repoRoot, "scripts/install/uninstall.sh");
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-managed-uninstall-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "builtin-managed-uninstall-"));
 let caseId = 0;
 
 // Resource ownership inventory (Phase 7).

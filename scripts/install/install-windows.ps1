@@ -489,7 +489,7 @@ function Get-PresentManifestRows {
 }
 
 # Materialize a shared skill into the machine-local cache at ~/.roborepo/skills/<name>, stamped
-# with a '.roborepo-managed' marker file, then symlink each harness view to that cache entry.
+# with a '.builtin-managed' marker file, then symlink each harness view to that cache entry.
 # Legacy managed symlinks are migrated to the cache-backed view. A real dir without the marker is
 # a native skill and is left untouched.
 function Copy-GlobalSkills {
@@ -510,7 +510,7 @@ function Copy-GlobalSkills {
 
     $src = Join-Path $srcDir $name
     $cacheTarget = Join-Path $cacheHome $name
-    $marker = Join-Path $cacheTarget ".roborepo-managed"
+    $marker = Join-Path $cacheTarget ".builtin-managed"
     $target = Join-Path $skillsHome $name
 
     if (Test-Path $cacheTarget -PathType Any) {
@@ -541,7 +541,7 @@ function Copy-GlobalSkills {
     Write-Host "copy: $cacheTarget <- $src"
 
     # A real dir without our marker is a native-installed skill — leave it.
-    if ((Test-Path $target) -and -not (Test-Path $target -PathType Leaf) -and -not (Test-Path (Join-Path $target ".roborepo-managed"))) {
+    if ((Test-Path $target) -and -not (Test-Path $target -PathType Leaf) -and -not (Test-Path (Join-Path $target ".builtin-managed"))) {
       Write-Host "skip (native skill): $target"
       return
     }
@@ -561,7 +561,7 @@ function Copy-GlobalSkills {
       } elseif ($existing.LinkType -eq "SymbolicLink") {
         Write-Host "skip (unmanaged symlink): $target"
         return
-      } elseif (Test-Path (Join-Path $target ".roborepo-managed")) {
+      } elseif (Test-Path (Join-Path $target ".builtin-managed")) {
         if (-not $DryRun) {
           Remove-Item $target -Force -Recurse
           New-Item -ItemType SymbolicLink -Path $target -Target $cacheTarget -Force | Out-Null
@@ -591,7 +591,7 @@ function Copy-GlobalSkills {
   Get-ChildItem $cacheHome -Directory | ForEach-Object {
     $name = $_.Name
     if ($name.StartsWith(".")) { return }
-    $entryMarker = Join-Path $_.FullName ".roborepo-managed"
+    $entryMarker = Join-Path $_.FullName ".builtin-managed"
     if (-not (Test-Path $entryMarker)) { return }
     if (($AllowedNames.Count -gt 0) -and ($AllowedNames -notcontains $name)) {
       if (-not $DryRun) { Remove-Item $_.FullName -Recurse -Force }
