@@ -3,455 +3,292 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>/tokens — connectivity direction (full-page mock)</title>
+<title>/tokens — conditions + coverage mock (revised)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #14151a; --panel: #1d1f26; --raised: #262932; --line: #3a3e4b;
-    --ink: #eceef2; --dim: #9aa0ad; --accent: #7aa2ff;
-    --danger: #e5646c; --warn: #e0a84e; --ok: #6fbf8f; --change: #b18ae6;
-    --text-2xs: 11px; --text-xs: 12.5px; --text-sm: 14px; --text-md: 16px;
+    --bg:#14151a; --panel:#1d1f26; --raised:#262932; --line:#3a3e4b;
+    --ink:#eceef2; --dim:#9aa0ad; --accent:#7aa2ff;
+    --danger:#e5646c; --warn:#e0a84e; --ok:#6fbf8f; --change:#b18ae6;
+    --xs:11px; --sm:12.5px; --md:14px; --lg:16px;
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--bg); color: var(--ink); line-height: 1.5; padding: 28px 44px 90px; }
-  .page { max-width: 1060px; margin: 0 auto; }
-  .pagenote { background: color-mix(in srgb, var(--warn) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
-    border-radius: 10px; padding: 10px 14px; font-size: var(--text-xs); color: var(--dim); margin-bottom: 28px; }
-  .pagenote b { color: var(--warn); }
-
-  .section { margin-bottom: 56px; }
-  .sec-head { font-size: 19px; font-weight: 700; margin-bottom: 2px; }
-  .sec-sub { font-size: var(--text-xs); color: var(--dim); margin-bottom: 14px; max-width: 72ch; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
-  .stack > .panel + .panel { margin-top: 10px; }
-
-  .chip { display:inline-flex; align-items:center; gap:5px; font-size: var(--text-2xs);
-    padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); white-space: nowrap; }
-  .chip.cond { border-style: dashed; cursor: default; }
-  .chip.click { cursor: pointer; } .chip.click:hover { border-color: var(--accent); color: var(--ink); }
-  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; flex:none; }
-  .dot.spike { background: var(--danger); } .dot.loop { background: var(--warn); }
-  .dot.read { background: var(--accent); } .dot.change { background: var(--change); }
-
-  /* Investigate item with conditions */
-  .inv { display:flex; gap:12px; align-items:flex-start; }
-  .inv .badge { font-size: var(--text-2xs); color: var(--warn); border:1px solid color-mix(in srgb, var(--warn) 50%, var(--line));
-    padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
-  .inv .body { flex:1; min-width:0; }
-  .inv h3 { font-size: var(--text-md); font-weight: 600; }
-  .inv .framing { font-size: var(--text-xs); color: var(--dim); margin: 2px 0 10px; }
-  .cond-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin: 8px 0; }
-  .cond-row .lbl { font-size: var(--text-2xs); color: var(--dim); margin-right: 2px; }
-  .item-row { border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); padding: 12px 0 4px; margin-top: 8px; }
-  .item-row .what { font-size: var(--text-sm); }
-  .item-row .what b { font-weight: 600; }
-  .item-row .meta { font-size: var(--text-2xs); color: var(--dim); margin-top: 2px; }
-  .prev-list { margin: 8px 0 0 0; list-style: none; }
-  .prev-list li { font-size: var(--text-xs); color: var(--dim); padding: 3px 0 3px 14px; position: relative; }
-  .prev-list li::before { content:""; position:absolute; left:2px; top:9px; width:6px; height:1px; background: var(--line); }
-  .prev-list b { color: var(--ink); font-weight: 600; }
-
-  /* Conditions matrix (v2: stacked per-event lines) */
-  table.matrix { width:100%; border-collapse: collapse; font-size: var(--text-xs); }
-  .matrix th { text-align:left; font-weight:600; color: var(--dim); font-size: var(--text-2xs);
-    text-transform: uppercase; letter-spacing: .04em; padding: 6px 10px; border-bottom:1px solid var(--line); }
-  .matrix td { padding: 9px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent); vertical-align: top; }
-  .matrix td.cname { color: var(--ink); font-weight: 600; font-size: var(--text-sm); }
-  .matrix td.cname span { display:block; font-weight:400; color: var(--dim); font-size: var(--text-2xs); }
-  .rate { display:inline-flex; gap:6px; align-items:baseline; }
-  .rate .with { font-weight: 700; font-size: var(--text-sm); }
-  .rate .vs { color: var(--dim); font-size: var(--text-2xs); }
-  .hot { color: var(--danger); } .cool { color: var(--ok); } .meh { color: var(--dim); }
-  .n { color: var(--dim); font-size: var(--text-2xs); }
-  .nodata { color: var(--dim); font-style: italic; font-size: var(--text-2xs); }
-  .matrix tr.hl td { background: color-mix(in srgb, var(--danger) 7%, transparent); }
-  .mline { display:flex; gap:8px; align-items:baseline; padding: 2.5px 0; }
-  .mline + .mline { border-top: 1px dotted color-mix(in srgb, var(--line) 40%, transparent); }
-  .mlbl { color: var(--dim); font-size: var(--text-2xs); flex: 0 0 96px; }
-
-  /* Ledger (variant B) */
-  .ledger { display:grid; grid-template-columns: 92px 1fr auto; align-items:stretch; row-gap: 10px; }
-  .ledger .row { display:contents; }
-  .ledger .row > div { padding: 10px 8px; }
-  .ledger .row.is-change > div {
-    background: color-mix(in srgb, var(--change) 13%, transparent);
-    border-left: 3px solid color-mix(in srgb, var(--change) 60%, transparent); }
-  .ledger .row.is-change > div:first-child { border-radius: 8px 0 0 8px; border-left: none; padding-left: 4px; }
-  .ledger .row.is-change > div:last-child { border-radius: 0 8px 8px 0; }
-  .lg-when { font-size: var(--text-2xs); color: var(--dim); padding: 10px 8px 10px 0; text-align:right;
-    border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent); }
-  .row.is-change .lg-when { border-bottom: none; }
-  .row.is-change .lg-rail { border-bottom: none; }
-  .lg-what { padding: 12px 0; display:flex; align-items:center; gap:10px; min-width:0; }
-  .lg-rail { border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent); padding-left: 18px; display:flex; align-items:center; }
-  /* event icons replace dots/pipes */
-  .lg-badge.sysb { color: var(--dim); border:1px dashed var(--line); border-radius:999px; padding:1px 8px; font-size:10px; }
-  .lg-what b { font-size: var(--text-sm); font-weight:600; }
-  .ledger .row { cursor: pointer; }
-  .lg-what .lg-sub { font-size: var(--text-2xs); color: var(--dim); display:block; }
-  .lg-cond { display:flex; gap:5px; flex-wrap:wrap; margin-top:4px; }
-  .lg-badge { font-size: var(--text-2xs); color: var(--dim); padding-left:10px; white-space:nowrap; }
-  .lg-badge.warnb { color: var(--warn); } .lg-badge.dangerb { color: var(--danger); } .lg-badge.okb { color: var(--ok); }
-
-  /* Marked changes (variant C management) */
-  .cluster { background: var(--raised); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
-  .cluster + .cluster { margin-top:12px; }
-  .cl-head { display:flex; align-items:baseline; gap:10px; margin-bottom:8px; }
-  .cl-head b { font-size: var(--text-sm); }
-  .cl-head time { font-size: var(--text-2xs); color: var(--dim); }
-  .cl-actions { margin-left:auto; display:flex; gap:6px; }
-  .minibtn { font-size: var(--text-2xs); color: var(--dim); background:none; border:1px solid var(--line);
-    border-radius:6px; padding: 2px 9px; cursor:pointer; }
-  .minibtn:hover { color: var(--ink); border-color: var(--accent); }
-  .minibtn.del:hover { color: var(--danger); border-color: var(--danger); }
-  .cl-body { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-  .pill { font-size: var(--text-2xs); padding:3px 9px; border-radius:999px; display:inline-flex; gap:6px; align-items:center; cursor:pointer; border:1px solid transparent; }
-  .pill:hover { border-color: var(--accent); }
-  .pill.spike { background: color-mix(in srgb, var(--danger) 22%, var(--raised)); color:#f2b8bc; }
-  .pill.loop { background: color-mix(in srgb, var(--warn) 20%, var(--raised)); color:#ecd3a4; }
-  .pill.cond { background: transparent; border:1px dashed var(--line); color: var(--dim); cursor:default; }
-  .pill.cond:hover { border-color: var(--line); }
-  .pill.change { background: color-mix(in srgb, var(--change) 20%, var(--raised)); color:#d3c2ef; }
-  .pill.watch { background: transparent; border:1px solid color-mix(in srgb, var(--change) 45%, var(--line)); color:#d3c2ef; cursor:default; }
-  .cl-link { font-size: var(--text-2xs); color: var(--dim); margin-top:8px; }
-  .cl-link b { color: var(--change); font-weight:600; }
-  .addmarker { margin-top:12px; font-size: var(--text-xs); color: var(--accent); background:none;
-    border:1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius:8px; padding:7px 14px; cursor:pointer; }
-  .addmarker:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-
-
-  .catcard { background: var(--raised); border:1px solid var(--line); border-radius:10px; padding: 12px 14px; }
-  .cc-head { font-size: var(--text-sm); font-weight: 700; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
-  .cc-row { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding: 4px 0; font-size: var(--text-sm); }
-  .cc-row + .cc-row { border-top: 1px dotted color-mix(in srgb, var(--line) 40%, transparent); }
-  .ccdir { flex:0 0 74px; font-size: var(--text-2xs); font-weight: 700; }
-  .cc-row.better .ccdir { color: var(--ok); } .cc-row.worse .ccdir { color: var(--danger); }
-  .cc-item { font-weight: 600; }
-  .ccchip { font-size: var(--text-2xs); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); white-space: nowrap; }
-  .cc-row.better .ccchip { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
-  .cc-row.worse .ccchip { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
-  .cc-quiet { color: var(--dim); font-style: italic; font-size: var(--text-xs); padding: 4px 0 0 82px; }
-  /* v3.2: full-width category card, Better|Worse as internal columns (stack on small screens) */
-  .cc-cols { display:grid; grid-template-columns: 1fr 1fr; gap: 4px 26px; margin-top: 6px; }
-  @media (max-width: 720px) { .cc-cols { grid-template-columns: 1fr; } }
-  .cc-col h4 { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; font-weight: 700; }
-  .cc-col.better h4 { color: var(--ok); } .cc-col.worse h4 { color: var(--danger); }
-  .cc-col .cc-row + .cc-row { border-top: 1px dotted color-mix(in srgb, var(--line) 40%, transparent); }
-  .cc-none { color: var(--dim); font-style: italic; font-size: var(--text-xs); }
-  /* info tooltip affordance */
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5; padding:28px 44px 90px;
+  }
+  .page { max-width:1060px; margin:0 auto; }
+  .pagenote,.coverage {
+    border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line));
+    background:color-mix(in srgb,var(--warn) 8%,var(--panel));
+    border-radius:10px; color:var(--dim); font-size:var(--sm);
+  }
+  .pagenote { padding:10px 14px; margin-bottom:28px; }
+  .pagenote b,.coverage b { color:var(--warn); }
+  .section { margin-bottom:54px; }
   .sec-head-row { display:flex; align-items:center; gap:8px; }
-  .info-i { width:17px; height:17px; border-radius:50%; border:1px solid var(--line); color: var(--dim);
-    background:none; font-size:10px; font-weight:700; cursor:pointer; display:inline-grid; place-items:center; flex:none; }
-  .info-i:hover { color: var(--ink); border-color: var(--accent); }
-  /* ledger v2: icons + stronger change-row treatment + spacing */
-  .lg-ico { width:22px; height:22px; flex:none; display:inline-grid; place-items:center;
-    border-radius:6px; font-size:13px; }
-  .lg-ico.spike { background: color-mix(in srgb, var(--danger) 22%, transparent); }
-  .lg-ico.loop  { background: color-mix(in srgb, var(--warn) 24%, transparent); }
-  .lg-ico.read  { background: color-mix(in srgb, var(--ink) 10%, transparent); }
-  .lg-ico.syschg{ background: transparent; border:1.5px dashed var(--dim); }
-  .lg-ico.mark  { background: color-mix(in srgb, var(--change) 26%, transparent); }
-  .ledger-scroll { max-height: 85vh; min-height: 500px; overflow-y: auto; }
-  /* Your changes: cause → effect relational layout */
-  .cluster { padding: 14px 16px; }
-  .cl-flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size: var(--text-sm); }
-  .cl-arrow { color: var(--dim); font-size: var(--text-2xs); }
-  .cl-target { color: var(--dim); }
-  .cluster + .cluster { margin-top: 10px; }
-  .cl-verdict { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 12px;
-    border-radius:8px; font-size: var(--text-sm);
-    background: color-mix(in srgb, var(--ok) 10%, var(--raised)); }
-  .cl-verdict.worse { background: color-mix(in srgb, var(--danger) 10%, var(--raised)); }
-  .cl-verdict.waiting { background: color-mix(in srgb, var(--accent) 8%, var(--raised)); }
-  .cl-verdict .big { font-size: var(--text-md); font-weight: 700; }
-  .cl-verdict.better .big { color: var(--ok); } .cl-verdict.worse .big { color: var(--danger); }
-  .cl-verdict.waiting .big { color: var(--accent); }
-
-  /* category detail popup */
-  .cat-table { width:100%; border-collapse: collapse; font-size: var(--text-xs); margin-top: 4px; }
-  .cat-table td { padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent); vertical-align: top; }
-  .cat-table td:first-child { font-weight: 600; font-size: var(--text-sm); }
-
-  /* popup mock */
-  dialog { background: var(--panel); color: var(--ink); border:1px solid var(--line); border-radius: 14px;
-    padding: 20px 22px; width: 560px; max-width: 92vw; }
-  dialog::backdrop { background: rgba(0,0,0,.55); }
-  .dlg-head b { font-size: var(--text-md); display:block; }
-  .dlg-head { display:grid; gap:3px; margin-bottom: 12px; position:relative; }
-  .dlg-head .sub { font-size: var(--text-xs); color: var(--dim); }
+  .sec-head { font-size:19px; font-weight:700; }
+  .sec-sub { color:var(--dim); font-size:var(--sm); margin:3px 0 14px; max-width:84ch; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; }
+  .panel + .panel { margin-top:10px; }
+  .info-i {
+    width:17px; height:17px; border-radius:50%; border:1px solid var(--line); color:var(--dim);
+    background:none; font-size:10px; font-weight:700; display:grid; place-items:center; cursor:pointer;
+  }
+  .chip {
+    display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px;
+    border:1px dashed var(--line); color:var(--dim); font-size:var(--xs); white-space:nowrap;
+  }
+  .chip.unknown { color:var(--warn); border-color:color-mix(in srgb,var(--warn) 45%,var(--line)); }
+  .n { color:var(--dim); font-size:var(--xs); }
+  .inv-row { padding:12px 0 5px; border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent); }
+  .inv-row:first-of-type { border-top:0; padding-top:5px; }
+  .inv-row .what { font-size:var(--md); }
+  .inv-row .meta { color:var(--dim); font-size:var(--xs); margin-top:2px; }
+  .cond-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; align-items:center; }
+  .coverage { padding:9px 11px; margin-top:12px; font-size:var(--xs); }
+  .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:12px; }
+  .metric-card { background:var(--raised); border:1px solid var(--line); border-radius:9px; padding:12px; }
+  .metric-card h4 { font-size:var(--md); margin-bottom:5px; }
+  .metric-card .big { font-size:18px; font-weight:700; }
+  .metric-card .sub { color:var(--dim); font-size:var(--xs); margin-top:4px; }
+  .partial { color:var(--warn); }
+  .catcard { background:var(--raised); border:1px solid var(--line); border-radius:10px; padding:13px 14px; }
+  .catcard + .catcard { margin-top:12px; }
+  .cc-head { display:flex; justify-content:space-between; gap:12px; align-items:baseline; font-size:var(--md); font-weight:700; margin-bottom:8px; }
+  .cc-cols { display:grid; grid-template-columns:1fr 1fr; gap:4px 26px; }
+  .cc-col h4 { text-transform:uppercase; letter-spacing:.04em; font-size:var(--xs); margin-bottom:4px; }
+  .cc-col.fewer h4 { color:var(--ok); }
+  .cc-col.more h4 { color:var(--danger); }
+  .cc-row { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding:5px 0; font-size:var(--md); }
+  .cc-row + .cc-row { border-top:1px dotted color-mix(in srgb,var(--line) 40%,transparent); }
+  .cc-item { font-weight:600; }
+  .ccchip { padding:1px 8px; border-radius:999px; border:1px solid var(--line); font-size:var(--xs); color:var(--dim); }
+  .fewer .ccchip { color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,var(--line)); }
+  .more .ccchip { color:var(--danger); border-color:color-mix(in srgb,var(--danger) 45%,var(--line)); }
+  .cc-none { color:var(--dim); font-size:var(--sm); font-style:italic; }
+  .ledger { display:grid; grid-template-columns:92px 1fr auto; row-gap:10px; }
+  .ledger .row { display:contents; }
+  .ledger .row > div { padding:10px 8px; border-bottom:1px solid color-mix(in srgb,var(--line) 45%,transparent); }
+  .ledger .row.is-change > div { background:color-mix(in srgb,var(--change) 13%,transparent); }
+  .when { text-align:right; color:var(--dim); font-size:var(--xs); }
+  .whatline { display:flex; gap:10px; align-items:flex-start; }
+  .ico { width:22px; height:22px; flex:none; display:grid; place-items:center; border-radius:6px; background:var(--raised); }
+  .sub { color:var(--dim); font-size:var(--xs); display:block; }
+  .badge { color:var(--dim); font-size:var(--xs); white-space:nowrap; }
+  .cluster { background:var(--raised); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .cluster + .cluster { margin-top:10px; }
+  .cl-head { display:flex; align-items:baseline; gap:10px; }
+  .cl-head time { color:var(--dim); font-size:var(--xs); }
+  .cl-flow { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; font-size:var(--md); }
+  .cl-verdict { margin-top:10px; border-radius:8px; padding:8px 11px; background:color-mix(in srgb,var(--ok) 10%,var(--raised)); font-size:var(--md); }
+  .cl-verdict.waiting { background:color-mix(in srgb,var(--accent) 8%,var(--raised)); }
+  .cl-verdict .big { font-weight:700; }
+  .addmarker,.minibtn { background:none; border:1px solid var(--line); color:var(--dim); border-radius:7px; padding:5px 10px; cursor:pointer; font-size:var(--xs); }
+  .addmarker { margin-top:12px; color:var(--accent); border-style:dashed; border-color:color-mix(in srgb,var(--accent) 45%,var(--line)); }
+  dialog { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:14px; padding:20px 22px; width:650px; max-width:92vw; }
+  dialog::backdrop { background:rgba(0,0,0,.55); }
+  .dlg-head { position:relative; margin-bottom:12px; }
+  .dlg-head b { font-size:var(--lg); }
   .dlg-close { position:absolute; right:0; top:0; }
-  .fact { display:grid; grid-template-columns: 90px 1fr; gap: 4px 10px; font-size: var(--text-xs); margin-bottom: 10px; }
-  .fact dt { color: var(--dim); } .fact dd { color: var(--ink); }
-  .dlg-sec { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing:.05em; color: var(--dim); margin: 14px 0 6px; }
-  .openexample { font-size: var(--text-xs); color: var(--accent); background:none; border:none; cursor:pointer; text-decoration: underline dotted; }
+  .fact { display:grid; grid-template-columns:145px 1fr; gap:7px 10px; font-size:var(--sm); }
+  .fact dt { color:var(--dim); }
+  .cat-table { width:100%; border-collapse:collapse; font-size:var(--sm); }
+  .cat-table td { padding:8px 10px; border-bottom:1px solid color-mix(in srgb,var(--line) 45%,transparent); vertical-align:top; }
+  .cat-table td:first-child { font-weight:600; }
+  .hot { color:var(--danger); } .cool { color:var(--ok); } .meh { color:var(--dim); }
+  @media (max-width:720px) {
+    body { padding:22px 16px 70px; }
+    .cc-cols { grid-template-columns:1fr; }
+    .ledger { grid-template-columns:70px 1fr; }
+    .ledger .row > div:last-child { grid-column:2; padding-top:0; }
+  }
 </style>
 </head>
 <body>
 <div class="page">
+  <p class="pagenote"><b>Mock — illustrative data only.</b> Revised to use canonical observations, dimension-specific coverage, explicit with/without denominators, configured-vs-used wording, and deterministic change boundaries.</p>
 
-  <p class="pagenote"><b>Mock — illustrative data only.</b></p>
-
-  <!-- 1. Investigate with conditions -->
-  <div class="section">
-    <div class="sec-head">Investigate</div>
-    <div class="sec-sub">The conditions in effect when each event fired. <button class="info-i" tabindex="-1" title="Chips name the model, repo, harness, and packages observed for that session. Observed, never causal.">i</button></div>
+  <section class="section">
+    <div class="sec-head-row">
+      <div class="sec-head">Investigate</div>
+      <button class="info-i" title="Condition chips are observed state. Snapshot resources say configured/available unless invocation telemetry proves use. Unknown is never absence.">i</button>
+    </div>
+    <div class="sec-sub">Open a problem first, then inspect the conditions observed around it.</div>
     <div class="panel">
-      <div class="inv">
-        <span class="body">
-          <h3>When did tokens spike?</h3>
-          
-          <span class="badge">3 spikes · all in the last 6 weeks</span>
-          <div class="item-row">
-            <div class="what"><b>Spike</b> — payments-api · <b>+612k</b> over threshold</div>
-            <div class="meta">Aug 20 · session <u class="openexample" data-dlg>open session popup</u></div>
-            <div class="cond-row"><span class="lbl">conditions when it fired:</span>
-              <span class="chip cond">claude-opus-4</span>
-              <span class="chip cond">payments-api</span>
-              <span class="chip cond">claude harness</span>
-              <span class="chip cond">jcodemunch enabled</span>
-            </div>
-            <ul class="prev-list">
-              <li><b>2 similar spikes earlier</b> in the same repo, both on this model</li>
-              <li><b>Large MCP bundle</b> loaded 2 turns before the surge</li>
-              <li>No marked change took effect in the 7 days before</li>
-            </ul>
-          </div>
-          <div class="item-row">
-            <div class="what"><b>Spike</b> — platform-core · <b>+340k</b> over threshold</div>
-            <div class="meta">Jul 30 · session <u class="openexample" data-dlg>open session popup</u></div>
-            <div class="cond-row"><span class="lbl">conditions when it fired:</span>
-              <span class="chip cond">claude-opus-4</span>
-              <span class="chip cond">platform-core</span>
-              <span class="chip cond">claude harness</span>
-            </div>
-          </div>
-        </span>
+      <h3 style="font-size:var(--lg)">When did tokens spike?</h3>
+      <div class="inv-row">
+        <div class="what"><b>Spike</b> — payments-api · <b>+612k</b> over threshold</div>
+        <div class="meta">Aug 20 · session <button class="minibtn" data-session>details</button></div>
+        <div class="cond-row">
+          <span class="chip">model: claude-opus-4</span>
+          <span class="chip">repo: payments-api</span>
+          <span class="chip">harness: claude</span>
+          <span class="chip">jcodemunch configured</span>
+        </div>
+      </div>
+      <div class="inv-row">
+        <div class="what"><b>Spike</b> — platform-core · <b>+340k</b> over threshold</div>
+        <div class="meta">Jul 30 · session <button class="minibtn" data-session>details</button></div>
+        <div class="cond-row">
+          <span class="chip">model: claude-opus-4</span>
+          <span class="chip">repo: platform-core</span>
+          <span class="chip">harness: claude</span>
+          <span class="chip unknown">package state: unknown</span>
+        </div>
+      </div>
+      <div class="coverage"><b>Condition coverage:</b> model 76/78 known · repo 74/78 known · harness 78/78 known · package snapshot 71/78 known. Unknown observations are excluded from with-vs-without deltas, not counted as “without.”</div>
+    </div>
+
+    <div class="panel">
+      <div class="sec-head-row">
+        <h3 style="font-size:var(--lg)">Model token cost per operation</h3>
+        <button class="info-i" title="One canonical operation flow counts once even if several telemetry rows mirror usage. Coverage = valid token observations / eligible observations.">i</button>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <h4>codex</h4>
+          <div class="big">640 tok / flow</div>
+          <div class="sub">input:output 4.2:1 · 286 valid / 286 eligible flows · coverage complete</div>
+          <div class="sub">model attribution: 286 exact / 286 eligible</div>
+        </div>
+        <div class="metric-card">
+          <h4>opus</h4>
+          <div class="big">980 tok / flow</div>
+          <div class="sub">input:output 5.1:1 · 418 valid / 432 eligible flows · <span class="partial">97% partial coverage</span></div>
+          <div class="sub">model attribution: 318 exact · 114 approximate</div>
+        </div>
+        <div class="metric-card">
+          <h4>gemini</h4>
+          <div class="big">720 tok / flow</div>
+          <div class="sub">input:output 3.8:1 · 88 valid / 104 eligible flows · <span class="partial">85% partial coverage</span></div>
+          <div class="sub">model attribution: 0 exact · 104 approximate</div>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- 2. Conditions — v3 category roll-up -->
-  <div class="section">
+  <section class="section">
     <div class="sec-head-row">
       <div class="sec-head">Do problems follow a condition?</div>
-      <button class="info-i" tabindex="-1" title="Each item is compared to its category mean. Only deviations appear here — every item, including ≈-mean ones, is in the category popup (click the category name). 200% = twice the mean.">i</button>
+      <button class="info-i" title="Known presence is compared only with known absence. Unknown condition telemetry is excluded and shown as coverage. Categories overlap and are not additive attribution.">i</button>
     </div>
-    <div class="sec-sub">Results reflect each item's trend above or below its category mean.</div>
-
-    <!-- v3.2 VARIANT 2 (PICKED): full-width category cards, Better | Worse internal columns -->
+    <div class="sec-sub">Observed event rates with a condition compared with known observations without that condition — descriptive association, not cause.</div>
     <div class="panel">
-      <div class="catcard" style="margin-bottom:12px">
-        <div class="cc-head" data-catdlg style="cursor:pointer">Models <span class="n">3 seen · full outcomes &rarr;</span></div>
-        <div class="cc-cols">
-          <div class="cc-col better"><h4>Better outcomes</h4>
-            <div class="cc-row better"><span class="cc-item">codex</span><span class="ccchip">50% fewer spikes</span><span class="ccchip">30% fewer loops</span></div>
-            <div class="cc-row better"><span class="cc-item">opus</span><span class="ccchip">20% fewer loops</span></div>
-          </div>
-          <div class="cc-col worse"><h4>Worse outcomes</h4>
-            <div class="cc-row worse"><span class="cc-item">opus</span><span class="ccchip">110% more spikes</span></div>
-            <div class="cc-row worse"><span class="cc-item">gemini</span><span class="ccchip">400% more read warnings</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="catcard" style="margin-bottom:12px">
-        <div class="cc-head" data-catdlg style="cursor:pointer">Repos <span class="n">3 active · full outcomes &rarr;</span></div>
-        <div class="cc-cols">
-          <div class="cc-col better"><h4>Better outcomes</h4>
-            <div class="cc-row better"><span class="cc-item">marketing-site</span><span class="ccchip">60% fewer loops</span></div>
-          </div>
-          <div class="cc-col worse"><h4>Worse outcomes</h4>
-            <div class="cc-row worse"><span class="cc-item">payments-api</span><span class="ccchip">180% more spikes</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="catcard" style="margin-bottom:12px">
-        <div class="cc-head" data-catdlg style="cursor:pointer">Harnesses <span class="n">2 active · full outcomes &rarr;</span></div>
-        <div class="cc-cols">
-          <div class="cc-col"><span class="cc-none">Nothing stands out — both within ≈20% of the mean.</span></div>
-        </div>
-      </div>
       <div class="catcard">
-        <div class="cc-head" data-catdlg style="cursor:pointer">Marked changes <span class="n">2 marked · full outcomes &rarr;</span></div>
+        <div class="cc-head" data-category><span>Models</span><span class="n">76 / 78 model-known sessions · full outcomes →</span></div>
         <div class="cc-cols">
-          <div class="cc-col better"><h4>Better outcomes</h4>
-            <div class="cc-row better"><span class="cc-item">tightened test instructions</span><span class="ccchip">70% fewer spikes after</span><span class="ccchip">50% fewer loops after</span></div>
+          <div class="cc-col fewer"><h4>Fewer with condition</h4>
+            <div class="cc-row fewer"><span class="cc-item">codex</span><span class="ccchip">50% fewer spikes</span><span class="ccchip">12 with / 64 without · 2 unknown</span></div>
+            <div class="cc-row fewer"><span class="cc-item">opus</span><span class="ccchip">20% fewer loops</span><span class="ccchip">38 with / 38 without · 2 unknown</span></div>
           </div>
-          <div class="cc-col worse"><h4>Worse outcomes</h4>
-            <div class="cc-row worse"><span class="cc-item">switched doc lookups</span><span class="ccchip">400% more read warnings so far</span></div>
+          <div class="cc-col more"><h4>More with condition</h4>
+            <div class="cc-row more"><span class="cc-item">opus</span><span class="ccchip">110% more spikes</span><span class="ccchip">38 with / 38 without · 2 unknown</span></div>
+            <div class="cc-row more"><span class="cc-item">gemini</span><span class="ccchip">2/18 vs 1/58 read warnings</span><span class="ccchip">below percent floor</span></div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- 3. Event ledger -->
-  <div class="section">
-    <div class="sec-head">What happened, in order</div>
-    <div class="sec-sub">Newest first. <button class="info-i" tabindex="-1" title="Shaded rows = changes: yours (pencil) or auto-tracked (dashed). Ambient changes (rules, packages) affect every session; skill/MCP changes are interaction-scoped. Plain rows = problems: red = spike, yellow = loop, plain = read warning.">i</button></div>
+      <div class="catcard">
+        <div class="cc-head" data-category><span>Repos</span><span class="n">74 / 78 repo-known sessions · full outcomes →</span></div>
+        <div class="cc-cols">
+          <div class="cc-col fewer"><h4>Fewer with condition</h4>
+            <div class="cc-row fewer"><span class="cc-item">marketing-site</span><span class="ccchip">60% fewer loops</span><span class="ccchip">22 with / 52 without · 4 unknown</span></div>
+          </div>
+          <div class="cc-col more"><h4>More with condition</h4>
+            <div class="cc-row more"><span class="cc-item">payments-api</span><span class="ccchip">180% more spikes</span><span class="ccchip">28 with / 46 without · 4 unknown</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="catcard">
+        <div class="cc-head" data-category><span>Harnesses</span><span class="n">78 / 78 harness-known sessions · full outcomes →</span></div>
+        <div class="cc-none">Nothing stands out — known-presence and known-absence rates are within the no-difference band.</div>
+      </div>
+
+      <div class="catcard">
+        <div class="cc-head"><span>Marked changes</span><span class="n">before/after boundary comparison</span></div>
+        <div class="cc-cols">
+          <div class="cc-col fewer"><h4>Fewer after</h4>
+            <div class="cc-row fewer"><span class="cc-item">tightened test instructions</span><span class="ccchip">3 spikes/wk → 1/wk</span><span class="ccchip">12 before / 18 after · 1 ambiguous</span></div>
+          </div>
+          <div class="cc-col more"><h4>More after</h4>
+            <div class="cc-row more"><span class="cc-item">switched doc lookups</span><span class="ccchip">2 warnings → 4</span><span class="ccchip">9 before / 4 after · still thin</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="coverage">Percent labels use known with/without cohorts only. Low-count cells fall back to raw rates. Unknown rows remain visible in details and never enter either rate denominator.</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="sec-head-row"><div class="sec-head">What happened, in order</div><button class="info-i" title="Display is newest first. Persisted sequence breaks timestamp ties. Phase 1 contains problem rows only; change rows arrive in Phase 2.">i</button></div>
+    <div class="sec-sub">Timestamps are for display; persisted event order is authoritative when times collide.</div>
     <div class="panel">
-      <div class="ledger-scroll"><div class="ledger">
-        <div class="row">
-          <div class="lg-when">Aug 20</div>
-          <div class="lg-what"><span class="lg-ico spike" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1.5 12.5 5 7l3 3 6.5-7" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>Spike</b><span class="lg-sub">payments-api · +612k over threshold</span>
-              <div class="lg-cond"><span class="chip cond">opus</span><span class="chip cond">payments-api</span></div>
-            </div></div>
-          <div class="lg-badge dangerb">2nd spike this month</div>
-        </div>
-        <div class="row is-change">
-          <div class="lg-when">Aug 17</div>
-          <div class="lg-what"><span class="lg-ico syschg" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 13h10" stroke="var(--dim)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>Skill revision — jcodemunch search v1.1 &rarr; v1.2</b><span class="lg-sub">interaction-scoped · affects only invocations of it</span></div></div>
-          <div class="lg-badge sysb">auto-tracked</div>
-        </div>
-        <div class="row is-change">
-          <div class="lg-when">Aug 15</div>
-          <div class="lg-what"><span class="lg-ico mark" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="m9.5 3 3.5 3.5L6 13.5H2.5V10L9.5 3Z" stroke="var(--change)" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
-            <div><b>Marked change — switched doc lookups to jdocmunch</b><span class="lg-sub">watching: read warnings</span></div></div>
-          <div class="lg-badge okb">reads ↓ 41% since</div>
-        </div>
-        <div class="row is-change">
-          <div class="lg-when">Aug 12</div>
-          <div class="lg-what"><span class="lg-ico syschg" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 13h10" stroke="var(--dim)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>Rules changed — AGENTS.md</b><span class="lg-sub">+2 rules from enabling eventswatch package · affects every session</span></div></div>
-          <div class="lg-badge sysb">auto-tracked</div>
-        </div>
-        <div class="row">
-          <div class="lg-when">Aug 9</div>
-          <div class="lg-what"><span class="lg-ico spike" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1.5 12.5 5 7l3 3 6.5-7" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>Spike</b><span class="lg-sub">payments-api · +340k over threshold</span></div></div>
-          <div class="lg-badge"></div>
-        </div>
-        <div class="row">
-          <div class="lg-when">Aug 5</div>
-          <div class="lg-what"><span class="lg-ico loop" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13 8a5 5 0 1 1-1.7-3.75M13 1.5V5h-3.5" stroke="var(--warn)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>Loop</b><span class="lg-sub">Bash ×8 in a row</span>
-              <div class="lg-cond"><span class="chip cond">sonnet</span><span class="chip cond">payments-api</span></div>
-            </div></div>
-          <div class="lg-badge"></div>
-        </div>
-        <div class="row is-change">
-          <div class="lg-when">Aug 2</div>
-          <div class="lg-what"><span class="lg-ico syschg" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 13h10" stroke="var(--dim)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>Package disabled — marketing-drafts</b><span class="lg-sub">its 1 rule removed from context · no ambient effect beyond that</span></div></div>
-          <div class="lg-badge sysb">auto-tracked</div>
-        </div>
-        <div class="row is-change">
-          <div class="lg-when">Jul 31</div>
-          <div class="lg-what"><span class="lg-ico mark" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="m9.5 3 3.5 3.5L6 13.5H2.5V10L9.5 3Z" stroke="var(--change)" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
-            <div><b>Marked change — tightened test instructions</b><span class="lg-sub">watching: spikes, loops</span></div></div>
-          <div class="lg-badge">spikes 3/wk → 1/wk</div>
-        </div>
-        <div class="row">
-          <div class="lg-when">Jul 28</div>
-          <div class="lg-what"><span class="lg-ico read" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 3.5h8.5M2 7h12M2 10.5h12M2 14h8.5" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-            <div><b>Read warnings ×4</b><span class="lg-sub">same doc re-read</span></div></div>
-          <div class="lg-badge"></div>
-        </div>
-        <div class="row">
-          <div class="lg-when">Jul 14–27</div>
-          <div class="lg-what"><span class="lg-ico spike" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1.5 12.5 5 7l3 3 6.5-7" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><b>3 spikes</b><span class="lg-sub">payments-api, platform-core</span></div></div>
-          <div class="lg-badge"></div>
-        </div>
-      </div></div>
-    </div>
-  </div>
-
-  <!-- 4. Marker management (variant C) -->
-  <div class="section">
-    <div class="sec-head">Your changes</div>
-    <div class="sec-sub">Your marked changes. <button class="info-i" tabindex="-1" title="Each card: what changed, when it took effect, the outcome so far (green band = better, red = worse, blue = still collecting), and the events it watches.">i</button></div>
-    <div>
-      <div class="cluster">
-        <div class="cl-head"><b>Tightened test instructions</b><time>effective Jul 31</time>
-          <span class="cl-actions"><button class="minibtn">Edit</button><button class="minibtn del">Delete</button></span></div>
-        <div class="cl-flow">
-          <span>watching <b>spikes &amp; loops</b></span>
-          <span class="cl-arrow">→</span>
-          <span class="cl-target">in payments-api, platform-core</span>
-        </div>
-        <div class="cl-verdict better"><span class="big">spikes 3/wk → 1/wk</span><span class="n">loops 2 → 1/wk</span></div>
+      <div class="ledger">
+        <div class="row"><div class="when">Aug 20</div><div><div class="whatline"><span class="ico">↗</span><div><b>Spike</b><span class="sub">payments-api · +612k over threshold</span></div></div></div><div class="badge">2nd spike this month</div></div>
+        <div class="row is-change"><div class="when">Aug 15</div><div><div class="whatline"><span class="ico">✎</span><div><b>Marked change — switched doc lookups to jdocmunch</b><span class="sub">effective Aug 15 · watching read warnings</span></div></div></div><div class="badge">9 before / 4 after · still collecting</div></div>
+        <div class="row is-change"><div class="when">Aug 12</div><div><div class="whatline"><span class="ico">⇣</span><div><b>Ambient context changed — rules content</b><span class="sub">first observed by this session · exact file/revision unresolved until fingerprints exist</span></div></div></div><div class="badge">Phase 2 · coarse change</div></div>
+        <div class="row"><div class="when">Aug 9</div><div><div class="whatline"><span class="ico">↗</span><div><b>Spike</b><span class="sub">payments-api · +340k over threshold</span></div></div></div><div class="badge"></div></div>
+        <div class="row"><div class="when">Aug 5</div><div><div class="whatline"><span class="ico">↻</span><div><b>Loop</b><span class="sub">Bash ×8 in a row</span></div></div></div><div class="badge"></div></div>
+        <div class="row is-change"><div class="when">Aug 2</div><div><div class="whatline"><span class="ico">⇣</span><div><b>Package disabled — marketing-drafts ambient footprint changed</b><span class="sub">configured package state changed an ambient primitive · first observed by this session</span></div></div></div><div class="badge">Phase 2 · auto-tracked</div></div>
+        <div class="row is-change"><div class="when">Jul 31</div><div><div class="whatline"><span class="ico">✎</span><div><b>Marked change — tightened test instructions</b><span class="sub">watching spikes, loops</span></div></div></div><div class="badge">12 before / 18 after · 1 ambiguous</div></div>
       </div>
-      <div class="cluster">
-        <div class="cl-head"><b>Switched doc lookups to jdocmunch</b><time>effective Aug 15</time>
-          <span class="cl-actions"><button class="minibtn">Edit</button><button class="minibtn del">Delete</button></span></div>
-        <div class="cl-flow">
-          <span>watching <b>read warnings</b></span>
-          <span class="cl-arrow">→</span>
-          <span class="cl-target">everywhere</span>
-        </div>
-        <div class="cl-verdict waiting"><span class="big">reads 9/wk → 5/wk so far</span><span class="n">still collecting — 4 comparable sessions</span></div>
-      </div>
-      <button class="addmarker">+ Mark a change</button>
+      <div class="coverage"><b>Scope note:</b> skills-only package enable/disable does not create an ambient row. Exact skill/rule revision rows ship only after content fingerprints exist. Hash-only revisions say “revision changed” unless source metadata supplies a real version.</div>
     </div>
-  </div>
+  </section>
 
-  <!-- 5. stubs -->
-  <div class="section">
+  <section class="section">
+    <div class="sec-head-row"><div class="sec-head">Your changes</div><button class="info-i" title="These are comparisons across a recorded boundary, not causal verdicts. Ambiguous boundary observations are excluded and counted separately.">i</button></div>
+    <div class="sec-sub">Recorded boundaries and the watched events observed before and after them.</div>
+    <div class="cluster">
+      <div class="cl-head"><b>Tightened test instructions</b><time>effective Jul 31</time></div>
+      <div class="cl-flow"><span>watching <b>spikes & loops</b></span><span>→</span><span class="n">payments-api, platform-core</span></div>
+      <div class="cl-verdict"><span class="big">3 spikes/wk before → 1/wk after</span><span class="n"> · 12 comparable before / 18 after · 1 ambiguous boundary · association only</span></div>
+    </div>
+    <div class="cluster">
+      <div class="cl-head"><b>Switched doc lookups to jdocmunch</b><time>effective Aug 15</time></div>
+      <div class="cl-flow"><span>watching <b>read warnings</b></span><span>→</span><span class="n">everywhere</span></div>
+      <div class="cl-verdict waiting"><span class="big">still collecting</span><span class="n"> · 9 comparable before / 4 after · no stable percent yet</span></div>
+    </div>
+    <button class="addmarker">+ Mark a change</button>
+  </section>
+
+  <section class="section">
     <div class="sec-head">Rest of the page (unchanged)</div>
-    <div class="sec-sub">Page order: waste → action items → investigate → conditions → ledger → your changes → prompt. <button class="info-i" tabindex="-1" title="Unchanged sections shown as dashes. New sections: Investigate gains condition chips; the ledger replaces the old marks strip; Your changes manages markers.">i</button></div>
-    <div class="panel stack">
-      <div class="panel" style="border-style:dashed"><span class="n">…Identifiable waste cards (unchanged)…</span></div>
-      <div class="panel" style="border-style:dashed"><span class="n">…Action items…</span></div>
-      <div class="panel" style="border-style:dashed"><span class="n">…Agent-ready prompt (unchanged)…</span></div>
-    </div>
-  </div>
-
-  <!-- popup mock -->
-  <dialog id="popupmock">
-    <div class="dlg-head">
-      <b>Spike — payments-api</b>
-      <span class="sub">Aug 20 · claude · +612k over threshold</span>
-      <button class="minibtn dlg-close" onclick="document.getElementById('popupmock').close()">Close</button>
-    </div>
-    <dl class="fact">
-      <dt>What happened</dt><dd>Per-turn tokens jumped well above this session's normal delta.</dd>
-      <dt>Conditions</dt><dd>
-        <div class="cond-row" style="margin:4px 0 0">
-          <span class="chip cond">claude-opus-4</span><span class="chip cond">payments-api</span>
-          <span class="chip cond">claude harness</span><span class="chip cond">jcodemunch enabled</span>
-        </div></dd>
-      <dt>Preceded by</dt><dd>Large MCP bundle load (2 turns before) · 2 similar spikes in this repo</dd>
-      <dt>Next step</dt><dd>Check whether the MCP bundle can be narrowed for this repo.</dd>
-    </dl>
-    <div class="dlg-sec">Agent prompt</div>
-    <div class="panel" style="padding:10px 12px"><span class="n">Copy prompt for a fresh chat.</span></div>
-  </dialog>
-
-  <!-- category detail popup mock -->
-  <dialog id="catdlgmock">
-    <div class="dlg-head">
-      <b>Models — full outcomes</b>
-      <span class="sub">Outcomes vs the category mean</span>
-      <button class="minibtn dlg-close" onclick="document.getElementById('catdlgmock').close()">Close</button>
-    </div>
-    <table class="cat-table">
-      <tbody>
-        <tr><td>codex</td>
-          <td><div class="mline"><span class="mlbl">Spikes:</span><span class="rate"><span class="with cool">50% </span><span class="vs">fewer than mean</span></span><span class="n">12 sessions</span></div>
-              <div class="mline"><span class="mlbl">Loops:</span><span class="rate"><span class="with cool">30% </span><span class="vs">fewer</span></span><span class="n">12</span></div></td></tr>
-        <tr><td>opus</td>
-          <td><div class="mline"><span class="mlbl">Spikes:</span><span class="rate"><span class="with hot">210% </span><span class="vs">more than mean</span></span><span class="n">38</span></div>
-              <div class="mline"><span class="mlbl">Loops:</span><span class="rate"><span class="with cool">20% </span><span class="vs">fewer</span></span><span class="n">38</span></div>
-              <div class="mline"><span class="mlbl">Read warnings:</span><span class="nodata">not enough data</span></div></td></tr>
-        <tr><td>sonnet</td>
-          <td><div class="mline"><span class="mlbl">Spikes:</span><span class="rate"><span class="with meh">95% </span><span class="vs">≈ mean</span></span><span class="n">31</span></div>
-              <div class="mline"><span class="mlbl">Loops:</span><span class="rate"><span class="with meh">105% </span><span class="vs">≈ mean</span></span><span class="n">31</span></div></td></tr>
-        <tr><td>gemini</td>
-          <td><div class="mline"><span class="mlbl">Read warnings:</span><span class="rate"><span class="with hot">400% </span><span class="vs">more than mean</span></span><span class="n">18</span></div>
-              <div class="mline"><span class="mlbl">Spikes:</span><span class="nodata">not enough data</span></div></td></tr>
-      </tbody>
-    </table>
-    
-  </dialog>
-
+    <div class="sec-sub">Page order remains: waste → action items → investigate → conditions → ledger → your changes → prompt.</div>
+    <div class="panel"><span class="n">…Identifiable waste cards… · …Action items… · …Agent-ready prompt…</span></div>
+  </section>
 </div>
+
+<dialog id="sessionDlg">
+  <div class="dlg-head"><b>Spike — payments-api</b><button class="minibtn dlg-close" onclick="sessionDlg.close()">Close</button><div class="sub">Aug 20 · +612k over threshold</div></div>
+  <dl class="fact">
+    <dt>Observation unit</dt><dd>session-level finding; supporting tool/token flows deduped canonically</dd>
+    <dt>Model</dt><dd>claude-opus-4 · observed state · attribution exact for this event</dd>
+    <dt>Repo / harness</dt><dd>payments-api · claude</dd>
+    <dt>Configured</dt><dd>jcodemunch available · not proof it was invoked</dd>
+    <dt>Coverage</dt><dd>model known · repo known · harness known · package snapshot known</dd>
+    <dt>Next step</dt><dd>Inspect the session and MCP return scope.</dd>
+  </dl>
+</dialog>
+
+<dialog id="categoryDlg">
+  <div class="dlg-head"><b>Models — full outcomes</b><button class="minibtn dlg-close" onclick="categoryDlg.close()">Close</button><div class="sub">Known presence vs known absence · association, not attribution</div></div>
+  <table class="cat-table"><tbody>
+    <tr><td>codex</td><td><div class="cool">Spikes: 50% fewer with model</div><div class="n">12 with / 64 without · 2 unknown · session unit</div></td></tr>
+    <tr><td>opus</td><td><div class="hot">Spikes: 110% more with model</div><div class="n">38 with / 38 without · 2 unknown · session unit</div></td></tr>
+    <tr><td>sonnet</td><td><div class="meh">No material difference</div><div class="n">31 with / 45 without · 2 unknown</div></td></tr>
+    <tr><td>gemini</td><td><div class="hot">Read warnings: 2/18 with vs 1/58 without</div><div class="n">below percent floor</div></td></tr>
+    <tr><td>unknown model</td><td><div class="partial">2 sessions unresolved</div><div class="n">excluded from both known-cohort rate denominators</div></td></tr>
+  </tbody></table>
+</dialog>
+
 <script>
-  document.querySelectorAll("[data-dlg]").forEach((el) =>
-    el.addEventListener("click", () => document.getElementById("popupmock").showModal()));
-  document.querySelectorAll("[data-catdlg]").forEach((el) =>
-    el.addEventListener("click", () => document.getElementById("catdlgmock").showModal()));
+  const sessionDlg = document.getElementById('sessionDlg');
+  const categoryDlg = document.getElementById('categoryDlg');
+  document.querySelectorAll('[data-session]').forEach(el => el.addEventListener('click', () => sessionDlg.showModal()));
+  document.querySelectorAll('[data-category]').forEach(el => { el.style.cursor='pointer'; el.addEventListener('click', () => categoryDlg.showModal()); });
 </script>
 </body>
 </html>
