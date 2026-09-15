@@ -371,7 +371,7 @@ test_dry_run_collision_no_mutation() {
 
   assert_file_contains "$home_dir/out" "merge: $home_dir/.claude/settings.json <-" "dry-run previews Claude merge"
   [[ ! -L "$home_dir/.claude/settings.json" && ! -L "$home_dir/.codex/config.toml" ]] && pass "dry-run leaves config files untouched" || fail "dry-run leaves config files untouched"
-  [[ ! -e "$home_dir/.claude/settings_update_"* && ! -e "$home_dir/.roborepo-backups" ]] && pass "dry-run creates no backups or staged updates" || fail "dry-run creates no backups or staged updates"
+  [[ ! -e "$home_dir/.claude/settings_update_"* && ! -e "$home_dir/.cli-backups" ]] && pass "dry-run creates no backups or staged updates" || fail "dry-run creates no backups or staged updates"
 }
 
 test_noninteractive_install_merges_root_configs() {
@@ -688,14 +688,14 @@ test_uninstall_removes_runtime_state_and_backups() {
     "$home_dir/.roborepo/telemetry-backups/telemetry-old" \
     "$home_dir/.roborepo/backups/pre-install/claude" \
     "$home_dir/.local/state/roborepo" \
-    "$home_dir/.roborepo-backups/20260621-174033"
+    "$home_dir/.cli-backups/20260621-174033"
   printf '{"behaviors":{"delete-files":"allow"},"commands":{}}\n' > "$home_dir/.roborepo/command-overrides.json"
   printf '{"packages":["jcodemunch"]}\n' > "$home_dir/.roborepo/enabled-packages.json"
   printf '{"enabled":true}\n' > "$home_dir/.roborepo/telemetry/state.json"
   printf 'event\n' > "$home_dir/.roborepo/telemetry/spool/claude.jsonl"
   printf '12345\n' > "$home_dir/.local/state/roborepo/portal-server.pid"
   printf '12345\n' > "$home_dir/.local/state/roborepo/telemetry-server.pid"
-  printf 'backup\n' > "$home_dir/.roborepo-backups/20260621-174033/file"
+  printf 'backup\n' > "$home_dir/.cli-backups/20260621-174033/file"
 
   HOME="$home_dir" "$repo_root/scripts/install/uninstall.sh" >"$home_dir/uninstall.out"
 
@@ -705,7 +705,7 @@ test_uninstall_removes_runtime_state_and_backups() {
   assert_absent "$home_dir/.roborepo/telemetry-backups" "uninstall removes telemetry backups"
   assert_absent "$home_dir/.local/state/roborepo/portal-server.pid" "uninstall removes portal PID file"
   assert_absent "$home_dir/.local/state/roborepo/telemetry-server.pid" "uninstall removes legacy telemetry PID file"
-  assert_absent "$home_dir/.roborepo-backups" "uninstall removes durable install backups"
+  assert_absent "$home_dir/.cli-backups" "uninstall removes durable install backups"
   HOME="$home_dir" "$repo_root/scripts/install/uninstall.sh" --check-clean >"$home_dir/check.out" \
     && pass "check-clean passes after uninstall" \
     || fail "check-clean passes after uninstall" "$home_dir/check.out"
@@ -792,7 +792,7 @@ test_uninstall_stops_repo_owned_processes() {
 test_install_writes_durable_original_snapshot() {
   local home_dir archive
   home_dir="$(make_home)"
-  archive="$home_dir/.roborepo-backups/pre-install-original.tar.gz"
+  archive="$home_dir/.cli-backups/pre-install-original.tar.gz"
 
   # Genuine pre-install originals the snapshot must capture.
   seed_user_configs "$home_dir"
@@ -858,7 +858,7 @@ test_idempotency_no_extra_backups() {
     && ! compgen -G "$home_dir/.codex/config_original_*" >/dev/null \
     && pass "idempotent re-install leaves no stale *_original_* root config backups" \
     || fail "idempotent re-install leaves no stale *_original_* root config backups"
-  ! find "$home_dir/.roborepo-backups" -name settings.json -o -name config.toml 2>/dev/null | grep -q . \
+  ! find "$home_dir/.cli-backups" -name settings.json -o -name config.toml 2>/dev/null | grep -q . \
     && pass "idempotent re-install creates no config backups" \
     || fail "idempotent re-install creates no config backups"
 }

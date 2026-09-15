@@ -42,7 +42,7 @@ is_managed_link() {
     esac
   fi
   case "${current}" in
-    */.roborepo/skills/*) return 0 ;;
+    */$(cli_state_dirname)/skills/*) return 0 ;;
   esac
   # Dangling: link present but target missing -> stale link from a prior checkout path.
   [[ ! -e "${path}" ]] && return 0
@@ -112,7 +112,7 @@ restore_pre_install_link_backup() {
   local harness="$2"
   [[ -n "${harness}" ]] || return 0
 
-  local backup="${HOME}/.roborepo/backups/pre-install/${harness}/$(basename "${home_abs}")"
+  local backup="${HOME}/$(cli_state_dirname)/backups/pre-install/${harness}/$(basename "${home_abs}")"
   [[ -e "${backup}" ]] || return 0
   [[ ! -e "${home_abs}" && ! -L "${home_abs}" ]] || return 0
 
@@ -229,7 +229,7 @@ remove_root_config() {
 
   local pre_install_backup=""
   if [[ -n "${harness}" ]]; then
-    pre_install_backup="${HOME}/.roborepo/backups/pre-install/${harness}/$(basename "${home_abs}")"
+    pre_install_backup="${HOME}/$(cli_state_dirname)/backups/pre-install/${harness}/$(basename "${home_abs}")"
   fi
 
   if [[ -n "${pre_install_backup}" && -f "${pre_install_backup}" ]]; then
@@ -367,7 +367,7 @@ remove_install_backups() {
     done
   done < <(harness_detected_rows)
 
-  local pre_install_dir="${HOME}/.roborepo/backups/pre-install"
+  local pre_install_dir="${HOME}/$(cli_state_dirname)/backups/pre-install"
   if [[ -d "${pre_install_dir}" ]]; then
     if [[ "${dry_run}" -eq 1 ]]; then
       echo "remove (pre-install backups): ${pre_install_dir}/"
@@ -513,7 +513,7 @@ remove_runtime_state() {
 }
 
 remove_durable_install_backups() {
-  remove_path "${HOME}/.roborepo-backups" "remove (install backups)"
+  remove_path "${HOME}/.cli-backups" "remove (install backups)"
 }
 
 cli_process_pids() {
@@ -603,7 +603,7 @@ check_no_active_remnants() {
     "${state_dir}/telemetry" \
     "${state_dir}/telemetry-backups" \
     "${state_dir}/backups" \
-    "${HOME}/.roborepo-backups" \
+    "${HOME}/.cli-backups" \
     "${state_dir}/initialization.json" \
     "${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}" \
     "${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"; do
@@ -751,13 +751,13 @@ is_builtin_skill_link() {
     esac
   fi
   case "${target}" in
-    */.roborepo/skills/*) return 0 ;;
+    */$(cli_state_dirname)/skills/*) return 0 ;;
   esac
   # Dangling link that points into globals/system/skills/, the legacy globals/agents/skills/, or
   # ~/.roborepo/skills/ of any roborepo checkout / install.
   if [[ ! -e "${link}" ]]; then
     case "${target}" in
-      */globals/system/skills/*|*/globals/agents/skills/*|*/.roborepo/skills/*) return 0 ;;
+      */globals/system/skills/*|*/globals/agents/skills/*|*/$(cli_state_dirname)/skills/*) return 0 ;;
     esac
   fi
   return 1

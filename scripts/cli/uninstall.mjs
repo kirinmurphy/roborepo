@@ -14,7 +14,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import { packageMode, repoRoot } from "./paths.mjs";
-import { stateRoot, workspaceRoot } from "./roots.mjs";
+import { STATE_ROOT as stateRoot, workspaceRoot } from "./roots.mjs";
 import { confirmYesNo, makePrompter } from "./skill-lib.mjs";
 
 const UNINSTALL_SCRIPT = path.join(repoRoot, "scripts", "install", "uninstall.sh");

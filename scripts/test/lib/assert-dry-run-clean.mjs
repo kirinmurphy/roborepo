@@ -109,7 +109,7 @@ export function dryRunRoots({ home, stateRoot, workspaceRoot }) {
     path.join(home, ".local", "bin"),
     stateRoot ?? path.join(home, ".roborepo"),
     workspaceRoot ?? path.join(home, ".roborepo", "workspace"),
-    path.join(home, ".roborepo-backups"),
+    path.join(home, ".cli-backups"),
     // Individual files, not directories. snapshot() hashes a file the same way, so a dry run that
     // appends a PATH export or a `source` line to a profile is caught as a content change.
     path.join(home, ".zshrc"),

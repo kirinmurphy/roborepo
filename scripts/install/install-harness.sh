@@ -21,7 +21,7 @@ fi
 shift
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
 dry_run=0
 on_conflict="${ROBOREPO_ON_CONFLICT:-}"
 export ROBOREPO_INSTALL_TIMESTAMP="${ROBOREPO_INSTALL_TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"

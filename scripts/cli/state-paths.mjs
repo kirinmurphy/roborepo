@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { stateRoot } from "./roots.mjs";
+import { STATE_ROOT } from "./roots.mjs";
 
-export const stateDir = stateRoot;
+export const stateDir = STATE_ROOT;
 
 // Shared JSON state read/write, since the CLI has several small state files (install state,
 // presets state, enabled packages, root-config state) that all need the same
@@ -50,7 +50,7 @@ export const usageLatestDir = path.join(usageDir, "latest");
 //
 // Machine-local, and classified Sensitive machine history / Exclude by
 // docs/plans/backlog/infra-portable-user-profile-backup.md: these logs hold real paths, hostnames,
-// and arguments, so they sit under stateRoot rather than the portable profile boundary. They are
+// and arguments, so they sit under STATE_ROOT rather than the portable profile boundary. They are
 // deliberately NOT under a harness's own directory (~/.claude/logs and the like) — that is a
 // container the user may disable or remove, and it cannot be sandboxed by ROBOREPO_STATE_ROOT.
 export const captureDir = path.join(stateDir, "capture");

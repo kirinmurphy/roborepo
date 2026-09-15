@@ -1,6 +1,6 @@
 // Machine/workspace/app root resolution — split out of paths.mjs so this stays a leaf module with
 // no harness-registry dependency. state-paths.mjs (and anything downstream of it, including
-// provider adapter code in scripts/harnesses/) needs stateRoot without pulling in paths.mjs's
+// provider adapter code in scripts/harnesses/) needs STATE_ROOT without pulling in paths.mjs's
 // harness-path section, which imports scripts/harnesses/registry.mjs and would otherwise create a
 // cycle back into a provider's own index.mjs. paths.mjs re-exports everything here unchanged, so
 // existing consumers see no difference.
@@ -8,7 +8,7 @@
 // appRoot is the immutable application root: release files, built-ins, manifests, scripts, and CLI.
 // workspaceRoot is the editable portable user workspace, defaulting under ~/.roborepo/workspace in
 // both development and package mode so one machine has one workspace regardless of which entry
-// point runs. stateRoot is machine-local state.
+// point runs. STATE_ROOT is machine-local state.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -38,7 +38,7 @@ function isDevelopmentCheckout(root) {
 }
 
 export const appRoot = envPath("ROBOREPO_APP_ROOT") || defaultAppRoot();
-export const stateRoot =
+export const STATE_ROOT =
   envPath("ROBOREPO_STATE_ROOT") ||
   envPath("ROBOREPO_STATE_DIR") ||
   path.join(os.homedir(), ".roborepo");
@@ -46,7 +46,7 @@ export const developmentMode = isDevelopmentCheckout(appRoot);
 export const packageMode = !developmentMode;
 function selectedWorkspaceRoot() {
   try {
-    const data = JSON.parse(fs.readFileSync(path.join(stateRoot, "workspace-root.json"), "utf8"));
+    const data = JSON.parse(fs.readFileSync(path.join(STATE_ROOT, "workspace-root.json"), "utf8"));
     return data.workspaceRoot ? path.resolve(data.workspaceRoot) : null;
   } catch {
     return null;
@@ -55,7 +55,7 @@ function selectedWorkspaceRoot() {
 export const workspaceRoot =
   envPath("ROBOREPO_WORKSPACE_ROOT") ||
   selectedWorkspaceRoot() ||
-  path.join(stateRoot, "workspace");
+  path.join(STATE_ROOT, "workspace");
 
 // Backward-compatible names for modules that still operate on release/built-in files.
 export const repoRoot = appRoot;

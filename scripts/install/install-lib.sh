@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Shared helpers for install scripts. Source this file, do not execute directly.
 
+# State-dir helpers (cli_state_dirname/cli_state_dir/cli_state_file). Guarded: main.sh sources
+# state-lib.sh itself; standalone entries (install-harness.sh) source only this file.
+if [[ "$(type -t cli_state_dirname 2>/dev/null || true)" != "function" ]]; then
+  # shellcheck source=scripts/install/state-lib.sh
+  source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/state-lib.sh"
+fi
+
 # --------------------------------------------------------------------------- output styling
 # Color only when stdout is a real terminal, so redirected/captured logs stay plain. Guarded with
 # ROBOREPO_NO_COLOR for an explicit opt-out. Set once; reused by main.sh and every sub-script.
@@ -338,7 +345,7 @@ save_pre_install_backup() {
   [[ -n "${harness}" ]] || return 0
   [[ -e "${home_path}" && ! -L "${home_path}" ]] || return 0
 
-  local pre_install_backup="${HOME}/.roborepo/backups/pre-install/${harness}/$(basename "${home_path}")"
+  local pre_install_backup="${HOME}/$(cli_state_dirname)/backups/pre-install/${harness}/$(basename "${home_path}")"
   if [[ -e "${pre_install_backup}" ]]; then
     return 0  # already have the user's original — never overwrite it
   fi
@@ -363,7 +370,7 @@ save_pre_install_backup() {
 
 # One-time, durable snapshot of the user's genuine pre-install config: the small set of paths
 # roborepo can modify (manifest root_config + link targets for present harnesses, shell profiles, the
-# global gitignore). Written ONCE to ~/.roborepo-backups/pre-install-original.tar.gz and never
+# global gitignore). Written ONCE to ~/.cli-backups/pre-install-original.tar.gz and never
 # overwritten or deleted by uninstall, so there is always a "this is what my machine looked like
 # before roborepo" image to inspect or hand-restore from (`tar xzf <archive> -C ~`). This is an
 # escape hatch, NOT the uninstall restore path — uninstall still restores per-file surgically.
@@ -371,7 +378,7 @@ save_pre_install_backup() {
 # content byte-identical to the repo, so the archive can never be poisoned with roborepo's own
 # content. Best-effort: silently no-ops without tar. Needs ${repo_root}, ${dry_run}, manifest_rows.
 snapshot_pre_install_original() {
-  local archive="${HOME}/.roborepo-backups/pre-install-original.tar.gz"
+  local archive="${HOME}/.cli-backups/pre-install-original.tar.gz"
   [[ -e "${archive}" ]] && return 0           # once only — never overwrite the pristine image
   command -v tar >/dev/null 2>&1 || return 0
 
@@ -873,7 +880,7 @@ link_skill_item() {
     local current
     current="$(readlink "${cache_path}")"
     case "${current}" in
-      "${repo_root}"/*|${HOME}/.roborepo/skills/*)
+      "${repo_root}"/*|${HOME}/$(cli_state_dirname)/skills/*)
         if [[ "${dry_run}" -eq 0 ]]; then
           rm -f "${cache_path}"
           copy_tree "${src}" "${cache_path}"
@@ -933,7 +940,7 @@ link_skill_view() {
         say ok "${home_path}"
         return 0
         ;;
-      "${HOME}/.roborepo/skills"/*|"${repo_root}"/*)
+      "${HOME}/$(cli_state_dirname)/skills"/*|"${repo_root}"/*)
         if [[ "${dry_run}" -eq 0 ]]; then
           rm -f "${home_path}"
           ln -s "${cache_path}" "${home_path}"
@@ -987,7 +994,7 @@ remove_legacy_agents_skills() {
     *) return 0 ;;
   esac
 
-  local backup_root="${backup_root:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+  local backup_root="${backup_root:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
   local dry_run="${dry_run:-0}"
   local backup_path
   backup_path="$(unique_backup_path "${legacy}")"
@@ -1012,7 +1019,7 @@ link_global_skills() {
     shift || true
   fi
   local skills_home="${home_dir}/skills"
-  local cache_home="${HOME}/.roborepo/skills"
+  local cache_home="${HOME}/$(cli_state_dirname)/skills"
   local allowed_names=("$@")
 
   # Migrate off the legacy ~/.agents/skills location before linking. Idempotent and global, so the

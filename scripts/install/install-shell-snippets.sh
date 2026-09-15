@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=scripts/install/install-lib.sh
 source "${repo_root}/scripts/install/install-lib.sh"  # RR_* colors + say()
 zshrc="${HOME}/.zshrc"
-backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
 dry_run=0
 
 case "${1:-}" in

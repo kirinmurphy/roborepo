@@ -298,7 +298,7 @@ roborepo maintenance stores reset <id> --all # clear it outright
 sequenceDiagram
   participant Home as ~/.codex and ~/.claude
   participant Repo as roborepo
-  participant Backup as ~/.roborepo-backups
+  participant Backup as ~/.cli-backups
 
   Repo->>Home: ./scripts/install/main.sh installs repo-owned config
   Home-->>Home: user-owned config collisions are preserved for adopt/agent merge

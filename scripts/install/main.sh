@@ -9,7 +9,7 @@ on_conflict="${ROBOREPO_ON_CONFLICT:-}"
 on_conflict_explicit=0
 on_conflict_persisted=0
 [[ -n "${on_conflict}" ]] && on_conflict_explicit=1
-backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
 export ROBOREPO_BACKUP_ROOT="${backup_root}"
 export ROBOREPO_INSTALL_TIMESTAMP="${ROBOREPO_INSTALL_TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
 

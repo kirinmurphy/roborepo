@@ -1,6 +1,6 @@
 // Shared paths for roborepo command modules.
 //
-// appRoot/stateRoot/workspaceRoot and workspace scaffolding live in roots.mjs, a leaf module with
+// appRoot/STATE_ROOT/workspaceRoot and workspace scaffolding live in roots.mjs, a leaf module with
 // no harness-registry dependency (state-paths.mjs, owned-scalars-state.mjs, and provider adapter
 // code all need those roots without pulling in this file's harness-path section below, which
 // imports scripts/harnesses/registry.mjs and would otherwise cycle back into a provider's own
@@ -8,7 +8,7 @@
 import path from "node:path";
 import {
   appRoot,
-  stateRoot,
+  STATE_ROOT,
   developmentMode,
   packageMode,
   workspaceRoot,
@@ -26,7 +26,11 @@ import {
 
 export {
   appRoot,
-  stateRoot,
+  STATE_ROOT,
+  // Compatibility alias: several modules take stateRoot as an options-object key or param name
+  // (camelCase locals); they keep importing the constant under the old binding. New code imports
+  // STATE_ROOT directly.
+  STATE_ROOT as stateRoot,
   developmentMode,
   packageMode,
   workspaceRoot,

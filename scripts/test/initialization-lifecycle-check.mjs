@@ -34,7 +34,7 @@ const {
 } = await import("../cli/initialization-state.mjs");
 const { initializationStatePath } = await import("../cli/state-paths.mjs");
 const { harnessStatePath } = await import("../cli/state-paths.mjs");
-const { workspaceRoot, stateRoot } = await import("../cli/roots.mjs");
+const { workspaceRoot, STATE_ROOT: stateRoot } = await import("../cli/roots.mjs");
 const { ensureInitialized, finalizeInitialization, describeNewerSchemaRefusal } = await import("../cli/initialization-bootstrap.mjs");
 const { browserRedirectMessage, extractPortalUrl, resolveFirstRunConfigurationMode } = await import("../cli/initialize.mjs");
 

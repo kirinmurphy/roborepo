@@ -37,7 +37,7 @@
 
 import fs from "node:fs";
 import { refreshHarnessState } from "../harnesses/refresh.mjs";
-import { initializeWorkspace, stateRoot } from "./roots.mjs";
+import { initializeWorkspace, STATE_ROOT } from "./roots.mjs";
 import {
   beginInitialization,
   completeInitialization,
@@ -110,7 +110,7 @@ export function ensureInitialized({ force = false, dryRun = false } = {}) {
   // record still reports when the user first tried, not when they last retried.
   beginInitialization();
   initializeWorkspace();
-  fs.mkdirSync(stateRoot, { recursive: true });
+  fs.mkdirSync(STATE_ROOT, { recursive: true });
   const { detected } = refreshHarnessState();
 
   // Deliberately NOT completeInitialization() here: the record must stay `in-progress` until the

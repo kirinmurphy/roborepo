@@ -50,7 +50,7 @@ retired; this plan is the durable record).
 | 6 | Review view | Marker rows carry honest verdict states (recorded → collecting → comparison available → can't compare fairly); association language only. |
 | 7 | Ledger over chart | The marks-only timeline strip is superseded by a chronological event ledger (scales by scrolling); no even-dated chart (empty space), no swim lanes (don't scale). |
 | 8 | Marker management | "Your changes" section is the canonical surface for markers: edit, delete, watching-kinds. |
-| 9 | Conditions report | Category roll-up cards (Models / Repos / Harnesses / Marked changes), full-width with Better\|Worse internal columns; report-not-inventory: only mean deviations on the card, every item in a per-category popup. Percent vs category mean, never multipliers. |
+| 9 | Conditions report | Category roll-up cards (Models / Repos / Harnesses / Marked changes), full-width with Fewer\\|More-than-mean internal columns (revised from Better\\|Worse — direction of deviation, not quality); report-not-inventory: only mean deviations on the card, every item in a per-category popup. Percent vs category mean only above a minimum event-count floor; below the floor, raw rate + denominator. Never multipliers. |
 | 10 | Copy diet | One-line section subtitles; dense explanations live in ⓘ tooltips (structured fact lists), never dense inline copy. |
 | 11 | Condition scope tiers | AMBIENT (rules, hooks, permissions, MCP registration, harness config — affects every session) vs INTERACTION-SCOPED (skill revisions, MCP calls, commands — affects one invocation). |
 
@@ -85,8 +85,11 @@ Verified against current capture code, these limits shape what the UI may claim:
   changes are invisible until the next session start.
 - **Snapshot identity hashes ID lists, not file content** (`snapshot-schema.mjs`
   `computeSnapshotId`): a same-ID skill file edit produces the same snapshot_id — content
-  revisions are undetectable today (deferred: skill/rule revision fingerprinting is a separate
-  follow-up plan).
+  revisions are undetectable *via snapshot IDs* today (deferred: skill/rule revision
+  fingerprinting is a separate follow-up plan). Note: the ambient context hash DOES include
+  rules content, so a same-ID rules edit will surface as an "ambient changed" ledger row —
+  coarse-grained (change detected, not which edit), and skill-file revisions remain invisible
+  until the fingerprinting follow-up lands.
 - **Exposure ≠ invocation.** Snapshots record what was configured; captures record tool
   calls, not which skill ran. Condition labels must distinguish configured / observed-available
   / observed-used.
@@ -95,7 +98,12 @@ Verified against current capture code, these limits shape what the UI may claim:
   and repo scope before they can anchor comparisons.
 - **Correlation, never causation.** Every conditions claim is "associated with" / "more often
   with," with denominators. Confidence labels stay heuristic; insufficient-sample cells render
-  as explicit nulls, never 0%.
+  as explicit nulls, never 0%. UI wording follows: "fewer spikes than the category mean,"
+  never "better outcomes"; verdict bands describe direction of deviation, not improvement.
+- **Per-call model attribution is approximate for mixed sessions.** Model is a session-level
+  state ("latest observed") for most harnesses; per-call model breakdown is exact only where
+  the harness records turn-level model (Codex). In a mixed-model session, per-call metrics
+  attribute all calls to the last-seen model — the relative-metrics section must say so.
 
 ## Goals
 
@@ -158,9 +166,15 @@ layout, and copy.
 - **Category roll-up:** per condition category (model / repo / harness), per item: event rate
   with vs without, vs the category mean, with denominators and a ≈-mean band (±20% starting
   point; bands are data-driven, never manufactured danger limits).
+- **Cross-category confounding:** categories overlap — the same event backs multiple cards
+  (e.g. opus spikes and payments-api spikes may be the same events). Roll-ups are computed
+  per category independently with no cross-attribution claim; each conditions card and
+  popup carries a standing caveat ("categories overlap — one event can appear on several
+  cards; differences are associated, not attributed").
 - **Relative model metrics:** tokens-per-call and input:output mix per model, normalized by
   call frequency; minimum sample before a model renders (aligned with the existing
-  minimum-sample discipline in the metrics registry).
+  minimum-sample discipline in the metrics registry); mixed-model sessions attributed to
+  last-seen model with an explicit caveat in the section tooltip.
 - **Marker verdicts:** reuse `compareAcrossMarker` for watched event kinds across an
   effective timestamp, surfacing its existing confidence/data-quality labels verbatim.
 
@@ -168,18 +182,27 @@ layout, and copy.
 
 - **Investigate additions:** each finding row gains a dim conditions line (model · repo ·
   harness) clickable into the session popup; popup gains a Conditions fact row.
-- **"Do problems follow a condition?"** — per-category full-width cards with Better | Worse
-  internal columns (stack on small screens); percent vs category mean; only deviations on the
-  card; per-category popup lists every item incl. ≈-mean, with denominators and "not enough
-  data" cells. Association wording only.
+- **"Do problems follow a condition?"** — per-category full-width cards with "Fewer |
+  More than mean" internal columns (stack on small screens; direction-of-deviation labels,
+  not "better/worse"); percent vs category mean only above a minimum event-count floor —
+  below the floor, cells render raw rate + denominator (e.g. "2 spikes / 38 sessions vs
+  mean 1 / 31") instead of an unstable percentage; only deviations on the card;
+  per-category popup lists every item incl. ≈-mean, with denominators, the overlap caveat,
+  and "not enough data" cells. Association wording only (see Honesty constraints).
 - **"Which model costs the most per call?"** (inside Investigate) — relative metrics,
   share-first formatting per the existing share-units convention.
 - **Event ledger** — chronological, newest first: problem rows (colored severity icons:
   red spike, yellow loop, default read) and change rows (manual marks = pencil icon;
   auto-tracked ambient changes = dashed icon), purple-tinted change rows spanning all three
   columns, 10px row separation, scroll container max-height 85vh / min-height 500px.
+  **Ledger change-row scope:** Phase 1 ships problem rows only; Phase 2 adds manual marks
+  and auto-tracked ambient-change rows (ambient rows carry no verdict badge). The mock's
+  "Skill revision — v1.1 → v1.2" auto-tracked rows are OUT OF SCOPE until the revision
+  fingerprinting follow-up plan lands (snapshots hash ID lists, not content); the mock is
+  amended accordingly so the visual contract matches what ships.
 - **"Your changes"** — marker cards with cause→effect flow ("watching spikes & loops → in
-  payments-api"), verdict band (green better / red worse / blue collecting), Edit/Delete.
+  payments-api"), verdict band (green fewer / red more / blue still collecting — direction of
+  deviation wording, not "improved"), Edit/Delete.
 - **Mark-change dialog** — title, effective time (now | earlier), optional repo scope,
   optional free-text intent; watching-kinds selection; auto-attaches the finding when launched
   from one. Replaces the hidden v1 banner/button.
@@ -201,9 +224,12 @@ plans; this plan includes only their capture groundwork.
 - [ ] Analysis: relative model metrics (tokens-per-call, input:output mix, minimum sample)
 - [ ] Analysis: extend deterministic session findings with condition context
 - [ ] Portal: Investigate condition lines + session-popup Conditions row
-- [ ] Portal: conditions report cards + per-category popup (per the mock)
-- [ ] Portal: relative-metrics Investigate section (per the mock)
+- [ ] Portal: conditions report cards + per-category popup (per the mock, with overlap caveat
+      tooltip and event-count floor rendering)
+- [ ] Portal: relative-metrics Investigate section (per the mock, with mixed-session caveat)
 - [ ] Portal: ledger section (problem rows first; change rows arrive with markers in phase 2)
+- [ ] Mock: amend `tokens-connectivity-vision.html` ledger to drop skill-revision rows (out of
+      scope — see ledger change-row scope) and rename Better/Worse columns to Fewer/More
 - [ ] Tests: analysis fixtures for roll-up math (denominators, ≈ band, empty-category nulls),
       relative metrics, mixed-schema reads; portal checks for section presence and copy rules
 
@@ -227,12 +253,14 @@ plans; this plan includes only their capture groundwork.
 
 - `npm run test:unit` (all existing check suites stay green; new suites auto-discovered via the
   `scripts/test/*-check.mjs` glob)
-- New analysis checks: category roll-up (mean math, bands, denominators, null states), relative
-  metrics (frequency normalization), per-event condition joins, mixed-schema spool reads
+- New analysis checks: category roll-up (mean math, bands, denominators, null states,
+  event-count floor fallback to raw rates), relative metrics (frequency normalization,
+  mixed-session attribution caveat), per-event condition joins, mixed-schema spool reads
 - New marker checks: effective-time and scope stamping, verdict-state machine, watching-kind
   filtering (extends `telemetry-marker-cli-check.mjs` patterns)
 - Portal checks: section presence/order, one-line subtitle rule (no dense copy regression),
-  ledger row rendering, conditions-popup content
+  association-wording rule (no "better/worse outcomes" copy), ledger row rendering,
+  conditions-popup content incl. overlap caveat
 - Playwright suite (`scripts/test/portal-ui/`): conditions cards, ledger, popups, both themes;
   hermetic boot with seeded mock spool exercising every display state (per the mock-data rule:
   same pipeline as real data, only the source file differs)
@@ -242,8 +270,13 @@ plans; this plan includes only their capture groundwork.
 ## Risks
 
 - **Small-sample means mislead.** With few sessions per item, a category mean swings on one
-  outlier. Mitigation: minimum-sample gates per cell; ≈-band labels; "not enough data" as a
-  first-class state (the mock models this).
+  outlier. Mitigation: minimum-sample gates per cell; ≈-band labels; percent deviation only
+  above a minimum event-count floor (below it, raw rate + denominator); "not enough data" as
+  a first-class state (the mock models this).
+- **Cross-category confounding (Simpson's paradox).** Model/repo/harness usage is correlated;
+  the same events back multiple category cards, and per-category roll-ups can overstate an
+  item. Mitigation: standing overlap caveat on every card/popup; no cross-attribution claims;
+  Investigate rows carry the per-event ground truth.
 - **Ambient-hash false positives** (hash changes without a meaningful behavior change) could
   flood the ledger. Mitigation: hash only the ambient surface that actually renders into
   harness context; dedupe consecutive changes; cap visible auto-tracked rows with a "N more"
@@ -257,9 +290,12 @@ plans; this plan includes only their capture groundwork.
 
 ## Open questions
 
-- **≈-mean band width:** ±20% is the working default from the mock; confirm against real data
+- **≈-mean band width AND deviation units:** ±20% is the working default from the mock; the
+  deeper open question is whether percent deviation is meaningful for rare event kinds at all
+  (2 spikes vs 1 is "100% more"). Phase 1 ships the event-count floor (percent only above the
+  floor, raw rates below); band width and the floor value are confirmed against real data
   before phase 1 ships (too narrow floods the report, too wide hides real deviations).
 - **Ledger retention:** should the ledger window match the report window (range filter) or
   always show all history? Mock shows all; a range filter may be phase 2 polish.
-- **Marker watching-kinds vocabulary:** start with the four existing event kinds (spike, loop,
-  read warning, over-testing) or leave it free-form? Leaning fixed vocabulary for correlation.
+- **Marker watching-kinds vocabulary:** resolved — fixed vocabulary of the four existing event
+  kinds (spike, loop, read warning, over-testing) for correlation; extending it is a follow-up.

@@ -110,7 +110,8 @@ function Link-Item {
       throw "install has non-root config conflicts; no replacement was made for $HomePath"
     }
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-    $backupRoot = Join-Path $env:USERPROFILE ".roborepo-backups\$timestamp"
+    $stateDirName = ".roborepo"  # keep in sync with scripts/install/state-lib.sh cli_state_dirname
+    $backupRoot = Join-Path $env:USERPROFILE ".cli-backups\$timestamp"
     $backupPath = Join-Path $backupRoot $HomePath.TrimStart('\').TrimStart('/')
     if (-not $DryRun) {
       New-Item -ItemType Directory -Path (Split-Path -Parent $backupPath) -Force | Out-Null
@@ -495,7 +496,7 @@ function Copy-GlobalSkills {
   param($HomeDir, [string[]]$AllowedNames = @())
   $srcDir = Join-Path $repoRoot "globals\system\skills"
   $skillsHome = Join-Path $HomeDir "skills"
-  $cacheHome = Join-Path $env:USERPROFILE ".roborepo\skills"
+  $cacheHome = Join-Path $env:USERPROFILE "$stateDirName\skills"
 
   if (-not (Test-Path $srcDir)) { return }
 
@@ -516,7 +517,7 @@ function Copy-GlobalSkills {
       $existingCache = Get-Item $cacheTarget -Force
       if (($existingCache.LinkType -eq "SymbolicLink") -or ((Test-Path $cacheTarget -PathType Container) -and (-not (Test-Path $marker)))) {
         if ($existingCache.LinkType -eq "SymbolicLink") {
-          if ($existingCache.Target -like "$repoRoot*" -or $existingCache.Target -like "$env:USERPROFILE\.roborepo\skills*") {
+          if ($existingCache.Target -like "$repoRoot*" -or $existingCache.Target -like "$env:USERPROFILE\$stateDirName\skills*") {
             if (-not $DryRun) {
               Remove-Item $cacheTarget -Force -Recurse
             }
@@ -550,7 +551,7 @@ function Copy-GlobalSkills {
       $existing = Get-Item $target -Force
       if ($existing.LinkType -eq "SymbolicLink" -and $existing.Target -eq $cacheTarget) {
         $linkOk = $true
-      } elseif ($existing.LinkType -eq "SymbolicLink" -and ($existing.Target -like "$repoRoot*" -or $existing.Target -like "$env:USERPROFILE\.roborepo\skills*")) {
+      } elseif ($existing.LinkType -eq "SymbolicLink" -and ($existing.Target -like "$repoRoot*" -or $existing.Target -like "$env:USERPROFILE\$stateDirName\skills*")) {
         if (-not $DryRun) {
           Remove-Item $target -Force
           New-Item -ItemType SymbolicLink -Path $target -Target $cacheTarget -Force | Out-Null

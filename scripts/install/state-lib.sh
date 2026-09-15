@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Shared install-state helpers. Source this file, do not execute directly.
 
+cli_state_dirname() {
+  # The single shell definition of the state-dir fragment under $HOME. JS twin: STATE_ROOT in
+  # scripts/cli/roots.mjs. Keep both in sync (rename tool maps the literal at migration time).
+  echo ".roborepo"
+}
+
 cli_state_dir() {
-  echo "${ROBOREPO_STATE_ROOT:-${ROBOREPO_STATE_DIR:-${HOME}/.roborepo}}"
+  echo "${ROBOREPO_STATE_ROOT:-${ROBOREPO_STATE_DIR:-${HOME}/$(cli_state_dirname)}}"
 }
 
 cli_state_file() {

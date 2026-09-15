@@ -1,4 +1,4 @@
-import { appRoot, stateRoot } from "./paths.mjs";
+import { appRoot, STATE_ROOT as stateRoot } from "./paths.mjs";
 import { collectGitContext } from "../../modules/localhoster/git.mjs";
 import {
   appendHistoryEvents,

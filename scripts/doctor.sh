@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+readonly STATE_DIRNAME="${STATE_DIRNAME:-.roborepo}"  # single shell def lives in scripts/install/state-lib.sh (cli_state_dirname); JS twin: STATE_ROOT in scripts/cli/roots.mjs
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -140,7 +141,7 @@ check_managed_skill() {
   local repo_rel="$1"
   local home_path="$2"
   local expected="${repo_root}/${repo_rel}"
-  local cache_path="${HOME}/.roborepo/skills/$(basename "${home_path}")"
+  local cache_path="${HOME}/${STATE_DIRNAME}/skills/$(basename "${home_path}")"
 
   if [[ ! -L "${home_path}" ]]; then
     fail "${home_path} is not a roborepo-managed skill symlink"
