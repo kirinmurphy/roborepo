@@ -104,7 +104,7 @@ Repo files are source input. The global harness path receives concrete files or 
 ~/.claude/commands              # managed_copy
 ~/.claude/hooks                 # managed_copy
 ~/.claude/skills/<name>         # symlink to ~/.roborepo/skills/<name>
-~/.roborepo/skills/<name>       # managed skill cache with .roborepo-managed marker
+~/.roborepo/skills/<name>       # managed skill cache with .builtin-managed marker
 ```
 
 Implication: updates become active only after `roborepo update`, package enable/disable, or another explicit render/copy action.
@@ -207,7 +207,7 @@ backup, and uninstall behavior.
 
 Package-owned shared skills are sourced from `globals/packages/<package>/skills/<name>/` (each a
 folder with a `SKILL.md`). The required base support skill remains a system skill at
-`globals/system/skills/roborepo-support/`. Roborepo materializes those skills into a
+`globals/system/skills/builtin-support/`. Roborepo materializes those skills into a
 machine-local cache at `~/.roborepo/skills/<name>` and then symlinks each installed harness view to
 that cache entry:
 
@@ -217,7 +217,7 @@ that cache entry:
 - **Claude** reads `~/.claude/skills`. The installer links enabled shared skills to the same
   cache entry, and `~/.claude/skills/<name>` points at it too.
 
-The cache entries carry the `.roborepo-managed` marker. Skills are materialized by enumerating the
+The cache entries carry the `.builtin-managed` marker. Skills are materialized by enumerating the
 package catalog plus the required system support skill, not by legacy skill manifest rows.
 `scripts/doctor.sh --installed` checks the live cache entry and harness symlinks; `scripts/doctor.sh`
 checks that source dirs exist in the repo.
@@ -227,7 +227,7 @@ checks that source dirs exist in the repo.
 There are two distinct, firewalled skill layers:
 
 - **Shared** — package-owned `globals/packages/<package>/skills/<name>/` plus the required system
-  `globals/system/skills/roborepo-support/`. Materialized into `~/.roborepo/skills/<name>` and
+  `globals/system/skills/builtin-support/`. Materialized into `~/.roborepo/skills/<name>` and
   symlinked from each installed harness's native skills dir at install/update time; global on both
   harnesses and exportable to other repos when package-owned. Advisory coding skills any repo may
   receive.
@@ -298,7 +298,7 @@ roborepo maintenance stores reset <id> --all # clear it outright
 sequenceDiagram
   participant Home as ~/.codex and ~/.claude
   participant Repo as roborepo
-  participant Backup as ~/.roborepo-backups
+  participant Backup as ~/.cli-backups
 
   Repo->>Home: ./scripts/install/main.sh installs repo-owned config
   Home-->>Home: user-owned config collisions are preserved for adopt/agent merge

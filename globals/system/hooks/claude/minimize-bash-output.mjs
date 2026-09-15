@@ -40,7 +40,7 @@ const SAFE_PREFIXES = [
   /^git mv\b/,
   /^ls\b/,
   /^bash scripts\/(doctor|verify-install)\.sh\b/,
-  /^bash scripts\/(test\/test-roborepo|test\/test-install-collisions|build\/link-skills|build\/render-rules)\.sh\b/,
+  /^bash scripts\/(test\/test-cli|test\/test-install-collisions|build\/link-skills|build\/render-rules)\.sh\b/,
   /^bash scripts\/install\//,
   /^node scripts\/cli\/main\.mjs\b/,
 ]

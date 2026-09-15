@@ -7,7 +7,7 @@
 //     typed opt-in; a button in a browser is the wrong affordance for irreversibly removing a
 //     user's authored content, so this surface is preserve-only by construction.
 //  2. Executing cleanup can stop the very process serving the response (the portal's own PID state
-//     is roborepo-managed machine state). The handler therefore finishes writing its response
+//     is builtin-managed machine state). The handler therefore finishes writing its response
 //     before any shutdown can run — see the deferred exit in executeUninstall below.
 
 import { send, readJsonBody } from "./portal-routes-http.mjs";

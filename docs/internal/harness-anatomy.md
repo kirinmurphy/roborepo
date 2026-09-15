@@ -24,12 +24,12 @@ section links the matching step in [the teaching doc](harnesses-explained.md).
 | Element | What it is | Source | Maintain with |
 | --- | --- | --- | --- |
 | Global rules | The always-on instruction file each harness reads at startup. | Claude: `generated/claude/CLAUDE.md` (generated)<br>Codex: `generated/codex/AGENTS.md` (generated) | `roborepo rules [--check]` |
-| Skills | On-demand capability/instruction bundles the agent loads when relevant. | Package-owned `globals/packages/<package>/skills/<name>/SKILL.md`, plus system `globals/system/skills/roborepo-support/SKILL.md` — materialized into `~/.roborepo/skills/<name>` and linked from harness skill dirs | `roborepo skill new`, `roborepo skill adopt <name>`, `roborepo skill inspect <name>`, `roborepo skill sync-global` |
+| Skills | On-demand capability/instruction bundles the agent loads when relevant. | Package-owned `globals/packages/<package>/skills/<name>/SKILL.md`, plus system `globals/system/skills/builtin-support/SKILL.md` — materialized into `~/.roborepo/skills/<name>` and linked from harness skill dirs | `roborepo skill new`, `roborepo skill adopt <name>`, `roborepo skill inspect <name>`, `roborepo skill sync-global` |
 | Slash commands | Named workflows the user starts explicitly (`/case-study`, etc.). | Package-scoped, generated: `generated/packages/<package>/claude/commands/` and `generated/packages/<package>/codex/commands/`, composed live only for enabled packages | `roborepo skill render-commands [--check]` |
 | Install bundles | Named groups of install-time file operations applied at install/update. Internal to the install pipeline — not a user-facing verb. | `manifests/platform/presets.json` | `roborepo update` (applies them); `roborepo bundle …` is an internal verb called by `scripts/install/main.sh` |
 | Hooks | Scripts the harness runs on lifecycle/tool events. | System hooks: `globals/system/hooks/claude/*.mjs` + `settings.json` wiring, `globals/system/hooks/codex/*.mjs` + `hooks.json`. Package-owned hooks (e.g. Caveman/JDocMunch Codex `SessionStart`, telemetry capture, JCodeMunch's Bash blocker) live under `globals/packages/<package>/hooks*` and are composed in only when that package is enabled | edit source, then `roborepo update` |
 | MCP servers | External tool servers (jcodemunch, jdocmunch, …) registered with every enabled harness. | Claude: native live store<br>Codex: active `~/.codex/config.toml`, fully owned by each package's `mcp`/`codex_tool_approvals` components<br>Gemini: `mcpServers` key in `~/.gemini/settings.json`, direct JSON read/write | `roborepo mcp add <name-or-url>` |
-| Permissions | Allowed, denied, and ask-before-run behavior for commands, tools, and network defaults. | Claude: `settings.json` `permissions.*`<br>Codex: `config.toml` + `rules/default.rules` + runtime ask hook<br>Gemini: `~/.gemini/policies/roborepo-permissions.toml`, one fully-owned file in the Policy Engine's rule directory | `roborepo permissions [--check]` |
+| Permissions | Allowed, denied, and ask-before-run behavior for commands, tools, and network defaults. | Claude: `settings.json` `permissions.*`<br>Codex: `config.toml` + `rules/default.rules` + runtime ask hook<br>Gemini: `~/.gemini/policies/generated-permissions.toml`, one fully-owned file in the Policy Engine's rule directory | `roborepo permissions [--check]` |
 | Telemetry | Local capture + analysis of sessions, tools, MCP, and token usage; spike detection + cause attribution + dashboard; backup/reset. | Package-owned hooks (`globals/packages/telemetry/hooks-{claude,codex}.json`) feed `~/.roborepo/telemetry`. Gemini sessions can appear in capture/analysis (harness id is a free-form CLI flag), but the package declares no Gemini hook wiring yet, so capture isn't wired in for it | `roborepo telemetry enable\|disable\|status\|report\|serve\|backup\|purge` |
 | Root config | Mutable, machine-local settings (model, trust, hook approvals). | Claude: `generated/claude/settings.json` (baseline)<br>Codex: `generated/codex/config.toml` (baseline)<br>Gemini: `~/.gemini/settings.json`, merged with the same recursive-object-merge rule as Claude's | `roborepo update` (export/merge) |
 
@@ -62,11 +62,11 @@ override-layering rules: [Rules Parity and Layering](rules-parity-and-layering.m
 ## Skills
 
 **What they do:** on-demand bundles the agent loads when a task matches (`code-style`, `react`,
-`roborepo-support`, …). Shared skills are also exportable to other repos.
+`builtin-support`, …). Shared skills are also exportable to other repos.
 
 **Parity model:** package-owned skills are sourced from
 `globals/packages/<package>/skills/<name>/SKILL.md`; the required base support skill is sourced from
-`globals/system/skills/roborepo-support/SKILL.md`. The installer materializes each enabled shared
+`globals/system/skills/builtin-support/SKILL.md`. The installer materializes each enabled shared
 skill into `~/.roborepo/skills/<name>` and links each harness's native dir to that machine-local
 cache entry. Roborepo owns only the skill names it manages;
 native-installed skills (via native harness tools or `skill-installer`) at unrecognized names are
@@ -172,7 +172,7 @@ such as sandboxing, approval policy, and Codex network access.
 **Parity model:** authored once in `manifests/inventory/agent-permissions.json`, rendered into each harness's
 native shape — Claude's `permissions.allow`/`permissions.deny`/`permissions.ask` in
 `settings.json`, Codex's `config.toml` session defaults + `rules/default.rules` command policy, and
-Gemini's `~/.gemini/policies/roborepo-permissions.toml` — one fully-owned file inside the Policy
+Gemini's `~/.gemini/policies/generated-permissions.toml` — one fully-owned file inside the Policy
 Engine's rule directory, rather than a marked block inside a shared file. Codex's static rules cannot
 express per-command `ask`, so `globals/system/hooks/codex/permission-check.mjs` supplies that runtime
 decision from the same manifest; Gemini needs no such workaround — its Policy Engine has a native

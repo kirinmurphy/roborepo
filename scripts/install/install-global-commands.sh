@@ -7,7 +7,7 @@ source "${repo_root}/scripts/install/install-lib.sh"  # RR_* colors + say() (thi
 # choose_profile() is defined below and intentionally overrides install-lib's simpler one)
 bin_dir="${HOME}/.local/bin"
 path_line='export PATH="${HOME}/.local/bin:${PATH}"'
-backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
 dry_run=0
 recorded_repo="${ROBOREPO_RECORDED_REPO:-}"
 

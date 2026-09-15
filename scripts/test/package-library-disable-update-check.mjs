@@ -42,7 +42,7 @@ const env = {
   ...process.env,
   HOME: home,
   ROBOREPO_STATE_DIR: path.join(home, ".roborepo"),
-  ROBOREPO_SKIP_MCP: "1",
+  SKIP_MCP: "1",
 };
 
 try {

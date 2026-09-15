@@ -319,7 +319,7 @@ function installMcpPreset(presetId) {
   // external CLI dependency of their own. configFileMcpProviders() (scripts/cli/mcp.mjs) iterates
   // the registry rather than naming Codex/Gemini individually, so a future config-file-backed
   // provider is wired here with no change to this function.
-  if (process.env.ROBOREPO_SKIP_MCP === "1") { console.log(`skip: mcp ${presetId} (ROBOREPO_SKIP_MCP)`); return; }
+  if (process.env.SKIP_MCP === "1") { console.log(`skip: mcp ${presetId} (SKIP_MCP)`); return; }
   const spec = getMcpPresets().get(presetId.toLowerCase());
   if (!spec) throw new Error(`mcp add failed for preset: ${presetId} (unknown preset)`);
 

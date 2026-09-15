@@ -11,7 +11,7 @@ import {
   resolveBehaviors,
   resolveArbitraryCommands,
 } from "./permissions-render.mjs";
-import { commandOverridesPath, roborepoSkillsDir } from "./state-paths.mjs";
+import { commandOverridesPath, stateSkillsDir } from "./state-paths.mjs";
 import { listHarnessProviders } from "../harnesses/registry.mjs";
 import { resolveHarnessPath } from "../harnesses/paths.mjs";
 
@@ -23,26 +23,26 @@ import { resolveHarnessPath } from "../harnesses/paths.mjs";
 const SHARED_SKILLS_DIR = path.join(repoRoot, "globals", "system", "skills");
 // Machine-local skill cache. Harness skill dirs point at these copies; the cache is the thing that
 // survives across harness presence/absence and gives us one shared install source per machine.
-const ROBOREPO_SKILLS_DIR = roborepoSkillsDir;
+const SKILLS_DIR = stateSkillsDir;
 // Every registered provider's live skills dir (~/.claude/skills, ~/.codex/skills, ...), resolved
 // through the provider manifest's "skills" path — a live filesystem location this machine actually
 // reads/writes, so the expanded absolute path (not the raw "~/..." string) is correct here, unlike
 // skill-command-config.mjs's skillFilePath which renders that same path as portable text into a
 // repo-committed generated file. Only present roots are touched below.
 const HARNESS_SKILL_DIRS = listHarnessProviders().map((provider) => resolveHarnessPath(provider.manifest, "skills"));
-// Ownership marker written inside each roborepo-managed skill copy. Copies (not symlinks) carry no
+// Ownership marker written inside each builtin-managed skill copy. Copies (not symlinks) carry no
 // intrinsic "this is ours" signal, so the marker is how prune / native-skill detection tell a
 // roborepo copy apart from a user's native skill of the same name.
-const MANAGED_MARKER = ".roborepo-managed";
+const MANAGED_MARKER = ".builtin-managed";
 
-// A target is a roborepo-managed skill if it carries our marker inside the machine-local cache or
+// A target is a builtin-managed skill if it carries our marker inside the machine-local cache or
 // is a legacy symlink into the shared source (a pre-cache install we should migrate or remove).
 function isManagedSkill(target) {
   try {
     const stat = fs.lstatSync(target);
     if (stat.isSymbolicLink()) {
       const linkTarget = fs.readlinkSync(target);
-      return linkTarget.startsWith(ROBOREPO_SKILLS_DIR) || linkTarget.startsWith(SHARED_SKILLS_DIR);
+      return linkTarget.startsWith(SKILLS_DIR) || linkTarget.startsWith(SHARED_SKILLS_DIR);
     }
     return fs.existsSync(path.join(target, MANAGED_MARKER));
   } catch {
@@ -51,7 +51,7 @@ function isManagedSkill(target) {
 }
 
 function skillCachePath(id) {
-  return path.join(ROBOREPO_SKILLS_DIR, id);
+  return path.join(SKILLS_DIR, id);
 }
 
 function dirMatches(src, dest) {
@@ -122,7 +122,7 @@ function linkSkillView(cacheAbs, target, { dryRun = false } = {}) {
     if (stat.isSymbolicLink()) {
       const current = fs.readlinkSync(target);
       if (current === cacheAbs) return { state: "ok" };
-      if (current.startsWith(ROBOREPO_SKILLS_DIR) || current.startsWith(SHARED_SKILLS_DIR)) {
+      if (current.startsWith(SKILLS_DIR) || current.startsWith(SHARED_SKILLS_DIR)) {
         if (!dryRun) {
           fs.unlinkSync(target);
           fs.symlinkSync(cacheAbs, target);
@@ -166,7 +166,7 @@ function pruneSkillViews(dir, allowedNames = [], dryRun = false) {
     } catch {
       continue;
     }
-    if (!target.startsWith(ROBOREPO_SKILLS_DIR) && !target.startsWith(SHARED_SKILLS_DIR)) continue;
+    if (!target.startsWith(SKILLS_DIR) && !target.startsWith(SHARED_SKILLS_DIR)) continue;
     if (live.size > 0 && !live.has(ent.name)) {
       if (!dryRun) fs.unlinkSync(link);
       console.log(`prune: ${link} (not in base skill set)`);

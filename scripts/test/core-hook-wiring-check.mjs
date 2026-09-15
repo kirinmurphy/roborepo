@@ -66,7 +66,7 @@ assert.deepEqual(
 // --- Invariants the fragment alone cannot express -----------------------------------------------
 
 const scopeHook = 'node "$HOME/.claude/hooks/provider/repo-write-scope.mjs"';
-const guardHook = 'node "$HOME/.claude/hooks/roborepo-write-guard.mjs"';
+const guardHook = 'node "$HOME/.claude/hooks/write-guard.mjs"';
 
 const scopeEntry = findEntryByCommand("PreToolUse", scopeHook);
 const guardEntry = findEntryByCommand("PreToolUse", guardHook);
@@ -84,7 +84,7 @@ assert.ok(
 // about a read, so a Read in its matcher is a process spawn per read for no output.
 assert.ok(
   !/(^|\|)Read(\||$)/.test(guardEntry.matcher),
-  `roborepo-write-guard must not run on Read; matcher is ${JSON.stringify(guardEntry.matcher)}`,
+  `write-guard must not run on Read; matcher is ${JSON.stringify(guardEntry.matcher)}`,
 );
 
 // Every hook script the fragment points at must exist in the repo. `$HOME/.claude/hooks/...` is the

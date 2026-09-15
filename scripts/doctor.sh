@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+readonly STATE_DIRNAME="${STATE_DIRNAME:-.roborepo}"  # single shell def lives in scripts/install/state-lib.sh (cli_state_dirname); JS twin: STATE_ROOT in scripts/cli/roots.mjs
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -134,16 +135,16 @@ check_active_file() {
   fi
 }
 
-# A roborepo-managed skill is a symlink into the machine-local cache at ~/.roborepo/skills,
-# and that cache entry carries the '.roborepo-managed' marker.
+# A builtin-managed skill is a symlink into the machine-local cache at ~/.roborepo/skills,
+# and that cache entry carries the '.builtin-managed' marker.
 check_managed_skill() {
   local repo_rel="$1"
   local home_path="$2"
   local expected="${repo_root}/${repo_rel}"
-  local cache_path="${HOME}/.roborepo/skills/$(basename "${home_path}")"
+  local cache_path="${HOME}/${STATE_DIRNAME}/skills/$(basename "${home_path}")"
 
   if [[ ! -L "${home_path}" ]]; then
-    fail "${home_path} is not a roborepo-managed skill symlink"
+    fail "${home_path} is not a builtin-managed skill symlink"
     return 0
   fi
 
@@ -163,11 +164,11 @@ PY
     fail "${home_path} -> ${actual}; expected ${expected_cache}"
     return 0
   fi
-  if [[ ! -d "${cache_path}" || ! -e "${cache_path}/.roborepo-managed" ]]; then
-    fail "${cache_path} is not a roborepo-managed skill cache"
+  if [[ ! -d "${cache_path}" || ! -e "${cache_path}/.builtin-managed" ]]; then
+    fail "${cache_path} is not a builtin-managed skill cache"
     return 0
   fi
-  if diff -rq -x '.roborepo-managed' "${expected}" "${cache_path}" >/dev/null 2>&1; then
+  if diff -rq -x '.builtin-managed' "${expected}" "${cache_path}" >/dev/null 2>&1; then
     ok "${home_path} (cache link to ${cache_path})"
   else
     case "
@@ -204,7 +205,7 @@ check_repo_symlink() {
 # This catches the case (common on Windows/PowerShell, or before a new shell is opened) where
 # ~/.local/bin/roborepo is installed but ~/.local/bin is not yet on PATH. Does not set `failed`
 # on its own: a missing symlink is already a fail above; here we only guide the user to PATH.
-check_roborepo_on_path() {
+check_cli_on_path() {
   local bin_dir="${HOME}/.local/bin"
   if command -v roborepo >/dev/null 2>&1; then
     ok "roborepo resolves on PATH ($(command -v roborepo))"
@@ -493,7 +494,7 @@ done
 # Derive the shared-skill list from package skill resources plus system support skills so this
 # never goes stale. The installer fans each skill into ~/.roborepo/skills/<n> and symlinks each
 # present harness view there.
-for skill_src in "${repo_root}"/globals/packages/*/skills/*/SKILL.md "${repo_root}"/globals/system/skills/roborepo-support/SKILL.md; do
+for skill_src in "${repo_root}"/globals/packages/*/skills/*/SKILL.md "${repo_root}"/globals/system/skills/builtin-support/SKILL.md; do
   [[ -e "${skill_src}" ]] || continue
   skill_name="$(basename "$(dirname "${skill_src}")")"
   check_file "${skill_src#${repo_root}/}"
@@ -574,7 +575,7 @@ fi
 
 if [[ "${check_installed}" -eq 1 ]]; then
   check_link "bin/roborepo" "${HOME}/.local/bin/roborepo"
-  check_roborepo_on_path
+  check_cli_on_path
   if [[ "${quiet}" -eq 1 ]]; then
     node "${repo_root}/scripts/cli/main.mjs" bundle check >/dev/null || failed=1
     node "${repo_root}/scripts/cli/rules-render.mjs" --check --quiet >/dev/null || failed=1
@@ -586,13 +587,13 @@ if [[ "${check_installed}" -eq 1 ]]; then
   check_store_bounds
   check_live_permission_home
   check_portal_pids
-  # Base install owns only roborepo-support. Optional skills are checked through their package/toggle
+  # Base install owns only builtin-support. Optional skills are checked through their package/toggle
   # state, not as unconditional install payload. Provider iteration (docs/plans/active/
   # discoverable-harness-provider-architecture-plan.md Phase 4) instead of a fixed Claude/Codex pair.
   while IFS=$'\t' read -r doctor_harness_id doctor_home_path doctor_present _display_name _root_config_path; do
     [[ -z "${doctor_harness_id}" ]] && continue
     [[ "${doctor_present}" == "1" ]] || continue
-    check_managed_skill "globals/system/skills/roborepo-support" "${doctor_home_path}/skills/roborepo-support"
+    check_managed_skill "globals/system/skills/builtin-support" "${doctor_home_path}/skills/builtin-support"
   done < <(harness_detected_rows)
   # Drift report: unmanaged skills in native dirs (real dirs without our managed marker).
   drift_count=0
@@ -605,7 +606,7 @@ if [[ "${check_installed}" -eq 1 ]]; then
       skill_name="$(basename "${skill_dir%/}")"
       case "${skill_name}" in .*) continue ;; esac  # skip dotfolders
       [[ -L "${skills_home}/${skill_name}" ]] && continue  # managed view
-      [[ -e "${skills_home}/${skill_name}/.roborepo-managed" ]] && continue  # legacy managed copy
+      [[ -e "${skills_home}/${skill_name}/.builtin-managed" ]] && continue  # legacy managed copy
       echo "drift: ${skill_dir} is unmanaged — run: roborepo skill adopt ${skill_name}"
       drift_count=$((drift_count + 1))
     done

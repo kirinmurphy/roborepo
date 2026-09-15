@@ -75,7 +75,7 @@ function detectTestScope(normalized, { scriptName } = {}) {
     || /\btests?\/[\w/-]+\.[a-z]+\b/.test(normalized);
   if (hasSelector) return "targeted";
   if (/--affected|--changed|--since/.test(normalized)) return "affected";
-  // A known repo-wide script name (e.g. this repo's own `npm test` -> test-roborepo.sh) run with no
+  // A known repo-wide script name (e.g. this repo's own `npm test` -> test-cli.sh) run with no
   // selector is the canonical full-suite shape.
   if (scriptName === "test" || /^(npm|pnpm|yarn|bun)\s+(run\s+)?test$/.test(normalized)) return "full";
   if (/\btest(s)?\b/.test(normalized) && !hasSelector) return "unknown";

@@ -24,7 +24,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../..");
 
 function generatedHomeForRepo(root) {
-  if (process.env.ROBOREPO_GENERATED_HOME) return process.env.ROBOREPO_GENERATED_HOME;
+  if (process.env.GENERATED_HOME) return process.env.GENERATED_HOME;
   return path.join(path.sep, "Users", "you");
 }
 
@@ -34,11 +34,11 @@ const generatedRenderOptions = { home: generatedHomeForRepo(repoRoot) };
 // candidate mirrors just the basename under generated/<provider-id>/. Most providers render
 // permissions into their rootConfig file (Claude's settings.json, Codex's config.toml) — but
 // Gemini's Policy Engine is a directory of standalone *.toml rule files with no rootConfig
-// involvement at all (extensions.roborepo.permissionsStorage: "policy-engine-toml-directory"),
+// involvement at all (extensions.app.permissionsStorage: "policy-engine-toml-directory"),
 // so its generated candidate target is paths.policies + the adapter's own generated filename,
 // not paths.rootConfig.
 function generatedPermissionsPath(provider) {
-  if (provider.manifest.extensions?.roborepo?.permissionsStorage === "policy-engine-toml-directory") {
+  if (provider.manifest.extensions?.app?.permissionsStorage === "policy-engine-toml-directory") {
     return path.join(repoRoot, "generated", provider.id, "policies", GENERATED_POLICY_FILENAME);
   }
   const basename = path.basename(provider.manifest.paths.rootConfig.path);

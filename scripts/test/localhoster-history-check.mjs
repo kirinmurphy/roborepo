@@ -14,7 +14,7 @@ import {
   readHistoryEvents,
 } from "../../modules/localhoster/index.mjs";
 
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-localhoster-history-"));
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "localhoster-history-"));
 const NOW = new Date("2026-01-01T00:00:00.000Z");
 
 try {

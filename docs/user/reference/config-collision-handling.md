@@ -152,7 +152,7 @@ Run:
 
 ```sh
 ./scripts/test/test-install-collisions.sh
-./scripts/test/test-roborepo.sh
+./scripts/test/test-cli.sh
 node scripts/test/root-config-state-check.mjs
 ```
 
@@ -174,4 +174,4 @@ drift regression coverage:
 `root-config-state-check.mjs` unit-tests the hash sidecar directly; `root-config-view-check.mjs`
 unit-tests the per-harness drift *view* (`not-installed` / `unwritten` / `in-sync` / `drifted` /
 `staged-pending`) that both `roborepo config root inspect` and the `/config` portal drift chip render
-from. Both are wired into `test-roborepo.sh`.
+from. Both are wired into `test-cli.sh`.

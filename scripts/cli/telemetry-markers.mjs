@@ -42,7 +42,7 @@ function resolveGitIdentity(cwd) {
 function resolveConfigSnapshotId() {
   try {
     const configSnapshot = readConfigSnapshot();
-    const snapshot = buildEffectiveSnapshot(configSnapshot, { roborepoVersion: readPackageVersion() });
+    const snapshot = buildEffectiveSnapshot(configSnapshot, { appVersion: readPackageVersion() });
     writeSnapshot(snapshot);
     return snapshot.snapshot_id;
   } catch {

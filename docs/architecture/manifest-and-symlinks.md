@@ -21,13 +21,13 @@ Shared skills live in:
 
 ```text
 globals/packages/<package>/skills/<name>/
-globals/system/skills/roborepo-support/
+globals/system/skills/builtin-support/
 ```
 
-Install copies only `roborepo-support` by default. Optional skills are copied by onboarding or package toggles. Each roborepo-owned skill copy contains:
+Install copies only `builtin-support` by default. Optional skills are copied by onboarding or package toggles. Each roborepo-owned skill copy contains:
 
 ```text
-.roborepo-managed
+.builtin-managed
 ```
 
 That marker is the ownership signal for refresh, prune, uninstall, and native-skill collision handling. A real skill directory without the marker is treated as user-owned and is left alone.

@@ -15,7 +15,7 @@ every page relies on. Page-specific behavior lives in
 portal/
   shared/
     base.css     — shared palette + chrome styles
-    theme.js     — header/footer/nav/theme-toggle, reads window.ROBOREPO_PORTAL
+    theme.js     — header/footer/nav/theme-toggle, reads window.PORTAL_MANIFEST
     api.js       — shared fetch/token/clipboard/DOM helpers (ES module)
   home/{index.html,styles.css}
   config/{index.html,styles.css,app.js}
@@ -37,11 +37,11 @@ attribute is needed).
 (`id`, `path`, `title`, `dir`, optional `default`). There is no browser-side copy to hand-sync:
 
 1. `pageManifest()` derives the browser-safe `{ path, id, title }` shape from `PAGES`.
-2. `pageHtml()` injects `window.ROBOREPO_PORTAL = { token, pages: [...] }` into every served
-   page's `<head>`, right beside the existing `<meta name="roborepo-portal-token">` tag.
+2. `pageHtml()` injects `window.PORTAL_MANIFEST = { token, pages: [...] }` into every served
+   page's `<head>`, right beside the existing `<meta name="cli-portal-token">` tag.
 3. `/api/portal/status` returns the same `pageManifest()` shape, so the terminal-facing status
    check and the browser nav can never drift.
-4. `portal/shared/theme.js` reads `window.ROBOREPO_PORTAL.pages` to render the nav and mark the
+4. `portal/shared/theme.js` reads `window.PORTAL_MANIFEST.pages` to render the nav and mark the
    active link. If the global is missing (e.g. a page opened directly as a file, or a broken
    injection), `theme.js` throws `"portal manifest missing"` immediately instead of silently
    rendering an empty nav.
@@ -75,7 +75,7 @@ it:
 
 | Export | Purpose |
 | --- | --- |
-| `portalConfig()` | Reads `window.ROBOREPO_PORTAL`; throws `"portal manifest missing"` if absent. |
+| `portalConfig()` | Reads `window.PORTAL_MANIFEST`; throws `"portal manifest missing"` if absent. |
 | `portalGetJson(path)` | `fetch` + `.json()`; throws with the server's `error`/`message` on a non-OK response. |
 | `portalPostJson(path, body)` | Same, but POST with `Content-Type: application/json` and `X-Roborepo-Portal-Token` attached from `portalConfig().token`. Also throws if the response body has `ok: false`. |
 | `portalCopyText(text, onCopied?)` | Wraps `navigator.clipboard.writeText`; swallows clipboard-blocked errors; calls `onCopied()` on success. |
@@ -189,7 +189,7 @@ silently shadowing another route at request time.
 ## Self-Describing Metadata
 
 The portal serves `/manifest.json`, `/sitemap.xml`, `/robots.txt`, and `/openapi.json` at their conventional root
-paths (`portal-routes-metadata.mjs`), so `roborepo:portal` is itself a live, correct example of the
+paths (`portal-routes-metadata.mjs`), so `builtin:portal` is itself a live, correct example of the
 same same-origin conventions `modules/localhoster/metadata.mjs` discovers on other apps (see
 `docs/reference/services/localhoster.md`'s "Metadata suggestions" section).
 
@@ -243,7 +243,7 @@ runs:
    (any port). Requests with no `Origin` header (e.g. `curl`) are allowed through.
 2. **Mutation-token check** — the `X-Roborepo-Portal-Token` header must match the token generated
    once per server process (`crypto.randomBytes(32)`) and embedded only in served page HTML via
-   `window.ROBOREPO_PORTAL.token`.
+   `window.PORTAL_MANIFEST.token`.
 
 A forged POST from an unrelated site fails the origin check; a POST from a script that never
 loaded a portal page fails the token check. `portalPostJson` always attaches the token from
@@ -252,7 +252,7 @@ Telemetry's "turn on telemetry" button, which previously POSTed without the toke
 
 ## Checks to Run
 
-- `npm test` (`scripts/test/test-roborepo.sh`) — starts the portal server, asserts
+- `npm test` (`scripts/test/test-cli.sh`) — starts the portal server, asserts
   `/api/portal/status`, token exposure, mutating POST success/400/403 responses, and that each
   served `app.js` parses (`node --check`).
 - `roborepo web` — click through Home → Agents → Plans → Localhoster → Tokens, confirm nav highlighting, and

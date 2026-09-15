@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 // The real checkout root (scripts/test/ -> two levels up). Used to prove dev mode never scaffolds here.
 const realAppRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-workspace-resources-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "workspace-resources-"));
 const appRoot = path.join(tmp, "app");
 const workspace = path.join(tmp, "workspace");
 fs.mkdirSync(appRoot, { recursive: true });

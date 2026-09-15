@@ -1917,11 +1917,11 @@ function getPortalStatus(port) {
 // Spawn a new foreground `web` process in the background. The caller writes the PID only after the
 // child writes its ready-file from server.listen(), so a failed bind never leaves a stale "running" PID.
 function spawnDetachedServer(port) {
-  const readyFile = path.join(os.tmpdir(), `roborepo-portal-${process.pid}-${Date.now()}.ready`);
+  const readyFile = path.join(os.tmpdir(), `cli-portal-${process.pid}-${Date.now()}.ready`);
   const child = spawn(process.execPath, [process.argv[1], "web", "--no-open", "--port", String(port), "--allow-zero-port"], {
     detached: true,
     stdio: "ignore",
-    env: { ...process.env, ROBOREPO_PORTAL_READY_FILE: readyFile },
+    env: { ...process.env, PORTAL_READY_FILE: readyFile },
   });
   return { child, readyFile };
 }

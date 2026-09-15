@@ -78,6 +78,6 @@ portal/telemetry/styles.css
 portal/telemetry/app.js
 scripts/install/state-lib.sh
 scripts/install/uninstall.sh
-scripts/test/test-roborepo.sh	dev
+scripts/test/test-cli.sh	dev
 scripts/build/normalize-claude-settings.mjs
 bin/roborepo

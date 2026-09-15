@@ -53,7 +53,7 @@ function clearInteractiveScreen() {
 async function runInteractiveCommand(node, tokens, args) {
   const completion = node.onComplete || "returnToSubmenu";
   if (node.interactiveStdio) {
-    const resultFile = path.join(os.tmpdir(), `roborepo-interactive-${process.pid}-${Date.now()}.json`);
+    const resultFile = path.join(os.tmpdir(), `cli-interactive-${process.pid}-${Date.now()}.json`);
     const result = await runInheritedInteractiveCommand(tokens, args, { resultFile });
     const childResult = readInteractiveResult(resultFile);
     if (result.status !== 0) {
@@ -125,7 +125,7 @@ async function runDirectInteractiveCommand(tokens, args) {
 async function runInheritedInteractiveCommand(tokens, args, { resultFile } = {}) {
   const result = spawn(process.execPath, [MAIN_PATH, ...tokens, ...args], {
     cwd: process.cwd(),
-    env: resultFile ? { ...process.env, ROBOREPO_INTERACTIVE_RESULT_FILE: resultFile } : process.env,
+    env: resultFile ? { ...process.env, INTERACTIVE_RESULT_FILE: resultFile } : process.env,
     stdio: "inherit",
   });
   return new Promise((resolve) => result.on("exit", (status) => {

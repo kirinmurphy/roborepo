@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { isMainModule } from "./roots.mjs";
-import { roborepoStateDir } from "./state-paths.mjs";
+import { stateDir } from "./state-paths.mjs";
 import { loadSettings } from "../../modules/localhoster/settings.mjs";
 import {
   FILE_SET_SHAPE,
@@ -37,7 +37,7 @@ function listStores(args) {
     console.error("usage: roborepo maintenance stores list");
     return 2;
   }
-  const rows = retentionStores(roborepoStateDir).map((store) => {
+  const rows = retentionStores(stateDir).map((store) => {
     const policy = policyFor(store);
     const { bytes, detail } = inspect(store);
     return {
@@ -58,7 +58,7 @@ function listStores(args) {
     if (row.detail) console.log(`${" ".repeat(width)}  ${row.detail}`);
   }
   console.log("");
-  console.log(`state root: ${roborepoStateDir}`);
+  console.log(`state root: ${stateDir}`);
   console.log("reset one with: roborepo maintenance stores reset <id> [--all]");
   return 0;
 }
@@ -71,10 +71,10 @@ function resetStore(args) {
     return 2;
   }
 
-  const store = findRetentionStore(roborepoStateDir, rest[0]);
+  const store = findRetentionStore(stateDir, rest[0]);
   if (!store) {
     console.error(`unknown store: ${rest[0]}`);
-    console.error(`known: ${retentionStores(roborepoStateDir).map((s) => s.id).join(", ")}`);
+    console.error(`known: ${retentionStores(stateDir).map((s) => s.id).join(", ")}`);
     return 2;
   }
 
@@ -150,7 +150,7 @@ function policyFor(store) {
   if (!store.preferenceKey) return store.policy;
   let preferences = null;
   try {
-    preferences = loadSettings({ stateRoot: roborepoStateDir })?.preferences ?? null;
+    preferences = loadSettings({ stateRoot: stateDir })?.preferences ?? null;
   } catch {
     preferences = null;
   }
@@ -197,7 +197,7 @@ export function checkStoreBounds() {
 
 // Registry-backed store list for doctor, which needs sizes and bounds without the CLI formatting.
 export function storeHealth() {
-  return retentionStores(roborepoStateDir).map((store) => {
+  return retentionStores(stateDir).map((store) => {
     const policy = policyFor(store);
     const { bytes } = inspect(store);
     return {
@@ -205,7 +205,7 @@ export function storeHealth() {
       bytes,
       maxBytes: policy.maxBytes,
       over: policy.maxBytes !== null && bytes > policy.maxBytes,
-      path: path.relative(roborepoStateDir, store.target),
+      path: path.relative(stateDir, store.target),
     };
   });
 }

@@ -548,7 +548,7 @@ async function buildAndCacheSnapshot(harness, model) {
   const snapshot = buildEffectiveSnapshot(configSnapshot, {
     harness,
     model,
-    roborepoVersion: readPackageVersion(),
+    appVersion: readPackageVersion(),
   });
   writeSnapshot(snapshot);
   return snapshot.snapshot_id;

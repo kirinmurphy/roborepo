@@ -100,7 +100,7 @@ export function assertDryRunClean({ label, argv, cwd, env, roots, expectStatus =
  * `source` line left in a profile and backup handling, neither of which lives under a harness home.
  * A watcher that skipped them would have been blind to exactly the class of bug that motivated it.
  */
-export function roborepoDryRunRoots({ home, stateRoot, workspaceRoot }) {
+export function dryRunRoots({ home, stateRoot, workspaceRoot }) {
   return [
     path.join(home, ".claude"),
     path.join(home, ".codex"),
@@ -109,7 +109,7 @@ export function roborepoDryRunRoots({ home, stateRoot, workspaceRoot }) {
     path.join(home, ".local", "bin"),
     stateRoot ?? path.join(home, ".roborepo"),
     workspaceRoot ?? path.join(home, ".roborepo", "workspace"),
-    path.join(home, ".roborepo-backups"),
+    path.join(home, ".cli-backups"),
     // Individual files, not directories. snapshot() hashes a file the same way, so a dry run that
     // appends a PATH export or a `source` line to a profile is caught as a content change.
     path.join(home, ".zshrc"),

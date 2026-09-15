@@ -29,7 +29,7 @@
     "mcp"
   ],
   "extensions": {
-    "roborepo": {
+    "app": {
       "rootConfigFormat": "json",
       "hooksStorage": "embedded-in-root-config",
       "mcpStorage": "json-mcpServers-key",

@@ -146,7 +146,7 @@ function collectSkillContextFiles(baseDir, relDir, files) {
     return;
   }
   for (const entry of entries) {
-    if (entry.name === "SKILL.md" || entry.name === ".roborepo-managed" || entry.name === ".DS_Store") continue;
+    if (entry.name === "SKILL.md" || entry.name === ".builtin-managed" || entry.name === ".DS_Store") continue;
     const rel = path.join(relDir, entry.name);
     if (entry.isDirectory()) {
       collectSkillContextFiles(baseDir, rel, files);

@@ -5,7 +5,7 @@ import { hasHarnessProvider } from "../../harnesses/registry.mjs";
 export const SNAPSHOT_SCHEMA_VERSION = 1;
 
 const ALLOWED_FIELDS = [
-  "schema", "snapshot_id", "created_at", "roborepo_version", "harness", "harness_version",
+  "schema", "snapshot_id", "created_at", "app_version", "harness", "harness_version",
   "model", "packages", "rules", "skills", "hooks", "commands", "feature_flags", "unavailable",
 ];
 
@@ -14,7 +14,7 @@ const ALLOWED_FIELDS = [
 // (session-specific, not configuration-specific) are excluded from the hash on purpose.
 export function computeSnapshotId(snapshot) {
   const material = JSON.stringify({
-    roborepo_version: snapshot.roborepo_version ?? null,
+    app_version: snapshot.app_version ?? null,
     packages: [...(snapshot.packages || [])].sort(),
     rules: [...(snapshot.rules || [])].sort(),
     skills: [...(snapshot.skills || [])].sort(),
@@ -35,7 +35,7 @@ export function validateSnapshot(snapshot) {
   if (typeof snapshot.created_at !== "string" || Number.isNaN(Date.parse(snapshot.created_at))) {
     throw new Error("snapshot created_at must be an ISO timestamp");
   }
-  if (snapshot.roborepo_version != null && typeof snapshot.roborepo_version !== "string") throw new Error("snapshot roborepo_version must be a string");
+  if (snapshot.app_version != null && typeof snapshot.app_version !== "string") throw new Error("snapshot app_version must be a string");
   if (snapshot.harness != null && snapshot.harness !== "unknown" && !hasHarnessProvider(snapshot.harness)) throw new Error(`unknown snapshot harness: ${snapshot.harness}`);
   if (snapshot.harness_version != null && typeof snapshot.harness_version !== "string") throw new Error("snapshot harness_version must be a string");
   if (snapshot.model != null && typeof snapshot.model !== "string") throw new Error("snapshot model must be a string");
@@ -59,7 +59,7 @@ export function validateSnapshot(snapshot) {
 // gaps in readConfigSnapshot (full hook command strings, MCP server registration detail, parsed
 // Codex config.toml) are recorded in `unavailable` rather than guessed — see Phase 0 notes in the
 // plan doc for why these are gaps today.
-export function buildEffectiveSnapshot(configSnapshot, { harness = null, harnessVersion = null, model = null, roborepoVersion = null } = {}) {
+export function buildEffectiveSnapshot(configSnapshot, { harness = null, harnessVersion = null, model = null, appVersion = null } = {}) {
   const enabledPackageIds = (configSnapshot.packages || []).filter((pkg) => pkg.enabled).map((pkg) => pkg.id);
   const installedSkillIds = (configSnapshot.tools || []).filter((tool) => tool.installed).map((tool) => tool.id);
   const hookCounts = { ...(configSnapshot.globals?.settings?.hooks || {}) };
@@ -70,7 +70,7 @@ export function buildEffectiveSnapshot(configSnapshot, { harness = null, harness
   const snapshot = {
     schema: SNAPSHOT_SCHEMA_VERSION,
     created_at: new Date().toISOString(),
-    roborepo_version: roborepoVersion,
+    app_version: appVersion,
     harness,
     harness_version: harnessVersion,
     model,

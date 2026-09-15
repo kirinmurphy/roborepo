@@ -33,7 +33,7 @@
     "session-launch"
   ],
   "extensions": {
-    "roborepo": {
+    "app": {
       "rootConfigFormat": "json",
       "hooksStorage": "embedded-in-root-config",
       "mcpStorage": "native-cli-and-sidecar-json"

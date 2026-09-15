@@ -50,12 +50,12 @@ export function loadPermissionWorkspaceRoots(input = defaultPlansConfigPath) {
 // The render itself is entirely the provider's business — this function owns only the
 // create/existence gating, which is platform policy about not fabricating user files.
 function permissionsTargetFor(manifest, baseDir) {
-  const roborepo = manifest.extensions?.roborepo ?? {};
+  const appExt = manifest.extensions?.app ?? {};
   const homeRel = manifest.paths?.home?.path?.replace(/^~\//, "");
   if (!homeRel) return null;
   const homeDir = path.join(baseDir, homeRel);
 
-  if (roborepo.permissionsStorage === "policy-engine-toml-directory") {
+  if (appExt.permissionsStorage === "policy-engine-toml-directory") {
     const dirRel = manifest.paths?.policies?.path?.replace(/^~\//, "");
     if (!dirRel) return null;
     return { file: path.join(baseDir, dirRel, GENERATED_POLICY_FILENAME), homeDir, mayCreate: true, seedCurrent: false };
@@ -65,7 +65,7 @@ function permissionsTargetFor(manifest, baseDir) {
   if (!rootRel) return null;
   // JSON root configs are materialized from nothing (Claude's settings.json); non-JSON ones are
   // only rewritten in place (Codex's config.toml is never fabricated by roborepo).
-  const mayCreate = roborepo.rootConfigFormat === "json";
+  const mayCreate = appExt.rootConfigFormat === "json";
   return { file: path.join(baseDir, rootRel), homeDir, mayCreate, seedCurrent: true };
 }
 

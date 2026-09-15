@@ -104,10 +104,10 @@ const record = {
 // record, so collapsing to one file loses nothing.
 //
 // This hook runs as a copied runtime asset in ~/.claude/hooks/, outside the CLI's module graph, so
-// it cannot import scripts/cli/state-paths.mjs. It re-resolves stateRoot with the same env
+// it cannot import scripts/cli/state-paths.mjs. It re-resolves STATE_ROOT with the same env
 // precedence instead, matching usage-snapshot-store.mjs, which solves the identical problem. The
 // path must stay in agreement with denseBashLogPath(); a test asserts it under a sandboxed root.
-function stateRoot() {
+function STATE_ROOT() {
   return (
     process.env.ROBOREPO_STATE_ROOT ||
     process.env.ROBOREPO_STATE_DIR ||
@@ -121,7 +121,7 @@ const FLOOR_BYTES = 64 * 1024
 const KEEP_FRACTION = 0.7
 
 try {
-  const logPath = path.join(stateRoot(), 'capture', 'claude', 'dense-bash.jsonl')
+  const logPath = path.join(STATE_ROOT(), 'capture', 'claude', 'dense-bash.jsonl')
   fs.mkdirSync(path.dirname(logPath), { recursive: true })
   fs.appendFileSync(logPath, JSON.stringify(record) + '\n')
   capLog(logPath)

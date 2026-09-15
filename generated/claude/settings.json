@@ -134,7 +134,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/roborepo-write-guard.mjs\""
+            "command": "node \"$HOME/.claude/hooks/write-guard.mjs\""
           }
         ]
       }

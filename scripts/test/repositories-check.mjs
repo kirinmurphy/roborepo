@@ -229,7 +229,7 @@ try {
   assert.equal(canonicalizeLocalhosterIdentity("path:/tmp/robo").kind, "local");
   assert.ok(!canonicalizeLocalhosterIdentity("path:/tmp/robo").id.includes("/tmp"), "path import must not leak path");
   assert.equal(canonicalizeLocalhosterIdentity("process:/tmp:node"), null);
-  assert.equal(canonicalizeLocalhosterIdentity("roborepo:portal"), null);
+  assert.equal(canonicalizeLocalhosterIdentity("builtin:portal"), null);
 
   const migReg = defaultRegistry();
   const lhSettings = {

@@ -33,7 +33,7 @@ function testPrunesKnownServersOnly() {
   assert.equal(result.providerId, "claude");
 
   const after = JSON.parse(fs.readFileSync(claudeJsonPath, "utf8"));
-  assert.deepEqual(Object.keys(after.mcpServers), ["unrelated-server"], "must remove only known roborepo-managed server names");
+  assert.deepEqual(Object.keys(after.mcpServers), ["unrelated-server"], "must remove only known builtin-managed server names");
   assert.deepEqual(after.projects["/some/project"].mcpServers, {}, "must prune project-scoped mcpServers maps too");
 
   fs.rmSync(tmp, { recursive: true, force: true });

@@ -195,7 +195,7 @@ accurate `package.config.json` automatically renders a complete portal card.
 | `roborepo package adopt-live [--dry-run]` | Detects externally-installed (unmanaged) package behavior and marks it enabled in the registry without re-installing it. |
 
 Add these rows to `docs/user/reference/roborepo-cli.md` and to
-`local/skills/roborepo-development/SKILL.md`'s own CLI list whenever this table changes.
+`local/skills/builtin-development/SKILL.md`'s own CLI list whenever this table changes.
 
 ## Apply behavior (already automatic — do not reintroduce a manual step)
 
@@ -231,7 +231,7 @@ last write) — a legitimate, distinct reconciliation case, not a gap in the ena
   correctness, independent of any one package.
 - `scripts/test/package-default-enabled-check.mjs` (`npm run test:package-default-enabled`) —
   default-selection provenance precedence, independent of any one package.
-- `scripts/test/test-roborepo.sh` — broad CLI smoke test; covers package/workspace paths.
+- `scripts/test/test-cli.sh` — broad CLI smoke test; covers package/workspace paths.
 
 Minimum test bar for a new or changed package: it must load cleanly through
 `loadPackageCatalog`/`validatePackageCatalog` (covered generically by `package-catalog-check.mjs`

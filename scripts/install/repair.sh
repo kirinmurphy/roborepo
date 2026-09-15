@@ -15,7 +15,7 @@ set -euo pipefail
 # Idempotent: a no-op when every link already points at the current checkout.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
 export ROBOREPO_BACKUP_ROOT="${backup_root}"
 export ROBOREPO_INSTALL_TIMESTAMP="${ROBOREPO_INSTALL_TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
 dry_run=0
@@ -131,7 +131,7 @@ repair_cleanup_rows() {
 # Per-skill copies: repair only re-materializes the base support skill. Optional skills are
 # controlled by onboarding/package toggles.
 repair_skill_links() {
-  link_global_skills "${1%/skills}" roborepo-support
+  link_global_skills "${1%/skills}" builtin-support
 }
 
 # Provider iteration (docs/plans/active/discoverable-harness-provider-architecture-plan.md Phase

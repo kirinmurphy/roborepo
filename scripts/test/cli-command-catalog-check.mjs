@@ -207,7 +207,7 @@ assert.ok(catalog.nodes.package.children.dev, "package dev is a separate namespa
     );
     assert.match(
       fs.readFileSync(path.join(home, ".codex", "config.toml"), "utf8"),
-      /default_permissions = "roborepo-workspace"/,
+      /default_permissions = "managed-workspace"/,
       "package-mode config permissions writes Codex live permissions",
     );
     assert.match(
@@ -225,7 +225,7 @@ assert.ok(catalog.nodes.package.children.dev, "package dev is a separate namespa
       "package-mode config permissions copies Claude hook scripts referenced by generated settings",
     );
     assert.ok(
-      fs.existsSync(path.join(home, ".gemini", "policies", "roborepo-permissions.toml")),
+      fs.existsSync(path.join(home, ".gemini", "policies", "generated-permissions.toml")),
       "package-mode config permissions writes Gemini live permissions",
     );
   } finally {
@@ -254,9 +254,9 @@ const activeDocPaths = [
   "docs/internal/harness-anatomy.md",
   "docs/architecture/documentation-map-and-audit.md",
   "docs/user/guides/plan/lifecycle/plan-docs.md",
-  "local/skills/roborepo-development/SKILL.md",
-  "local/skills/roborepo-development/references/package-development.md",
-  "globals/system/skills/roborepo-support/SKILL.md",
+  "local/skills/builtin-development/SKILL.md",
+  "local/skills/builtin-development/references/package-development.md",
+  "globals/system/skills/builtin-support/SKILL.md",
   "globals/packages/telemetry/package.config.json",
   "scripts/install/main.sh",
   "scripts/cli/config.mjs",
@@ -265,7 +265,7 @@ const activeDocPaths = [
   "scripts/cli/telemetry.mjs",
   "scripts/cli/telemetry-seed-demo.mjs",
 ];
-const removedCommandPattern = /\broborepo (?:onboard|serve|verify|watch code|enable|disable)\b(?!-)(?!` was replaced)/;
+const removedCommandPattern = /cli (?:onboard|serve|verify|watch code|enable|disable)\b(?!-)(?!` was replaced)/;
 for (const docPath of activeDocPaths) {
   const content = fs.readFileSync(path.join(repoRoot, docPath), "utf8");
   assert.doesNotMatch(content, removedCommandPattern, `${docPath} documents removed top-level package commands`);

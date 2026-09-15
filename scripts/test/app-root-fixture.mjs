@@ -46,7 +46,7 @@ export function makeHome({ prefix = "roborepo-home-" } = {}) {
 }
 
 // The full env a spawned CLI needs to stay off this checkout and off the real ~/.roborepo.
-// ROBOREPO_SKIP_MCP defaults on: wiring MCP shells out to the `claude` binary, which is not
+// SKIP_MCP defaults on: wiring MCP shells out to the `claude` binary, which is not
 // something a test should depend on being installed.
 export function makeCliEnv({ appRoot, home, skipMcp = true, extra = {} } = {}) {
   return {
@@ -55,7 +55,7 @@ export function makeCliEnv({ appRoot, home, skipMcp = true, extra = {} } = {}) {
     ROBOREPO_APP_ROOT: appRoot,
     ROBOREPO_STATE_DIR: path.join(home, ".roborepo"),
     ROBOREPO_MODE: "development",
-    ...(skipMcp ? { ROBOREPO_SKIP_MCP: "1" } : {}),
+    ...(skipMcp ? { SKIP_MCP: "1" } : {}),
     ...extra,
   };
 }

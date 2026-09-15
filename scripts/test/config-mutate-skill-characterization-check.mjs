@@ -23,7 +23,7 @@ function makeHome() {
 }
 
 function run(appRoot, home, expr) {
-  const env = { ...process.env, ROBOREPO_MODE: "development", ROBOREPO_APP_ROOT: appRoot, HOME: home, ROBOREPO_STATE_DIR: path.join(home, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, ROBOREPO_MODE: "development", ROBOREPO_APP_ROOT: appRoot, HOME: home, ROBOREPO_STATE_DIR: path.join(home, ".roborepo"), SKIP_MCP: "1" };
   const result = spawnSync(process.execPath, ["-e", expr], { env, encoding: "utf8" });
   assert.equal(result.status, 0, `expression should succeed: ${result.stderr}\n${result.stdout}`);
   return result;
@@ -80,11 +80,11 @@ try {
     try {
       const nativeDir = path.join(home, ".claude", "skills", "__char_test_skill__");
       fs.mkdirSync(nativeDir, { recursive: true });
-      fs.writeFileSync(path.join(nativeDir, "SKILL.md"), "native, not roborepo-managed\n");
+      fs.writeFileSync(path.join(nativeDir, "SKILL.md"), "native, not builtin-managed\n");
       run(appRoot, home, enableExpr);
       assert.match(
         fs.readFileSync(path.join(nativeDir, "SKILL.md"), "utf8"),
-        /native, not roborepo-managed/,
+        /native, not builtin-managed/,
         "a pre-existing native (unmanaged) skill directory must not be overwritten",
       );
     } finally {

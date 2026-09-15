@@ -3,7 +3,7 @@
 //
 // Purpose: catch drift between the roborepo CLI's real command surface and the permission
 // manifest. Every roborepo namespace should be DELIBERATELY classified — allowlisted as
-// read-only (inspect-roborepo), or ask-bucketed as config-mutating (mutate-harness-config).
+// read-only (inspect-install), or ask-bucketed as config-mutating (mutate-harness-config).
 // A namespace that is neither is not a bug in itself; it is an unreviewed decision, and the
 // failure mode is silent: it inherits whatever the default happens to be.
 //
@@ -79,7 +79,7 @@ if (unclassified.length > 0) {
   for (const cmd of unclassified) console.error(`  roborepo ${cmd}`);
   console.error("");
   console.error("Decide for each one, then record it:");
-  console.error("  read-only / safe unattended -> add to the 'inspect-roborepo' behavior (allow)");
+  console.error("  read-only / safe unattended -> add to the 'inspect-install' behavior (allow)");
   console.error("  mutates config or state     -> add to the 'mutate-harness-config' behavior (ask)");
   console.error("  should always prompt        -> add to INTENTIONALLY_UNCLASSIFIED in this file");
   process.exit(1);
@@ -88,7 +88,7 @@ if (unclassified.length > 0) {
 // --- the two classifying behaviors must keep existing ------------------------------------------
 // If either is renamed or dropped, the check above silently passes for everything.
 const behaviorIds = new Set((manifest.behaviors ?? []).map((b) => b.id));
-assert.ok(behaviorIds.has("inspect-roborepo"), "manifest must keep an 'inspect-roborepo' behavior for this check to mean anything");
+assert.ok(behaviorIds.has("inspect-install"), "manifest must keep an 'inspect-install' behavior for this check to mean anything");
 assert.ok(behaviorIds.has("mutate-harness-config"), "manifest must keep a 'mutate-harness-config' behavior for this check to mean anything");
 
 // --- agent-run must never be reachable as an allowlisted roborepo subcommand of itself ---------

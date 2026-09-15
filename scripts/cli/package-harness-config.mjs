@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./paths.mjs";
-import { roborepoStateDir } from "./state-paths.mjs";
+import { stateDir } from "./state-paths.mjs";
 import { writeRootConfig } from "./root-config-writes.mjs";
 import { getHarnessProvider } from "../harnesses/registry.mjs";
 import { requireHarnessCapability } from "../harnesses/runtime.mjs";
@@ -9,7 +9,7 @@ import { validateAdapterComputeResult } from "../harnesses/schemas.mjs";
 
 export function runtimeAssetDestination(pkg, component) {
   const target = component.target || path.basename(component.source);
-  return path.join(roborepoStateDir, "runtime", pkg.id, target);
+  return path.join(stateDir, "runtime", pkg.id, target);
 }
 
 export function installRuntimeAsset(pkg, component, { dryRun = false } = {}) {

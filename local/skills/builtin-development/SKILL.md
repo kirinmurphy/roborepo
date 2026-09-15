@@ -1,5 +1,5 @@
 ---
-name: roborepo-development
+name: builtin-development
 description: >
   INTERNAL to this repo. Use when developing or maintaining roborepo itself: installer/update/
   repair/uninstall plumbing, package/apply/workspace state, symlink and skill-linking machinery,
@@ -8,13 +8,13 @@ description: >
   "how does this repo work", "roborepo development", "harness config architecture",
   "install scripts", "add an install step", "package mode", "workspace roots", "the symlink
   model", working on scripts/, bin/, manifests/platform/, or local/skills/. SKIP for ordinary
-  shared skill/rule content authoring — use roborepo-support for that instead. This skill is
+  shared skill/rule content authoring — use builtin-support for that instead. This skill is
   repo-local only; never global and never exported to client repos.
 ---
 
 # Roborepo Development (internal)
 
-Mechanic's manual for developing roborepo itself. Distinct from `roborepo-support`
+Mechanic's manual for developing roborepo itself. Distinct from `builtin-support`
 (operating shared/exportable skill, rule, hook, MCP, and parity content). This skill is
 firewalled to this repo — it loads only when an agent works inside this repo.
 
@@ -118,13 +118,13 @@ Everything else (the two symlink levels, the layer table) lives in
   behavior, do not add backwards-compatibility shims, deprecated aliases, or old command paths
   when changing features. Prefer one clear current interface. Start supporting deprecated
   commands/features only after launch, when compatibility is an explicit product requirement.
-- **`--quiet`/`-q` on the checkers.** `doctor.sh`, `verify-install.sh`, `test-roborepo.sh`, and
+- **`--quiet`/`-q` on the checkers.** `doctor.sh`, `verify-install.sh`, `test-cli.sh`, and
   `link-skills.sh` all accept `--quiet`: suppress the per-check `ok:`/`+ linked` lines, still
   print every failure plus a one-line `… (N checks)` / `N passed, M failed` summary, exit code
   unchanged. Use the bare script + `--quiet` for a readable, permissionable check — never pipe a
   verifier through `grep`/`head` to trim output. `doctor.sh` also folds `link-skills.sh --check`,
   so it is the single repo-health entrypoint (`--installed` adds global ~/.claude·~/.codex live
-  link checks including per-skill skill links); `test-roborepo.sh` stays the separate test suite.
+  link checks including per-skill skill links); `test-cli.sh` stays the separate test suite.
 - **Health gate before handoff.** After a merge from main, generated-file change,
   provider/adapter change, CI/workflow change, or `scripts/test/` addition/removal, run
   `bash scripts/doctor.sh --quiet` and `git diff --check` before final/push. `doctor.sh` is the
@@ -251,7 +251,7 @@ per-command 3-place wiring is gone — `install-global-commands.sh`, `doctor.sh`
 **Tests:** `scripts/test/cli-command-catalog-check.mjs` validates schema v2 command catalog
 definitions and removed-command mappings. `scripts/test/cli-surface-integration-check.mjs` exercises
 help, namespace fallbacks, retired command guidance, concise/verbose doctor output, and detached
-portal routing. `scripts/test/test-roborepo.sh` smoke-tests the subcommands (skill link-project/prune/
+portal routing. `scripts/test/test-cli.sh` smoke-tests the subcommands (skill link-project/prune/
 uninstall/conflict, export-to-project/override/firewall/self-pollution guard, sync-global, inspect,
 native, trigger checks, run, `mcp add/apply`, lifecycle dispatch, menu fallback, package/workspace
 paths) against throwaway temp repos. Run it after behavior changes under `scripts/cli/`. `doctor.sh`

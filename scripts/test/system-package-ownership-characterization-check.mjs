@@ -43,7 +43,7 @@ const cli = path.join(repoRoot, "scripts/cli/main.mjs");
 // --- Item 1/3 integration: enable/disable/reapply round-trips for both packages' Codex hooks. ---
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-codex-hook-ownership-"));
-  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), SKIP_MCP: "1" };
   fs.mkdirSync(path.join(tmp, ".claude"), { recursive: true });
   fs.mkdirSync(path.join(tmp, ".codex"), { recursive: true });
   fs.writeFileSync(path.join(tmp, ".claude", "settings.json"), "{}");
@@ -99,7 +99,7 @@ const cli = path.join(repoRoot, "scripts/cli/main.mjs");
 // disabled, for both jcodemunch and jdocmunch, per the plan doc's stated round-trip. ---
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-codex-mcp-ownership-"));
-  // No ROBOREPO_SKIP_MCP here (unlike the hook-composition test above): this test asserts on the
+  // No SKIP_MCP here (unlike the hook-composition test above): this test asserts on the
   // [mcp_servers.<name>] header itself, which only ensureCodexMcp (not skipped by that flag's
   // Claude-CLI-registration guard) writes. The Codex-side write is a pure TOML file operation with
   // no external CLI dependency, so it's safe to exercise directly.
@@ -161,7 +161,7 @@ const cli = path.join(repoRoot, "scripts/cli/main.mjs");
 // Bash exploration unaffected — the exit criterion literally stated in the plan doc. ---
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-jcodemunch-bash-blocker-"));
-  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), SKIP_MCP: "1" };
   fs.mkdirSync(path.join(tmp, ".claude"), { recursive: true });
   fs.mkdirSync(path.join(tmp, ".codex"), { recursive: true });
   fs.writeFileSync(path.join(tmp, ".claude", "settings.json"), "{}");
@@ -233,7 +233,7 @@ const cli = path.join(repoRoot, "scripts/cli/main.mjs");
 // Phase 0 never captured the "before" state for this item. ---
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-command-ownership-"));
-  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), SKIP_MCP: "1" };
   fs.mkdirSync(path.join(tmp, ".claude", "commands"), { recursive: true });
   fs.mkdirSync(path.join(tmp, ".codex", "commands"), { recursive: true });
   fs.writeFileSync(path.join(tmp, ".claude", "settings.json"), "{}");

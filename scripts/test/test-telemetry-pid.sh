@@ -18,7 +18,7 @@ for arg in "$@"; do
   esac
 done
 
-work="$(mktemp -d "${TMPDIR:-/tmp}/roborepo-pid-test.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/cli-pid-test.XXXXXX")"
 trap 'rm -rf "${work}"' EXIT
 
 pidfile="${work}/portal-server.pid"

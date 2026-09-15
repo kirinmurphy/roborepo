@@ -9,7 +9,7 @@
 //
 // A second, quieter version of the same failure: a file registered as a package.json `test:*`
 // script is not thereby reachable. The CI/local gate names specific `test:*` scripts, and
-// test-roborepo.sh is its own hand-maintained assert list. A `test:*` entry that nothing calls by
+// test-cli.sh is its own hand-maintained assert list. A `test:*` entry that nothing calls by
 // name is exactly as orphaned as a file with no npm script at all — it just looks covered. So a
 // `test:*` script counts as reachable only when a runner references its target file or invokes that
 // `test:*` name directly — never merely by existing in package.json.
@@ -28,13 +28,14 @@ const testDir = path.join(repoRoot, "scripts", "test");
 // Reason strings are the point of this map: each entry says why nothing runs the file, so a future
 // reader can tell a deliberate non-test from a test that quietly fell out of the suite.
 const EXEMPT = new Map([
-  ["test-roborepo.sh", "the suite runner itself"],
+  ["naming-inventory.mjs", "naming-surface inventory utility (rename-prep); run by hand, not a check"],
+  ["test-cli.sh", "the suite runner itself"],
   ["ci.sh", "the CI runner itself"],
   ["run-checks.mjs", "the discover-and-run runner; every *-check.mjs is reachable through it (see GLOB_RUNNER below)"],
   ["telemetry-schemas-persistence-child.mjs", "child process spawned by telemetry-schemas-check.mjs"],
   ["telemetry-spool-bench.mjs", "micro-benchmark against the live spool; run by hand, not asserted"],
   ["test-telemetry-pid.sh", "binds a real port; manual smoke, deliberately out of the automated suite"],
-  ["hermetic-suite.sh", "wrapper that re-runs test-roborepo.sh under a sanitized HOME/PATH"],
+  ["hermetic-suite.sh", "wrapper that re-runs test-cli.sh under a sanitized HOME/PATH"],
   ["install-smoke.mjs", "post-install probe against a LIVE installation; run by hand after `roborepo update`, not in CI"],
   ["promote-npm-latest-check.mjs", "touches the real npm registry; release-only, never run in CI"],
   ["publish-npm-check.mjs", "touches the real npm registry; release-only, never run in CI"],
@@ -52,7 +53,7 @@ const GLOB_RUNNER = "run-checks.mjs";
 // several shapes (node "${repo_root}/scripts/test/x.mjs", bash scripts/test/x.sh), and matching the
 // filename catches all of them without trying to parse two languages.
 const DIRECT_RUNNER_SOURCES = [
-  "scripts/test/test-roborepo.sh",
+  "scripts/test/test-cli.sh",
   "scripts/test/ci.sh",
   ".github/workflows/ci.yml",
 ];
@@ -106,7 +107,7 @@ if (orphans.length > 0) {
   console.error(`fail: ${orphans.length} test file(s) under scripts/test/ are not run by anything:`);
   for (const name of orphans) console.error(`  ${name}`);
   console.error("");
-  console.error("Add each to scripts/test/test-roborepo.sh, a package.json test:* script, or a CI job.");
+  console.error("Add each to scripts/test/test-cli.sh, a package.json test:* script, or a CI job.");
   console.error(`If it is deliberately not a suite entry point, add it to EXEMPT in ${path.relative(repoRoot, fileURLToPath(import.meta.url))} with a reason.`);
 }
 

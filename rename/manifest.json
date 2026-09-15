@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "description": "Repository identity rename manifest. The engine (rename/rename.mjs) reads this file; all name knowledge lives here, never in the script. Rule templates like {{lowercaseName}} render `match` against identity CURRENT values and `replace` against NEW values (falling back to current for fields with no new value — such spans are claimed but left unchanged and reported as pending decisions). Reusable for future renames: after a successful rename the tool rewrites identity.current, so the same rules keep working.",
+  "identity": {
+    "displayName": { "current": "RoboRepo", "requiredForApply": true, "notes": "Product/display name: prose, docs, portal copy, cli-commands.json title." },
+    "lowercaseName": { "current": "roborepo", "requiredForApply": true, "notes": "Lowercase identifier: CLI command, bin entry, filenames, localStorage keys, hooks, skill dirs, usage strings." },
+    "uppercaseName": { "current": "ROBOREPO", "requiredForApply": false, "derivesFrom": "lowercaseName.toUpperCase()", "notes": "Env-var prefix family (ROBOREPO_*), portal window global, MANAGED_BY file name." },
+    "packageName": { "current": "codethings-roborepo-alpha", "requiredForApply": false, "notes": "npm package identity. Renaming it orphans existing installs (they keep working but stop updating): publish the new name, `npm deprecate` the old one. Unset = left unchanged, reported as pending." },
+    "configDir": { "current": ".roborepo", "requiredForApply": false, "notes": "State dir fragment under $HOME (~/.roborepo). Deliberately NOT derived from lowercaseName: existing installs hold real state there (see backCompat), so it changes only when explicitly set." },
+    "repoUrl": { "current": "github.com/kirinmurphy/roborepo", "requiredForApply": false, "notes": "GitHub repo identity inside canonical repository IDs and test fixtures. Change only when the GitHub repo itself is renamed." },
+    "schemaDomain": { "current": "roborepo.dev", "requiredForApply": false, "notes": "Externally-owned schema $id domain (scripts/harnesses/provider-manifest.schema.json). Claimed so the sweep never touches it; changes only if you own the replacement domain." }
+  },
+  "rules": [
+    {
+      "id": "package-name",
+      "match": "{{packageName}}",
+      "replace": "{{packageName}}",
+      "classification": "explicit",
+      "note": "npm identity: package.json, package-lock.json, uninstall paths, release scripts/tests. Claiming the WHOLE package string prevents the sweep from partially renaming inside it."
+    },
+    {
+      "id": "managed-marker-file",
+      "match": "MANAGED_BY_{{uppercaseName}}.md",
+      "replace": "MANAGED_BY_{{uppercaseName}}.md",
+      "classification": "explicit",
+      "note": "Managed-copy notice shipped into harness homes; filename is content-addressed in manifests/platform/manifest.tsv (rename file + manifest rows in lockstep; add a cleanup row for the old name). This is deliberate display branding — the product name belongs in it."
+    },
+    {
+      "id": "portal-token",
+      "match": "roborepo-portal-token",
+      "replace": "cli-portal-token",
+      "classification": "explicit",
+      "claimOnly": true,
+      "note": "ALREADY DE-BRANDED (phase 1b): the portal token meta name + X-Cli-Portal-Token header are now name-agnostic. Rule kept as a claim-only guard for any stragglers."
+    },
+    {
+      "id": "theme-event",
+      "match": "{{lowercaseName}}:themechange",
+      "replace": "{{lowercaseName}}:themechange",
+      "classification": "explicit",
+      "note": "Custom DOM event fired by portal/shared/theme.js."
+    },
+    {
+      "id": "theme-key",
+      "match": "{{lowercaseName}}-theme",
+      "replace": "{{lowercaseName}}-theme",
+      "classification": "explicit",
+      "note": "localStorage key for portal theme. Only persisted data affected: users' saved theme resets once."
+    },
+    {
+      "id": "portal-global",
+      "match": "{{uppercaseName}}_PORTAL",
+      "replace": "{{uppercaseName}}_PORTAL",
+      "classification": "explicit",
+      "note": "window global injected by portal-server.mjs, read by portal/shared/{theme,api}.js."
+    },
+    {
+      "id": "env-prefix",
+      "match": "{{uppercaseName}}_",
+      "replace": "{{uppercaseName}}_",
+      "classification": "explicit",
+      "note": "Whole ROBOREPO_* env-var family in one rule (claims only the prefix span). Users' shells and external tooling may export these — see backCompat."
+    },
+    {
+      "id": "config-dir",
+      "match": ".{{lowercaseName}}",
+      "replace": "{{configDir}}",
+      "classification": "explicit",
+      "note": "~/.roborepo path fragment (sorted after ownership-marker, which is longer, so markers are never mangled). Pending unless identity.configDir is explicitly set."
+    },
+    {
+      "id": "repo-url",
+      "match": "github.com/kirinmurphy/{{lowercaseName}}",
+      "replace": "{{repoUrl}}",
+      "classification": "explicit",
+      "claimOnly": true,
+      "note": "Canonical repository IDs (git:github.com/...) track REAL external repos. Claimed so the sweep never mangles them; replaced only when identity.repoUrl gets a new value."
+    },
+    {
+      "id": "schema-domain",
+      "match": "roborepo.dev",
+      "replace": "{{schemaDomain}}",
+      "classification": "explicit",
+      "claimOnly": true,
+      "note": "Externally-owned schema $id domain. Not identity-derived on purpose: edit this literal manually if the domain ever moves."
+    }
+  ],
+  "sweep": {
+    "enabled": true,
+    "note": "Case-variant sweep over the lowercase name (RoboRepo/Roborepo/roborepo/ROBOREPO), applied to UNCLAIMED spans in live files only. Any other case arrangement (e.g. RoBoRePo) is ambiguous and requires --ack.",
+    "mapTitleCaseToDisplay": true,
+    "note_mapTitleCaseToDisplay": "The single-word title-case variant 'Roborepo' maps to the new displayName (same treatment as 'RoboRepo')."
+  },
+  "exclusions": {
+    "paths": [".git/", "node_modules/", "test-results/", ".worktrees/", "rename/"],
+    "historical": [
+      "docs/plans/",
+      "sketches/",
+      "portal/mockups/"
+    ],
+    "historicalNote": "Dated records and design artifacts stay as-written, like git history. Per user decision (Sep 2026): ALL of docs/plans is excluded, active plans included — the rename tool ignores it entirely.",
+    "generated": ["generated/"],
+    "generatedNote": "generated/ is committed build output. Regenerate from source after a rename (config apply / rules-render in a dev checkout) rather than hand-editing — or pass --include-generated to force-edit."
+  },
+  "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".ico", ".zip", ".woff", ".woff2", ".sqlite", ".pdf"],
+  "apply": {
+    "renamePaths": true,
+    "note": "Tracked files/dirs whose PATHS contain a replaced token are git-mv'd (bin/roborepo, docs/user/reference/roborepo*.md, skill dirs, symlinks).",
+    "symlinkAware": true,
+    "note_symlinkAware": ".claude/.codex/.gemini skill symlinks have their LINK TEXT rewritten, never followed."
+  },
+  "backCompat": [
+    "PERSISTED STATE: existing installs have real state under ~/.roborepo. Simplest strategy: migrate-on-first-run in scripts/cli/roots.mjs (if the new dir is missing and the old exists, rename it). No parallel-path compat layer.",
+    "NPM PACKAGE: renaming packageName orphans existing installs. Strategy: publish the new name, `npm deprecate` the old one pointing at it.",
+    "GLOBAL BIN: after a package rename, old `roborepo` symlinks remain in user PATHs; scripts/install/uninstall-lib.sh must recognize both layouts during uninstall.",
+    "ENV VARS: users' shells and external tooling may export ROBOREPO_*. Keep ROBOREPO_STATE_DIR readable as a fallback for one release if zero-user-action migration matters.",
+    "APPLIED HARNESS FILES: MANAGED_BY_ROBOREPO.md and rendered hook/permission files already live on user machines. Use manifests/platform/manifest.tsv cleanup rows (existing pattern) to remove old names on next apply.",
+    "TELEMETRY: machine-local registries carry git:github.com/kirinmurphy/roborepo repo IDs. Repo IDs must NOT change (they track real repos).",
+    "NOTE (Sep 2026): the .roborepo-managed ownership marker (now .builtin-managed), the generated policy filename (now generated-permissions.toml), the write-guard hook filename (now write-guard.mjs), and the XDG PID path (~/.local/state/cli) were de-branded in phase 1g — no longer part of any rename."
+  ]
+}

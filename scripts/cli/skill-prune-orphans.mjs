@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { harnessHome } from "./paths.mjs";
-import { roborepoSkillsDir } from "./state-paths.mjs";
+import { stateSkillsDir } from "./state-paths.mjs";
 
 // An orphan is a symlink in a harness skill dir whose target no longer exists — almost always a
 // skill that was removed from the repo while its per-harness pointer stayed behind.
@@ -37,7 +37,7 @@ export function findOrphanSkillLinks() {
       // Resolves fine — not an orphan.
       if (fs.existsSync(linkPath)) continue;
       const resolved = path.resolve(path.dirname(linkPath), target);
-      if (!resolved.startsWith(roborepoSkillsDir)) continue;
+      if (!resolved.startsWith(stateSkillsDir)) continue;
       orphans.push({ harness, name, linkPath, target: resolved });
     }
   }

@@ -155,7 +155,7 @@ function testCaptureV3Compat() {
   );
 }
 
-// Persistence functions import state-paths.mjs, whose stateRoot is a top-level const resolved from
+// Persistence functions import state-paths.mjs, whose STATE_ROOT is a top-level const resolved from
 // ROBOREPO_STATE_DIR at import time (see paths.mjs). Sandboxing that requires setting the env var
 // on a freshly spawned node process, not inside this already-running one — same pattern as
 // package-lifecycle-check.mjs's spawnSync(cli, ..., { env }).

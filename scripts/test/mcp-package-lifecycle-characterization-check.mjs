@@ -3,7 +3,7 @@
 // disable's MCP wiring) before Phase 5 replaces their direct claude-CLI-shell-out +
 // ensureCodexMcp/removeCodexMcp calls with dispatch through
 // getHarnessProvider(id).adapters.mcp.addServer/removeServer. Pins:
-//   - installMcpPreset respects ROBOREPO_SKIP_MCP (skips entirely, no Codex write either).
+//   - installMcpPreset respects SKIP_MCP (skips entirely, no Codex write either).
 //   - removeMcpPreset's --dry-run path (real removal shells to `claude`, not exercised here).
 //   - Claude and Codex are wired/removed INDEPENDENTLY, not as a single all-or-nothing operation
 //     (the whole reason these two functions don't just delegate to `mcp add`/a combined helper --
@@ -21,20 +21,20 @@ const appRoot = makeAppRoot({ prefix: "roborepo-mcp-lifecycle-app-" });
 try {
   const pkgId = "jcodemunch"; // real built-in package with an mcp resource (preset "jcodemunch")
 
-  // --- ROBOREPO_SKIP_MCP=1: installMcpPreset must skip entirely, Codex config untouched ---
+  // --- SKIP_MCP=1: installMcpPreset must skip entirely, Codex config untouched ---
   {
     const home = makeHome();
     try {
       const before = fs.readFileSync(path.join(home, ".codex", "config.toml"), "utf8");
-      const env = { ...process.env, HOME: home, ROBOREPO_APP_ROOT: appRoot, ROBOREPO_MODE: "development", ROBOREPO_STATE_DIR: path.join(home, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+      const env = { ...process.env, HOME: home, ROBOREPO_APP_ROOT: appRoot, ROBOREPO_MODE: "development", ROBOREPO_STATE_DIR: path.join(home, ".roborepo"), SKIP_MCP: "1" };
       const result = spawnSync(process.execPath, [path.join(appRoot, "scripts", "cli", "main.mjs"), "package", "enable", pkgId], { env, encoding: "utf8" });
       assert.equal(result.status, 0, `package enable should succeed: ${result.stderr}\n${result.stdout}`);
-      assert.match(result.stdout, new RegExp(`skip: mcp jcodemunch \\(ROBOREPO_SKIP_MCP\\)`), "ROBOREPO_SKIP_MCP must skip the mcp wiring entirely");
+      assert.match(result.stdout, new RegExp(`skip: mcp jcodemunch \\(SKIP_MCP\\)`), "SKIP_MCP must skip the mcp wiring entirely");
       const after = fs.readFileSync(path.join(home, ".codex", "config.toml"), "utf8");
-      // ROBOREPO_SKIP_MCP only gates the MCP server registration itself -- jcodemunch also ships a
+      // SKIP_MCP only gates the MCP server registration itself -- jcodemunch also ships a
       // separate codex_tool_approvals resource (a different resource type, its own write path) that
       // is NOT gated by this env var, so only the [mcp_servers.jcodemunch] block itself is asserted.
-      assert.doesNotMatch(after, /\[mcp_servers\.jcodemunch\]/, "the mcp_servers block itself must not appear when ROBOREPO_SKIP_MCP=1");
+      assert.doesNotMatch(after, /\[mcp_servers\.jcodemunch\]/, "the mcp_servers block itself must not appear when SKIP_MCP=1");
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }

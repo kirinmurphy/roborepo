@@ -34,7 +34,7 @@ HTTP probes are bounded to 8 active instance probes at a time. Each instance sti
 compatible host candidates in order so hostname preference remains deterministic while large local
 listener sets cannot stall the portal.
 
-The portal process is represented as built-in identity `roborepo:portal` and is never probed
+The portal process is represented as built-in identity `builtin:portal` and is never probed
 recursively.
 
 A project identity with exactly one distinct listener "shape" (same page title and relative

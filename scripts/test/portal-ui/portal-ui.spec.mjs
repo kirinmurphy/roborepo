@@ -147,7 +147,7 @@ test.describe("portal home (portal-onboarding-home)", () => {
       await page.goto("/");
       await page.evaluate((t) => {
         try {
-          localStorage.setItem("roborepo-theme", t);
+          localStorage.setItem("portal-theme", t);
         } catch {}
         document.documentElement.dataset.theme = t;
       }, theme);
@@ -241,7 +241,7 @@ test.describe("portal home (portal-onboarding-home)", () => {
       await page.goto("/");
       await page.evaluate((t) => {
         try {
-          localStorage.setItem("roborepo-theme", t);
+          localStorage.setItem("portal-theme", t);
         } catch {}
         document.documentElement.dataset.theme = t;
       }, theme);

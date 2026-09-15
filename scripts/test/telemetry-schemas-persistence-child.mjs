@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs inside an isolated ROBOREPO_STATE_DIR set by the parent (telemetry-schemas-check.mjs).
-// Not a standalone test entry point — do not add this to package.json/test-roborepo.sh directly.
+// Not a standalone test entry point — do not add this to package.json/test-cli.sh directly.
 import assert from "node:assert/strict";
 import { generateMarkerId } from "../cli/telemetry-schemas/marker-schema.mjs";
 import { generateExperimentId, } from "../cli/telemetry-schemas/experiment-schema.mjs";

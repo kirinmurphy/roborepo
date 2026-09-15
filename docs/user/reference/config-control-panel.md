@@ -255,7 +255,7 @@ checkout in use and prompt otherwise.
 
 Claude reads the family straight from git's own pointer files (`.git`, `commondir`,
 `.git/worktrees/*/gitdir`), costing ~15ms rather than a `git` subprocess. Codex does not enforce the
-read half of this table. It expresses only the write half through a `roborepo-workspace` permission
+read half of this table. It expresses only the write half through a `managed-workspace` permission
 profile, including this repo's derived worktree root from `docs/plans/plans-config.json`.
 
 #### Codex worktree permissions coordinator

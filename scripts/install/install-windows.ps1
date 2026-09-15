@@ -110,7 +110,8 @@ function Link-Item {
       throw "install has non-root config conflicts; no replacement was made for $HomePath"
     }
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-    $backupRoot = Join-Path $env:USERPROFILE ".roborepo-backups\$timestamp"
+    $stateDirName = ".roborepo"  # keep in sync with scripts/install/state-lib.sh cli_state_dirname
+    $backupRoot = Join-Path $env:USERPROFILE ".cli-backups\$timestamp"
     $backupPath = Join-Path $backupRoot $HomePath.TrimStart('\').TrimStart('/')
     if (-not $DryRun) {
       New-Item -ItemType Directory -Path (Split-Path -Parent $backupPath) -Force | Out-Null
@@ -488,14 +489,14 @@ function Get-PresentManifestRows {
 }
 
 # Materialize a shared skill into the machine-local cache at ~/.roborepo/skills/<name>, stamped
-# with a '.roborepo-managed' marker file, then symlink each harness view to that cache entry.
+# with a '.builtin-managed' marker file, then symlink each harness view to that cache entry.
 # Legacy managed symlinks are migrated to the cache-backed view. A real dir without the marker is
 # a native skill and is left untouched.
 function Copy-GlobalSkills {
   param($HomeDir, [string[]]$AllowedNames = @())
   $srcDir = Join-Path $repoRoot "globals\system\skills"
   $skillsHome = Join-Path $HomeDir "skills"
-  $cacheHome = Join-Path $env:USERPROFILE ".roborepo\skills"
+  $cacheHome = Join-Path $env:USERPROFILE "$stateDirName\skills"
 
   if (-not (Test-Path $srcDir)) { return }
 
@@ -509,14 +510,14 @@ function Copy-GlobalSkills {
 
     $src = Join-Path $srcDir $name
     $cacheTarget = Join-Path $cacheHome $name
-    $marker = Join-Path $cacheTarget ".roborepo-managed"
+    $marker = Join-Path $cacheTarget ".builtin-managed"
     $target = Join-Path $skillsHome $name
 
     if (Test-Path $cacheTarget -PathType Any) {
       $existingCache = Get-Item $cacheTarget -Force
       if (($existingCache.LinkType -eq "SymbolicLink") -or ((Test-Path $cacheTarget -PathType Container) -and (-not (Test-Path $marker)))) {
         if ($existingCache.LinkType -eq "SymbolicLink") {
-          if ($existingCache.Target -like "$repoRoot*" -or $existingCache.Target -like "$env:USERPROFILE\.roborepo\skills*") {
+          if ($existingCache.Target -like "$repoRoot*" -or $existingCache.Target -like "$env:USERPROFILE\$stateDirName\skills*") {
             if (-not $DryRun) {
               Remove-Item $cacheTarget -Force -Recurse
             }
@@ -540,7 +541,7 @@ function Copy-GlobalSkills {
     Write-Host "copy: $cacheTarget <- $src"
 
     # A real dir without our marker is a native-installed skill — leave it.
-    if ((Test-Path $target) -and -not (Test-Path $target -PathType Leaf) -and -not (Test-Path (Join-Path $target ".roborepo-managed"))) {
+    if ((Test-Path $target) -and -not (Test-Path $target -PathType Leaf) -and -not (Test-Path (Join-Path $target ".builtin-managed"))) {
       Write-Host "skip (native skill): $target"
       return
     }
@@ -550,7 +551,7 @@ function Copy-GlobalSkills {
       $existing = Get-Item $target -Force
       if ($existing.LinkType -eq "SymbolicLink" -and $existing.Target -eq $cacheTarget) {
         $linkOk = $true
-      } elseif ($existing.LinkType -eq "SymbolicLink" -and ($existing.Target -like "$repoRoot*" -or $existing.Target -like "$env:USERPROFILE\.roborepo\skills*")) {
+      } elseif ($existing.LinkType -eq "SymbolicLink" -and ($existing.Target -like "$repoRoot*" -or $existing.Target -like "$env:USERPROFILE\$stateDirName\skills*")) {
         if (-not $DryRun) {
           Remove-Item $target -Force
           New-Item -ItemType SymbolicLink -Path $target -Target $cacheTarget -Force | Out-Null
@@ -560,7 +561,7 @@ function Copy-GlobalSkills {
       } elseif ($existing.LinkType -eq "SymbolicLink") {
         Write-Host "skip (unmanaged symlink): $target"
         return
-      } elseif (Test-Path (Join-Path $target ".roborepo-managed")) {
+      } elseif (Test-Path (Join-Path $target ".builtin-managed")) {
         if (-not $DryRun) {
           Remove-Item $target -Force -Recurse
           New-Item -ItemType SymbolicLink -Path $target -Target $cacheTarget -Force | Out-Null
@@ -590,7 +591,7 @@ function Copy-GlobalSkills {
   Get-ChildItem $cacheHome -Directory | ForEach-Object {
     $name = $_.Name
     if ($name.StartsWith(".")) { return }
-    $entryMarker = Join-Path $_.FullName ".roborepo-managed"
+    $entryMarker = Join-Path $_.FullName ".builtin-managed"
     if (-not (Test-Path $entryMarker)) { return }
     if (($AllowedNames.Count -gt 0) -and ($AllowedNames -notcontains $name)) {
       if (-not $DryRun) { Remove-Item $_.FullName -Recurse -Force }
@@ -673,7 +674,7 @@ foreach ($id in $KnownHarnessIds) {
     Invoke-ManifestRows $HarnessDisplayNames[$id] @($id)
     Render-HomeRules $id
     $harnessHome = Resolve-ManifestHomeRoot $id
-    Copy-GlobalSkills $harnessHome @("roborepo-support")
+    Copy-GlobalSkills $harnessHome @("builtin-support")
   } else {
     Write-Host "skip: $($HarnessDisplayNames[$id]) — not found"
   }

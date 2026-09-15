@@ -3,7 +3,7 @@
 // enrollment operation. Kept dependency-injectable (stateRoot / fsApi / plan hooks) so tests drive
 // it without touching real home-dir state.
 import fs from "node:fs";
-import { stateRoot as defaultStateRoot } from "./paths.mjs";
+import { STATE_ROOT as defaultStateRoot } from "./paths.mjs";
 import {
   loadRegistry,
   updateRegistry,

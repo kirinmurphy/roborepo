@@ -61,7 +61,7 @@ harness id.
 Tracked generated snapshots remain in the repo because setup and drift checks should work without running a build step first. Live home files are rendered by `scripts/cli/rules-render.mjs` from the tracked fragments plus the enabled-package registry.
 
 When a live `CLAUDE.md` or `AGENTS.md` already contains user text, roborepo injects or replaces only
-its managed block (`<!-- BEGIN managed:roborepo-code-style -->` ... `<!-- END managed:... -->`).
+its managed block (`<!-- BEGIN managed:builtin-code-style -->` ... `<!-- END managed:... -->`).
 Text outside that block stays user-owned. On first install, a genuine user-authored file is also
 snapshotted under `~/.roborepo/backups/pre-install/<harness>/` before the managed block is added.
 
@@ -69,7 +69,7 @@ snapshotted under `~/.roborepo/backups/pre-install/<harness>/` before the manage
 
 - Shared fragments hold behavior that should apply to every harness.
 - Harness-specific fragments hold only true harness differences. A fragment under `globals/system/rules/<harness-id>/` lands directly in that harness's live managed block and nowhere else.
-- Shared fragments should stay compact. Expanded workflow guidance belongs in skills such as `test-harness`, `code-style`, `javascript-typescript`, `react`, or `roborepo-support`.
+- Shared fragments should stay compact. Expanded workflow guidance belongs in skills such as `test-harness`, `code-style`, `javascript-typescript`, `react`, or `builtin-support`.
 - Global rules may tell the agent when to use a skill, but should not duplicate the full skill body.
 - The renderer should preserve deliberate format differences:
   - Claude can keep Markdown sections.

@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 
 function candidateRepoRoots() {
   const candidates = []
-  if (process.env.ROBOREPO_REPO_ROOT) candidates.push(process.env.ROBOREPO_REPO_ROOT)
+  if (process.env.REPO_ROOT) candidates.push(process.env.REPO_ROOT)
 
   const statePath = path.join(process.env.ROBOREPO_STATE_DIR || path.join(os.homedir(), '.roborepo'), 'install-state.json')
   try {

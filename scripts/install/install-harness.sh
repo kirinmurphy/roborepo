@@ -21,7 +21,7 @@ fi
 shift
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.roborepo-backups/$(date +%Y%m%d-%H%M%S)}"
+backup_root="${ROBOREPO_BACKUP_ROOT:-${HOME}/.cli-backups/$(date +%Y%m%d-%H%M%S)}"
 dry_run=0
 on_conflict="${ROBOREPO_ON_CONFLICT:-}"
 export ROBOREPO_INSTALL_TIMESTAMP="${ROBOREPO_INSTALL_TIMESTAMP:-$(date +%Y%m%d-%H%M%S)}"
@@ -64,8 +64,8 @@ while IFS=$'\t' read -r id home _present _name _root_config_path; do
   home_dir="${home}"
 done < <(harness_detected_rows)
 
-# Capture the user's genuine pre-roborepo config once, before the manifest loop mutates anything.
-snapshot_pre_roborepo_original
+# Capture the user's genuine pre-install config once, before the manifest loop mutates anything.
+snapshot_pre_install_original
 
 # Managed rows come from manifests/platform/manifest.tsv, filtered to this harness's column.
 while IFS=$'\t' read -r _h kind src_rel home_abs _flags; do
@@ -86,9 +86,9 @@ if command -v node >/dev/null 2>&1; then
   fi
 fi
 
-# Base install materializes the shared skill cache for roborepo-support and links this harness's view.
+# Base install materializes the shared skill cache for builtin-support and links this harness's view.
 # Other shared skills are installed by onboarding/package toggles, so a minimal install stays small.
-link_global_skills "${home_dir}" roborepo-support
+link_global_skills "${home_dir}" builtin-support
 
 # Guard: this script installs harness config only. The roborepo CLI (and `roborepo index code`)
 # require a full install via scripts/install/main.sh which wires the binary into PATH.

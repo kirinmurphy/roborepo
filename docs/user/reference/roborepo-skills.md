@@ -25,8 +25,8 @@ management, plugin enable/disable state, updates, validation, or one-session plu
 
 Package-owned shared skills are authored at
 `globals/packages/<package>/skills/<name>/`. The required base support skill remains a system
-skill at `globals/system/skills/roborepo-support/`. The global install materializes each enabled
-shared skill into `~/.roborepo/skills/<name>` with a `.roborepo-managed` marker, then links
+skill at `globals/system/skills/builtin-support/`. The global install materializes each enabled
+shared skill into `~/.roborepo/skills/<name>` with a `.builtin-managed` marker, then links
 installed harness views to that cache entry:
 
 ```text
@@ -45,12 +45,12 @@ This never touches global `~/.claude` or `~/.codex`.
 
 The report distinguishes:
 
-- roborepo-managed source at `globals/packages/<package>/skills/<name>` or the system
-  `globals/system/skills/roborepo-support`
-- managed cache entries under `~/.roborepo/skills/<name>` carrying `.roborepo-managed`
+- builtin-managed source at `globals/packages/<package>/skills/<name>` or the system
+  `globals/system/skills/builtin-support`
+- managed cache entries under `~/.roborepo/skills/<name>` carrying `.builtin-managed`
 - native or unmanaged real directories under `~/.claude/skills/<name>` or
   `~/.codex/skills/<name>`
-- native collisions, where a roborepo-managed skill name is occupied by an unmanaged native skill
+- native collisions, where a builtin-managed skill name is occupied by an unmanaged native skill
   in one harness
 - native-only metadata files such as `agents/openai.yaml`, `agents/claude.yaml`, `plugin.json`,
   `.codex-plugin/plugin.json`, and `skill.json`

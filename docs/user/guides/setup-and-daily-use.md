@@ -213,7 +213,7 @@ scripts/doctor.sh --installed --verbose  # include every passing check
 ```
 
 `doctor.sh` is concise by default; `--verbose` prints every passing check. `verify-install.sh`,
-`test-roborepo.sh`, and `link-skills.sh` accept `--quiet`/`-q` — prints only failures plus a
+`test-cli.sh`, and `link-skills.sh` accept `--quiet`/`-q` — prints only failures plus a
 summary line, exit code unchanged. Prefer those flags over piping a checker through `grep`/`head`.
 
 ### Run noisy commands with trimmed output

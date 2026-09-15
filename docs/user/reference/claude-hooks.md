@@ -143,7 +143,7 @@ Bash chain:
 **Trigger:** model attempts to `Write` or `Edit` a file under `~/.claude` or
 `~/.codex`.
 
-Runs `roborepo-write-guard.mjs`, which injects context reminding the model that
+Runs `write-guard.mjs`, which injects context reminding the model that
 most managed assets are symlinks into this repo (edit there, commit there), that
 new files should be created in the repo and linked rather than written directly into
 the home dir, and that root config files (`settings.json`, `config.toml`) are

@@ -48,7 +48,7 @@ export function canonicalizeLocalhosterIdentity(identity) {
     if (!realpath) return null;
     return { id: localRepositoryId(realpath), kind: "local", displayName: basename(realpath) };
   }
-  return null; // process:, roborepo:, or anything else
+  return null; // process:, builtin:, or anything else
 }
 
 function displayNameFromGitId(id) {

@@ -5,8 +5,8 @@
 # provider, without executing uninstall.sh's full top-to-bottom sequence. Source this file; do not
 # execute. Requires ${repo_root}, ${dry_run}, and ${HOME} to be set by the caller, and
 # scripts/lib/manifests-data.sh + scripts/install/state-lib.sh + scripts/install/install-lib.sh
-# already sourced (for manifest_rows, harness_detected_rows, roborepo_state_dir,
-# root_config_drift_status, is_roborepo_authored, content_matches_repo_source).
+# already sourced (for manifest_rows, harness_detected_rows, cli_state_dir,
+# root_config_drift_status, is_builtin_authored, content_matches_repo_source).
 
 # The checkout that performed the last install, recorded in install-state.json. May differ
 # from repo_root if the checkout was moved/renamed since install; used so uninstall can still
@@ -42,7 +42,7 @@ is_managed_link() {
     esac
   fi
   case "${current}" in
-    */.roborepo/skills/*) return 0 ;;
+    */$(cli_state_dirname)/skills/*) return 0 ;;
   esac
   # Dangling: link present but target missing -> stale link from a prior checkout path.
   [[ ! -e "${path}" ]] && return 0
@@ -78,7 +78,7 @@ remove_file_if_repo_symlink() {
   fi
 }
 
-# is_roborepo_authored and content_matches_repo_source come from install-lib.sh (sourced by the
+# is_builtin_authored and content_matches_repo_source come from install-lib.sh (sourced by the
 # caller) — single source of truth instead of two hand-kept-in-sync copies.
 
 # Defense-in-depth for rm -rf call sites: every path uninstall deletes must resolve (after symlink
@@ -103,7 +103,7 @@ assert_under_harness_home() {
   exit 1
 }
 
-# Restore the user's pre-roborepo original for a link target, if install persisted one to
+# Restore the user's pre-install original for a link target, if install persisted one to
 # ~/.roborepo/backups/pre-install/<harness>/<basename>. Only restores into a now-vacant slot (the
 # caller has already reclaimed roborepo's symlink/copy), so it never clobbers a user's own file left
 # in place. Mirrors remove_root_config's restore arm for link rows.
@@ -112,7 +112,7 @@ restore_pre_install_link_backup() {
   local harness="$2"
   [[ -n "${harness}" ]] || return 0
 
-  local backup="${HOME}/.roborepo/backups/pre-install/${harness}/$(basename "${home_abs}")"
+  local backup="${HOME}/$(cli_state_dirname)/backups/pre-install/${harness}/$(basename "${home_abs}")"
   [[ -e "${backup}" ]] || return 0
   [[ ! -e "${home_abs}" && ! -L "${home_abs}" ]] || return 0
 
@@ -129,7 +129,7 @@ restore_pre_install_link_backup() {
 #   1) a roborepo symlink (managed mode) -> remove it (is_managed_link gated).
 #   2) a REAL file/dir byte-identical to the repo source (adopt-mode copy, or a legacy materialized
 #      link) -> remove it. Content-matched so native/user-modified content is never deleted.
-#   3) restore the user's pre-roborepo original, if install persisted one.
+#   3) restore the user's pre-install original, if install persisted one.
 # A real, content-DIVERGENT target (the user edited the copy, or it is genuinely theirs) is left in
 # place by both (1) and (2) — we remove only what roborepo itself put there.
 reclaim_link_target() {
@@ -168,7 +168,7 @@ reclaim_rendered_rules_target() {
   remove_repo_symlink "${home_abs}"
 
   if [[ -e "${home_abs}" && ! -L "${home_abs}" ]]; then
-    if grep -Eq "BEGIN managed:roborepo-code-style|BEGIN managed:roborepo-agents-import" "${home_abs}" 2>/dev/null; then
+    if grep -Eq "BEGIN managed:builtin-code-style|BEGIN managed:managed-agents-import" "${home_abs}" 2>/dev/null; then
       if command -v node >/dev/null 2>&1; then
         if [[ "${dry_run}" -eq 1 ]]; then
           node "${repo_root}/scripts/cli/rules-render.mjs" --remove-managed --dry-run "${harness}"
@@ -181,7 +181,7 @@ reclaim_rendered_rules_target() {
       return 0
     fi
 
-    if is_roborepo_authored "${home_abs}"; then
+    if is_builtin_authored "${home_abs}"; then
       if [[ "${dry_run}" -eq 1 ]]; then
         echo "remove (rendered_rules): ${home_abs}"
       else
@@ -218,10 +218,10 @@ remove_root_config() {
   # mutable and may have been hand-edited or written by a native harness flow after roborepo's own
   # last write. If the recorded sidecar hash no longer matches on-disk content, the file has drifted
   # and we do not know which parts are safe to touch — leave it in place and report the path rather
-  # than deleting user-modified content (even though is_roborepo_authored below would still match the
+  # than deleting user-modified content (even though is_builtin_authored below would still match the
   # roborepo markers the user's edit sits on top of). Only "clean"/"unwritten"/"missing" fall
   # through to the content-based removal logic; "unwritten" preserves backward compatibility with
-  # installs that predate the sidecar (removal then relies on is_roborepo_authored/content match).
+  # installs that predate the sidecar (removal then relies on is_builtin_authored/content match).
   if [[ -n "${harness}" ]] && [[ "$(root_config_drift_status "${harness}" "${home_abs}")" == "drifted" ]]; then
     echo "skip drifted root_config (edited since roborepo last wrote it): ${home_abs}"
     return 0
@@ -229,7 +229,7 @@ remove_root_config() {
 
   local pre_install_backup=""
   if [[ -n "${harness}" ]]; then
-    pre_install_backup="${HOME}/.roborepo/backups/pre-install/${harness}/$(basename "${home_abs}")"
+    pre_install_backup="${HOME}/$(cli_state_dirname)/backups/pre-install/${harness}/$(basename "${home_abs}")"
   fi
 
   if [[ -n "${pre_install_backup}" && -f "${pre_install_backup}" ]]; then
@@ -245,7 +245,7 @@ remove_root_config() {
 
   local starter; starter="$(starter_for_root_config "${home_abs}")"
   local remove_config=0
-  if is_roborepo_authored "${home_abs}"; then
+  if is_builtin_authored "${home_abs}"; then
     remove_config=1
   elif [[ -n "${src_rel}" ]] && content_matches_repo_source "${repo_root}/${src_rel}" "${home_abs}"; then
     remove_config=1
@@ -255,7 +255,7 @@ remove_root_config() {
 
   if [[ "${remove_config}" -eq 1 ]]; then
     # No pre-install backup means roborepo created this root config on a clean machine. Remove it
-    # instead of resetting to a starter so uninstall leaves no roborepo-authored file behind.
+    # instead of resetting to a starter so uninstall leaves no builtin-authored file behind.
     if [[ "${dry_run}" -eq 1 ]]; then
       echo "remove (root_config): ${home_abs}"
     else
@@ -298,7 +298,7 @@ import(process.argv[1] + "/scripts/harnesses/claude/index.mjs").then(async ({ cl
 # restore/reset above. Packages (jcodemunch, jdocmunch, …) merge hooks directly into settings.json
 # via mergeHooks; remove_root_config restores the pre-install backup verbatim, which can contain
 # those hooks from a previous install cycle ("poisoned backup"). This pass removes whatever the
-# package enablers put in, leaving only the user's genuine pre-roborepo content.
+# package enablers put in, leaving only the user's genuine pre-install content.
 #
 # Delegates to the Claude provider's hooks.write adapter (removal semantics — scripts/harnesses/
 # claude/index.mjs), ported from this function's own former inline bash+node — see
@@ -367,7 +367,7 @@ remove_install_backups() {
     done
   done < <(harness_detected_rows)
 
-  local pre_install_dir="${HOME}/.roborepo/backups/pre-install"
+  local pre_install_dir="${HOME}/$(cli_state_dirname)/backups/pre-install"
   if [[ -d "${pre_install_dir}" ]]; then
     if [[ "${dry_run}" -eq 1 ]]; then
       echo "remove (pre-install backups): ${pre_install_dir}/"
@@ -380,7 +380,7 @@ remove_install_backups() {
 
 remove_preset_state() {
   local presets_dir
-  presets_dir="$(roborepo_state_dir)/presets"
+  presets_dir="$(cli_state_dir)/presets"
   [[ -d "${presets_dir}" ]] || return 0
   if [[ "${dry_run}" -eq 1 ]]; then
     echo "remove: ${presets_dir}/"
@@ -392,7 +392,7 @@ remove_preset_state() {
 
 remove_rules_state() {
   local rules_dir
-  rules_dir="$(roborepo_state_dir)/rules"
+  rules_dir="$(cli_state_dir)/rules"
   [[ -d "${rules_dir}" ]] || return 0
   if [[ "${dry_run}" -eq 1 ]]; then
     echo "remove: ${rules_dir}/"
@@ -427,9 +427,9 @@ remove_empty_dir() {
 # Resolves the effective workspace root the same way scripts/cli/roots.mjs does: an explicit
 # workspace-root.json override wins, otherwise the nested <stateRoot>/workspace default. Cleanup
 # must not assume the nested placement — a relocated workspace lives at a path the user chose.
-roborepo_workspace_dir() {
+cli_workspace_dir() {
   local state_dir override
-  state_dir="$(roborepo_state_dir)"
+  state_dir="$(cli_state_dir)"
   if [[ -n "${ROBOREPO_WORKSPACE_ROOT:-}" ]]; then
     echo "${ROBOREPO_WORKSPACE_ROOT/#\~/${HOME}}"
     return 0
@@ -452,12 +452,12 @@ roborepo_workspace_dir() {
 # workspace is ever eligible for deletion; a relocated one is left alone unconditionally.
 workspace_is_nested() {
   local state_dir workspace
-  state_dir="$(roborepo_state_dir)"
-  workspace="$(roborepo_workspace_dir)"
+  state_dir="$(cli_state_dir)"
+  workspace="$(cli_workspace_dir)"
   [[ "${workspace}" == "${state_dir}/"* ]]
 }
 
-# Selectively removes roborepo-owned machine state. Deliberately enumerates what it deletes instead
+# Selectively removes builtin-owned machine state. Deliberately enumerates what it deletes instead
 # of removing the state root wholesale: the default workspace lives at <stateRoot>/workspace, so a
 # recursive delete of the root destroys user-authored content no matter how the UI copy reads.
 #
@@ -466,8 +466,8 @@ workspace_is_nested() {
 # not take responsibility for it.
 remove_runtime_state() {
   local state_dir workspace
-  state_dir="$(roborepo_state_dir)"
-  workspace="$(roborepo_workspace_dir)"
+  state_dir="$(cli_state_dir)"
+  workspace="$(cli_workspace_dir)"
 
   remove_path "${state_dir}/command-overrides.json" "remove"
   remove_path "${state_dir}/enabled-packages.json" "remove"
@@ -505,18 +505,18 @@ remove_runtime_state() {
   # unrecognized user content) still lives inside it.
   remove_empty_dir "${state_dir}"
 
-  local pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}"
-  local legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"
+  local pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/portal-server.pid}}"
+  local legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/telemetry-server.pid}"
   remove_path "${pid_path}" "remove"
   remove_path "${legacy_pid_path}" "remove"
   remove_empty_dir "$(dirname "${pid_path}")"
 }
 
 remove_durable_install_backups() {
-  remove_path "${HOME}/.roborepo-backups" "remove (install backups)"
+  remove_path "${HOME}/.cli-backups" "remove (install backups)"
 }
 
-roborepo_process_pids() {
+cli_process_pids() {
   local process_root="${ROBOREPO_UNINSTALL_PROCESS_ROOT:-${repo_root}}"
   ps -ax -o pid=,command= 2>/dev/null | awk -v process_root="${process_root}" '
     index($0, process_root "/scripts/cli/main.mjs serve") > 0 ||
@@ -528,12 +528,12 @@ roborepo_process_pids() {
   '
 }
 
-stop_roborepo_processes() {
+stop_cli_processes() {
   local pids=()
   local pid
   local pid_path legacy_pid_path
-  pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}"
-  legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"
+  pid_path="${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/portal-server.pid}}"
+  legacy_pid_path="${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/telemetry-server.pid}"
   for path in "${pid_path}" "${legacy_pid_path}"; do
     if [[ -f "${path}" ]]; then
       pid="$(tr -cd '0-9' < "${path}" 2>/dev/null || true)"
@@ -542,7 +542,7 @@ stop_roborepo_processes() {
   done
   while IFS= read -r pid; do
     [[ -n "${pid}" && "${pid}" != "$$" ]] && pids+=("${pid}")
-  done < <(roborepo_process_pids || true)
+  done < <(cli_process_pids || true)
   [[ ${#pids[@]} -gt 0 ]] || return 0
 
   if [[ "${dry_run}" -eq 1 ]]; then
@@ -583,7 +583,7 @@ is_npm_owned_cli() {
 check_no_active_remnants() {
   local failed=0 path pid
   local state_dir package_bin
-  state_dir="$(roborepo_state_dir)"
+  state_dir="$(cli_state_dir)"
   package_bin="$(package_managed_bin_path)"
 
   # Not in the loop below: an npm-owned binary here is expected mid-uninstall and is removed by the
@@ -603,10 +603,10 @@ check_no_active_remnants() {
     "${state_dir}/telemetry" \
     "${state_dir}/telemetry-backups" \
     "${state_dir}/backups" \
-    "${HOME}/.roborepo-backups" \
+    "${HOME}/.cli-backups" \
     "${state_dir}/initialization.json" \
-    "${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/portal-server.pid}}" \
-    "${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/roborepo/telemetry-server.pid}"; do
+    "${ROBOREPO_PORTAL_PID_PATH:-${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/portal-server.pid}}" \
+    "${ROBOREPO_TELEMETRY_PID_PATH:-${HOME}/.local/state/cli/telemetry-server.pid}"; do
     if [[ -n "${package_bin}" && "${path}" == "${package_bin}" ]]; then
       continue
     fi
@@ -621,7 +621,7 @@ check_no_active_remnants() {
   # blanket "state dir exists" check would report every correct preserve-by-default run as unclean.
   if [[ -d "${state_dir}" ]]; then
     local workspace leftover
-    workspace="$(roborepo_workspace_dir)"
+    workspace="$(cli_workspace_dir)"
     while IFS= read -r leftover; do
       [[ -n "${leftover}" ]] || continue
       # A nested workspace we deliberately preserved.
@@ -641,7 +641,7 @@ check_no_active_remnants() {
     [[ -n "${pid}" && "${pid}" != "$$" ]] || continue
     echo "remnant process: ${pid}" >&2
     failed=1
-  done < <(roborepo_process_pids || true)
+  done < <(cli_process_pids || true)
 
   if [[ -f "${HOME}/.gitignore_global" ]] && grep -Fqx ".jdm-indexed" "${HOME}/.gitignore_global"; then
     echo "remnant: ${HOME}/.gitignore_global contains .jdm-indexed" >&2
@@ -678,21 +678,21 @@ check_no_active_remnants() {
         ;;
       root_config)
         # A drifted root_config is left in place on purpose by remove_root_config (the user edited
-        # it after roborepo's last write), so it is NOT a remnant even though is_roborepo_authored
+        # it after roborepo's last write), so it is NOT a remnant even though is_builtin_authored
         # still matches the markers underneath the edit. Only a "clean" authored file — roborepo's
         # own untouched write that removal should have deleted — counts. Post-uninstall the sidecar
         # is already gone, so drift reports "unwritten" for the deliberately-kept file and it is
         # correctly not flagged; the standalone --check-clean run (sidecar present) still catches a
         # genuinely-clean leftover.
-        if is_roborepo_authored "${home_abs}" \
+        if is_builtin_authored "${home_abs}" \
           && [[ "$(root_config_drift_status "${_h}" "${home_abs}")" == "clean" ]]; then
-          echo "remnant: ${home_abs} contains roborepo-authored content" >&2
+          echo "remnant: ${home_abs} contains builtin-authored content" >&2
           failed=1
         fi
         ;;
       rendered_rules)
-        if is_roborepo_authored "${home_abs}"; then
-          echo "remnant: ${home_abs} contains roborepo-authored content" >&2
+        if is_builtin_authored "${home_abs}"; then
+          echo "remnant: ${home_abs} contains builtin-authored content" >&2
           failed=1
         fi
         ;;
@@ -706,7 +706,7 @@ check_no_active_remnants() {
     [[ -d "${skills_home}" ]] || continue
     for entry in "${skills_home}"/*; do
       [[ -e "${entry}" || -L "${entry}" ]] || continue
-      if [[ -e "${entry}/.roborepo-managed" ]] || is_roborepo_skill_link "${entry}"; then
+      if [[ -e "${entry}/.builtin-managed" ]] || is_builtin_skill_link "${entry}"; then
         echo "remnant: ${entry}" >&2
         failed=1
       fi
@@ -735,7 +735,7 @@ check_no_active_remnants() {
 }
 
 # Per-skill global skill links: not in manifest, so manifest_rows won't remove them.
-is_roborepo_skill_link() {
+is_builtin_skill_link() {
   local link="$1"
   local target
   [[ -L "${link}" ]] || return 1
@@ -751,20 +751,20 @@ is_roborepo_skill_link() {
     esac
   fi
   case "${target}" in
-    */.roborepo/skills/*) return 0 ;;
+    */$(cli_state_dirname)/skills/*) return 0 ;;
   esac
   # Dangling link that points into globals/system/skills/, the legacy globals/agents/skills/, or
   # ~/.roborepo/skills/ of any roborepo checkout / install.
   if [[ ! -e "${link}" ]]; then
     case "${target}" in
-      */globals/system/skills/*|*/globals/agents/skills/*|*/.roborepo/skills/*) return 0 ;;
+      */globals/system/skills/*|*/globals/agents/skills/*|*/$(cli_state_dirname)/skills/*) return 0 ;;
     esac
   fi
   return 1
 }
 
-# Remove roborepo-managed skills: cache entries carrying the '.roborepo-managed' marker, plus
-# symlinks that point into the roborepo-managed cache or legacy repo source. Never touches a
+# Remove builtin-managed skills: cache entries carrying the '.builtin-managed' marker, plus
+# symlinks that point into the builtin-managed cache or legacy repo source. Never touches a
 # user's native skill (a real dir without the marker).
 remove_skill_links() {
   local skills_home="$1"
@@ -772,7 +772,7 @@ remove_skill_links() {
   local entry
   for entry in "${skills_home}"/*; do
     if [[ -L "${entry}" ]]; then
-      if is_roborepo_skill_link "${entry}"; then
+      if is_builtin_skill_link "${entry}"; then
         if [[ "${dry_run}" -eq 1 ]]; then
           echo "remove: ${entry}"
         else
@@ -780,7 +780,7 @@ remove_skill_links() {
           echo "remove: ${entry}"
         fi
       fi
-    elif [[ -e "${entry}/.roborepo-managed" ]]; then
+    elif [[ -e "${entry}/.builtin-managed" ]]; then
       if [[ "${dry_run}" -eq 1 ]]; then
         echo "remove: ${entry}"
       else
@@ -805,7 +805,7 @@ remove_shell_wiring() {
         echo "prune: would remove roborepo shell wiring from ${profile}"
         continue
       fi
-      tmp="$(mktemp "${TMPDIR:-/tmp}/roborepo-profile.XXXXXX")"
+      tmp="$(mktemp "${TMPDIR:-/tmp}/cli-profile.XXXXXX")"
       # Drop roborepo wiring lines and their marker comments. Both marker strings are written
       # verbatim by the installer (shell-snippets.sh -> "# Harness config shell helpers" before
       # its `source` lines; install-global-commands.sh -> "# Harness config global commands"
