@@ -149,10 +149,10 @@ export function startPortalServer(handlers) {
   server.listen(port, LOOPBACK, () => {
     const addr = server.address();
     const actualPort = typeof addr === "object" && addr ? addr.port : port;
-    if (process.env.ROBOREPO_PORTAL_READY_FILE) {
+    if (process.env.PORTAL_READY_FILE) {
       try {
         fs.writeFileSync(
-          process.env.ROBOREPO_PORTAL_READY_FILE,
+          process.env.PORTAL_READY_FILE,
           `ready:${actualPort}\n`,
         );
       } catch {}

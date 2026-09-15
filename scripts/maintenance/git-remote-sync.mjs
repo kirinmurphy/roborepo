@@ -589,7 +589,7 @@ function repoLabel(repo) {
 }
 
 function writeInteractiveResult(payload) {
-  const file = process.env.ROBOREPO_INTERACTIVE_RESULT_FILE;
+  const file = process.env.INTERACTIVE_RESULT_FILE;
   if (!file) return;
   fs.writeFileSync(file, JSON.stringify(payload));
 }

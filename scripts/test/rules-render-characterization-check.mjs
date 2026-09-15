@@ -22,7 +22,7 @@ function makeHome() {
 }
 
 function runRender(appRoot, home, extra = "") {
-  const env = { ...process.env, ROBOREPO_MODE: "development", ROBOREPO_APP_ROOT: appRoot, HOME: home, ROBOREPO_STATE_DIR: path.join(home, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, ROBOREPO_MODE: "development", ROBOREPO_APP_ROOT: appRoot, HOME: home, ROBOREPO_STATE_DIR: path.join(home, ".roborepo"), SKIP_MCP: "1" };
   const result = spawnSync(process.execPath, [
     "-e",
     `import(${JSON.stringify(path.join(appRoot, "scripts", "cli", "rules-render.mjs"))}).then((m) => m.renderHomeRules(${extra}))`,

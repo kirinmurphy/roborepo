@@ -29,7 +29,7 @@ const env = {
   HOME: home,
   ROBOREPO_STATE_DIR: path.join(home, ".roborepo"),
   ROBOREPO_STATE_ROOT: path.join(home, ".roborepo"),
-  ROBOREPO_SKIP_MCP: "1",
+  SKIP_MCP: "1",
   ROBOREPO_PRESETS_ONBOARD: "skip",
 };
 for (const k of ["ROBOREPO_WORKSPACE_ROOT", "ROBOREPO_APP_ROOT"]) delete env[k];

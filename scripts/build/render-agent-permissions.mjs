@@ -24,7 +24,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../..");
 
 function generatedHomeForRepo(root) {
-  if (process.env.ROBOREPO_GENERATED_HOME) return process.env.ROBOREPO_GENERATED_HOME;
+  if (process.env.GENERATED_HOME) return process.env.GENERATED_HOME;
   return path.join(path.sep, "Users", "you");
 }
 

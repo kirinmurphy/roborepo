@@ -11,11 +11,11 @@ export const packageName = JSON.parse(fs.readFileSync(path.join(repoRoot, "packa
 
 export function dockerSandboxConfig() {
   return {
-    image: process.env.ROBOREPO_CLEAN_MACHINE_IMAGE || "node:22-bookworm-slim",
-    probeTimeoutMs: Number(process.env.ROBOREPO_CLEAN_MACHINE_PROBE_TIMEOUT_MS || 5_000),
-    strict: process.env.ROBOREPO_CLEAN_MACHINE_STRICT === "1",
-    timeoutMs: Number(process.env.ROBOREPO_CLEAN_MACHINE_TIMEOUT_MS || 300_000),
-    tmpRoot: process.env.ROBOREPO_CLEAN_MACHINE_TMPDIR || "/tmp",
+    image: process.env.CLEAN_MACHINE_IMAGE || "node:22-bookworm-slim",
+    probeTimeoutMs: Number(process.env.CLEAN_MACHINE_PROBE_TIMEOUT_MS || 5_000),
+    strict: process.env.CLEAN_MACHINE_STRICT === "1",
+    timeoutMs: Number(process.env.CLEAN_MACHINE_TIMEOUT_MS || 300_000),
+    tmpRoot: process.env.CLEAN_MACHINE_TMPDIR || "/tmp",
   };
 }
 
@@ -34,7 +34,7 @@ export function requireDockerOrSkip({ label, image, strict }) {
 
   const imageCheck = spawnSync("docker", ["image", "inspect", image], { encoding: "utf8", timeout: probeTimeoutMs });
   if (imageCheck.status !== 0 && !strict) {
-    console.log(`skip: ${label} (${image} image not present; set ROBOREPO_CLEAN_MACHINE_STRICT=1 to pull/run)`);
+    console.log(`skip: ${label} (${image} image not present; set CLEAN_MACHINE_STRICT=1 to pull/run)`);
     return false;
   }
 

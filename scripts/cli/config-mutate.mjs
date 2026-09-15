@@ -23,7 +23,7 @@ import { resolveHarnessPath } from "../harnesses/paths.mjs";
 const SHARED_SKILLS_DIR = path.join(repoRoot, "globals", "system", "skills");
 // Machine-local skill cache. Harness skill dirs point at these copies; the cache is the thing that
 // survives across harness presence/absence and gives us one shared install source per machine.
-const ROBOREPO_SKILLS_DIR = stateSkillsDir;
+const SKILLS_DIR = stateSkillsDir;
 // Every registered provider's live skills dir (~/.claude/skills, ~/.codex/skills, ...), resolved
 // through the provider manifest's "skills" path — a live filesystem location this machine actually
 // reads/writes, so the expanded absolute path (not the raw "~/..." string) is correct here, unlike
@@ -42,7 +42,7 @@ function isManagedSkill(target) {
     const stat = fs.lstatSync(target);
     if (stat.isSymbolicLink()) {
       const linkTarget = fs.readlinkSync(target);
-      return linkTarget.startsWith(ROBOREPO_SKILLS_DIR) || linkTarget.startsWith(SHARED_SKILLS_DIR);
+      return linkTarget.startsWith(SKILLS_DIR) || linkTarget.startsWith(SHARED_SKILLS_DIR);
     }
     return fs.existsSync(path.join(target, MANAGED_MARKER));
   } catch {
@@ -51,7 +51,7 @@ function isManagedSkill(target) {
 }
 
 function skillCachePath(id) {
-  return path.join(ROBOREPO_SKILLS_DIR, id);
+  return path.join(SKILLS_DIR, id);
 }
 
 function dirMatches(src, dest) {
@@ -122,7 +122,7 @@ function linkSkillView(cacheAbs, target, { dryRun = false } = {}) {
     if (stat.isSymbolicLink()) {
       const current = fs.readlinkSync(target);
       if (current === cacheAbs) return { state: "ok" };
-      if (current.startsWith(ROBOREPO_SKILLS_DIR) || current.startsWith(SHARED_SKILLS_DIR)) {
+      if (current.startsWith(SKILLS_DIR) || current.startsWith(SHARED_SKILLS_DIR)) {
         if (!dryRun) {
           fs.unlinkSync(target);
           fs.symlinkSync(cacheAbs, target);
@@ -166,7 +166,7 @@ function pruneSkillViews(dir, allowedNames = [], dryRun = false) {
     } catch {
       continue;
     }
-    if (!target.startsWith(ROBOREPO_SKILLS_DIR) && !target.startsWith(SHARED_SKILLS_DIR)) continue;
+    if (!target.startsWith(SKILLS_DIR) && !target.startsWith(SHARED_SKILLS_DIR)) continue;
     if (live.size > 0 && !live.has(ent.name)) {
       if (!dryRun) fs.unlinkSync(link);
       console.log(`prune: ${link} (not in base skill set)`);

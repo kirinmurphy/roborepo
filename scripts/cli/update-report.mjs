@@ -38,7 +38,7 @@ async function refreshLivePermissions({ verbose = false } = {}) {
 
 function parseReportArgs(args) {
   const installArgs = [];
-  let verbose = process.env.ROBOREPO_UPDATE_VERBOSE === "1";
+  let verbose = process.env.UPDATE_VERBOSE === "1";
   for (const arg of args) {
     if (arg === "--verbose") {
       verbose = true;

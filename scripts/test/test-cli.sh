@@ -559,11 +559,11 @@ cfg_workspace="${cfg_home}/workspace"
 mkdir -p "${cfg_home}/.claude/skills" "${cfg_home}/.codex/skills"
 echo '{}' > "${cfg_home}/.claude/settings.json"
 printf '' > "${cfg_home}/.codex/config.toml"
-# ROBOREPO_SKIP_MCP=1: `enable` would otherwise shell out to `roborepo mcp add`, which writes
+# SKIP_MCP=1: `enable` would otherwise shell out to `roborepo mcp add`, which writes
 # TRACKED repo source (generated/claude/settings.json + manifests/inventory/mcp-servers.json) and the
 # real `claude` CLI. Skip that step so the test exercises perms/hooks/rules without polluting the
 # working tree or depending on global mcp state.
-cfg_env="HOME='${cfg_home}' ROBOREPO_STATE_DIR='${cfg_home}/.roborepo' ROBOREPO_WORKSPACE_ROOT='${cfg_workspace}' ROBOREPO_SKIP_MCP=1"
+cfg_env="HOME='${cfg_home}' ROBOREPO_STATE_DIR='${cfg_home}/.roborepo' ROBOREPO_WORKSPACE_ROOT='${cfg_workspace}' SKIP_MCP=1"
 
 # Guard: enabling a package must not mutate tracked repo source (it writes the consumer's home only).
 cfg_settings_before="$(git -C "${repo_root}" status --porcelain generated/claude/settings.json manifests/inventory/mcp-servers.json)"
@@ -616,7 +616,7 @@ recon_home="${work}/reconcile-home"
 mkdir -p "${recon_home}/.claude" "${recon_home}/.codex"
 echo '{}' > "${recon_home}/.claude/settings.json"
 printf '' > "${recon_home}/.codex/config.toml"
-recon_env="HOME='${recon_home}' ROBOREPO_STATE_DIR='${recon_home}/.roborepo' ROBOREPO_SKIP_MCP=1"
+recon_env="HOME='${recon_home}' ROBOREPO_STATE_DIR='${recon_home}/.roborepo' SKIP_MCP=1"
 bash -c "${recon_env} node '${cli}' package enable jcodemunch >/dev/null 2>&1 && ${recon_env} node '${cli}' package enable caveman >/dev/null 2>&1" || true
 cp "${repo_root}/generated/claude/settings.json" "${recon_home}/.claude/settings.json"
 cp "${repo_root}/generated/codex/config.toml" "${recon_home}/.codex/config.toml"
@@ -633,7 +633,7 @@ mkdir -p "${adopt_home}/.claude" "${adopt_home}/.codex" "${adopt_home}/.roborepo
 echo '{}' > "${adopt_home}/.claude/settings.json"
 printf '' > "${adopt_home}/.codex/config.toml"
 printf '{"enabled":true}\n' > "${adopt_home}/.roborepo/telemetry/state.json"
-adopt_env="HOME='${adopt_home}' ROBOREPO_STATE_DIR='${adopt_home}/.roborepo' ROBOREPO_SKIP_MCP=1"
+adopt_env="HOME='${adopt_home}' ROBOREPO_STATE_DIR='${adopt_home}/.roborepo' SKIP_MCP=1"
 assert "package adopt-live marks external telemetry service as enabled" \
   bash -c "${adopt_env} node '${cli}' package adopt-live >/dev/null && grep -q '\"telemetry\"' '${adopt_home}/.roborepo/enabled-packages.json'"
 
@@ -643,7 +643,7 @@ echo '{}' > "${adopt_skill_home}/.claude/settings.json"
 printf '' > "${adopt_skill_home}/.codex/config.toml"
 cp -R "${repo_root}/globals/packages/case-study-pack/skills/case-study" "${adopt_skill_home}/.roborepo/skills/case-study"
 touch "${adopt_skill_home}/.roborepo/skills/case-study/.roborepo-managed"
-adopt_skill_env="HOME='${adopt_skill_home}' ROBOREPO_STATE_DIR='${adopt_skill_home}/.roborepo' ROBOREPO_SKIP_MCP=1"
+adopt_skill_env="HOME='${adopt_skill_home}' ROBOREPO_STATE_DIR='${adopt_skill_home}/.roborepo' SKIP_MCP=1"
 assert "package adopt-live marks external skill-component package as enabled" \
   bash -c "${adopt_skill_env} node '${cli}' package adopt-live >/dev/null && grep -q '\"case-study-pack\"' '${adopt_skill_home}/.roborepo/enabled-packages.json'"
 
@@ -773,7 +773,7 @@ assert "config: setSkillInstalled skips native skill dir (real dir collision)" \
 if node -e 'const s=require("node:net").createServer();s.once("error",()=>process.exit(1));s.listen(0,"127.0.0.1",()=>s.close(()=>process.exit(0)))'; then
   # Dashboard POST endpoints: start the loopback server, exercise both routes, assert JSON contract.
   cfg_ready="${cfg_home}/portal.ready"
-  env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" ROBOREPO_PORTAL_READY_FILE="${cfg_ready}" \
+  env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" PORTAL_READY_FILE="${cfg_ready}" \
     node "${cli}" web --no-open --port 0 --allow-zero-port >"${cfg_home}/portal.log" 2>&1 &
   cfg_srv=$!
   cfg_port=""
@@ -1121,8 +1121,8 @@ EOF
 assert "package command: duplicate command ownership in same enable set is rejected" \
   bash -c "cd '${repo_root}' && node '${work}/package-command-duplicate-check.mjs'"
 
-bash -c "HOME='${command_home}' ROBOREPO_STATE_DIR='${command_home}/.roborepo' ROBOREPO_SKIP_MCP=1 node '${cli}' package enable jcodemunch >/dev/null 2>&1" || true
-bash -c "HOME='${command_home}' ROBOREPO_STATE_DIR='${command_home}/.roborepo' ROBOREPO_SKIP_MCP=1 node '${cli}' package enable jdocmunch >/dev/null 2>&1" || true
+bash -c "HOME='${command_home}' ROBOREPO_STATE_DIR='${command_home}/.roborepo' SKIP_MCP=1 node '${cli}' package enable jcodemunch >/dev/null 2>&1" || true
+bash -c "HOME='${command_home}' ROBOREPO_STATE_DIR='${command_home}/.roborepo' SKIP_MCP=1 node '${cli}' package enable jdocmunch >/dev/null 2>&1" || true
 
 UVX_ARGS_FILE="${command_home}/index-args.txt" PATH="${command_bin}:$PATH" HOME="${command_home}" ROBOREPO_STATE_DIR="${command_home}/.roborepo" node "${cli}" index code "${command_home}/repo/file.ts" >/dev/null
 assert "package command: index code uses package-owned command recipe" \
@@ -1235,7 +1235,7 @@ ln -s "${repo_root}/generated/codex/rules" "${update_home}/.codex/rules"
 # Skills and commands are linked/composed per-package by the installer's enumerate-step, not as
 # dir-level links (Phase 7 of the ownership plan moved commands off the old whole-directory copy).
 assert "lifecycle: setup package skills before update" \
-  bash -c "HOME='${update_home}' ROBOREPO_STATE_DIR='${update_home}/.roborepo' ROBOREPO_SKIP_MCP=1 node '${cli}' package enable jcodemunch >/dev/null 2>&1 && HOME='${update_home}' ROBOREPO_STATE_DIR='${update_home}/.roborepo' ROBOREPO_SKIP_MCP=1 node '${cli}' package enable case-study-pack >/dev/null 2>&1 && test -L '${update_home}/.claude/skills/case-study' && test -L '${update_home}/.codex/skills/case-study'"
+  bash -c "HOME='${update_home}' ROBOREPO_STATE_DIR='${update_home}/.roborepo' SKIP_MCP=1 node '${cli}' package enable jcodemunch >/dev/null 2>&1 && HOME='${update_home}' ROBOREPO_STATE_DIR='${update_home}/.roborepo' SKIP_MCP=1 node '${cli}' package enable case-study-pack >/dev/null 2>&1 && test -L '${update_home}/.claude/skills/case-study' && test -L '${update_home}/.codex/skills/case-study'"
 
 # The mcp-add tests above intentionally exercise source mutation for Claude permissions. Normalize
 # generated permission output before lifecycle doctor, which checks generated source drift.
@@ -1727,7 +1727,7 @@ assert "harness: live permission rendering is registry-backed" \
 # import them without cycling back through the registry.
 assert "harness: single-server MCP add is registry-backed (dry-run display, --only-* gating)" \
   node "${repo_root}/scripts/test/mcp-add-characterization-check.mjs"
-assert "harness: package-lifecycle MCP wiring is registry-backed (ROBOREPO_SKIP_MCP, independent Claude/Codex)" \
+assert "harness: package-lifecycle MCP wiring is registry-backed (SKIP_MCP, independent Claude/Codex)" \
   node "${repo_root}/scripts/test/mcp-package-lifecycle-characterization-check.mjs"
 
 assert "harness: CLI list/inspect/refresh/enable/disable end to end" \

@@ -777,7 +777,7 @@ reviewed_commit:
       HOME: homeDir,
       ROBOREPO_STATE_DIR: path.join(homeDir, ".roborepo"),
       ROBOREPO_STATE_ROOT: path.join(homeDir, ".roborepo"),
-      ROBOREPO_SKIP_MCP: "1",
+      SKIP_MCP: "1",
     };
     const cwd = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -867,7 +867,7 @@ reviewed_commit:
     "import('./modules/plan-docs/index.mjs').then((m) => { const d = m.discoverRepositories({ discoveryRoots: [process.env.TRAVERSAL_ROOT], ignoredDirectories: undefined }); process.stdout.write(JSON.stringify(d)); })",
   ], {
     cwd: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".."),
-    env: { ...process.env, ROBOREPO_DISCOVERY_TIME_BUDGET_MS: "0", TRAVERSAL_ROOT: traversalRoot },
+    env: { ...process.env, DISCOVERY_TIME_BUDGET_MS: "0", TRAVERSAL_ROOT: traversalRoot },
     encoding: "utf8",
   });
   assert.equal(budgetCheck.status, 0, budgetCheck.stderr);

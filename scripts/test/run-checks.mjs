@@ -15,7 +15,7 @@
 //                                                     #   check-groups.json (used by ci.sh)
 //
 // Environment is inherited (spawnSync with the caller's env), so flags that suites read directly
-// from the environment — e.g. ROBOREPO_CLEAN_MACHINE_STRICT=1 — pass through unchanged when ci.sh
+// from the environment — e.g. CLEAN_MACHINE_STRICT=1 — pass through unchanged when ci.sh
 // invokes this.
 //
 // Exit: 0 when every selected suite exited 0; 1 when any did not. Failures are aggregated and

@@ -80,11 +80,11 @@ Environment knobs:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `ROBOREPO_CLEAN_MACHINE_IMAGE` | `node:22-bookworm-slim` | Container image |
-| `ROBOREPO_CLEAN_MACHINE_STRICT` | unset | `1` turns Docker/image absence into a hard failure |
-| `ROBOREPO_CLEAN_MACHINE_TIMEOUT_MS` | `300000` | Per-container timeout |
-| `ROBOREPO_CLEAN_MACHINE_PROBE_TIMEOUT_MS` | `5000` | Docker daemon/image probe timeout |
-| `ROBOREPO_CLEAN_MACHINE_TMPDIR` | `/tmp` | Host temp root for Docker-bound pack artifacts |
+| `CLEAN_MACHINE_IMAGE` | `node:22-bookworm-slim` | Container image |
+| `CLEAN_MACHINE_STRICT` | unset | `1` turns Docker/image absence into a hard failure |
+| `CLEAN_MACHINE_TIMEOUT_MS` | `300000` | Per-container timeout |
+| `CLEAN_MACHINE_PROBE_TIMEOUT_MS` | `5000` | Docker daemon/image probe timeout |
+| `CLEAN_MACHINE_TMPDIR` | `/tmp` | Host temp root for Docker-bound pack artifacts |
 
 Prefer one script per scenario family. `clean-machine-install-sandbox.mjs` owns package
 install/uninstall behavior, including unusual state/workspace root shapes. `clean-machine-permissions-sandbox.mjs` owns fake-harness permission

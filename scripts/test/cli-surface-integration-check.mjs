@@ -24,9 +24,9 @@ try {
   const env = {
     ...process.env,
     HOME: path.join(workDir, "home"),
-    ROBOREPO_GENERATED_HOME: generatedHomeForRepo(repoRoot),
+    GENERATED_HOME: generatedHomeForRepo(repoRoot),
     ROBOREPO_STATE_DIR: path.join(workDir, "state"),
-    ROBOREPO_SKIP_MCP: "1",
+    SKIP_MCP: "1",
   };
   fs.mkdirSync(env.HOME, { recursive: true });
   fs.mkdirSync(env.ROBOREPO_STATE_DIR, { recursive: true });
@@ -269,7 +269,7 @@ function assertRemoteSyncMenuFlow({ env }) {
   const repo = makeRemoteSyncFixture(scanRoot);
   const script = `
     set timeout 20
-    spawn -noecho $env(ROBOREPO_EXPECT_NODE) $env(ROBOREPO_EXPECT_CLI) git remote-sync-check $env(ROBOREPO_EXPECT_SCAN_ROOT) --menu
+    spawn -noecho $env(EXPECT_NODE) $env(EXPECT_CLI) git remote-sync-check $env(EXPECT_SCAN_ROOT) --menu
     expect "Scanning remote state..."
     expect "Remote Sync Check"
     expect "./sync-work"
@@ -333,10 +333,10 @@ function assertRemoteSyncMenuFlow({ env }) {
     cwd: repoRoot,
     env: {
       ...env,
-      ROBOREPO_EXPECT_NODE: process.execPath,
-      ROBOREPO_EXPECT_CLI: cliPath,
-      ROBOREPO_EXPECT_SCAN_ROOT: scanRoot,
-      ROBOREPO_INTERACTIVE_RESULT_FILE: resultFile,
+      EXPECT_NODE: process.execPath,
+      EXPECT_CLI: cliPath,
+      EXPECT_SCAN_ROOT: scanRoot,
+      INTERACTIVE_RESULT_FILE: resultFile,
     },
     encoding: "utf8",
   });

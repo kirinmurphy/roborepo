@@ -76,7 +76,7 @@ function readJson(p, fallback) {
 function outsideRepoBucket() {
   const stateDir = process.env.ROBOREPO_STATE_DIR || path.join(os.homedir(), '.roborepo')
   const candidates = []
-  if (process.env.ROBOREPO_REPO_ROOT) candidates.push(process.env.ROBOREPO_REPO_ROOT)
+  if (process.env.REPO_ROOT) candidates.push(process.env.REPO_ROOT)
   const state = readJson(path.join(stateDir, 'install-state.json'), {})
   if (typeof state.repo === 'string' && state.repo) candidates.push(state.repo)
   candidates.push(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..'))

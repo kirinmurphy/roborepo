@@ -22,10 +22,10 @@ run npm run --silent test:unit -- --group ci
 run npm run --silent test:package-install
 
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  run env ROBOREPO_CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine
-  run env ROBOREPO_CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine-install-sandbox
-  run env ROBOREPO_CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine-permissions-sandbox
-  run env ROBOREPO_CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine-onboarding-sandbox
+  run env CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine
+  run env CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine-install-sandbox
+  run env CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine-permissions-sandbox
+  run env CLEAN_MACHINE_STRICT=1 npm run --silent test:clean-machine-onboarding-sandbox
 else
   echo ""
   echo "skip: clean-machine container suite (docker unavailable)"

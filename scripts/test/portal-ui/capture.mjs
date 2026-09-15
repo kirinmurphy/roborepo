@@ -58,7 +58,7 @@ if (seedTokens2) {
 
 const readyFile = path.join(tmp, "portal.ready");
 const bootLog = path.join(tmp, "boot.log");
-const serverEnv = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: stateDir, ROBOREPO_PORTAL_READY_FILE: readyFile };
+const serverEnv = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: stateDir, PORTAL_READY_FILE: readyFile };
 const server = spawn("node", [path.join(repoRoot, "scripts/cli/main.mjs"), "web", "--no-open", "--port", "0", "--allow-zero-port", "--detach"], {
   cwd: repoRoot,
   env: serverEnv,

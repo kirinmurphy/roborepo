@@ -47,7 +47,7 @@ assert.ok(packageIds.length > 0, "expected at least one package in the catalog")
 
 for (const pkgId of packageIds) {
   const tmp = makeHome();
-  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), SKIP_MCP: "1" };
   try {
     const enable1 = spawnSync(process.execPath, [cli, "package", "enable", pkgId], { env, encoding: "utf8" });
     assert.equal(enable1.status, 0, `${pkgId}: enable should succeed\n${enable1.stderr}`);
@@ -73,7 +73,7 @@ for (const pkgId of packageIds) {
 
 {
   const tmp = makeHome();
-  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), SKIP_MCP: "1" };
   try {
     const staleSkillCache = path.join(tmp, ".roborepo", "skills", "vanished-package-skill");
     fs.mkdirSync(staleSkillCache, { recursive: true });
@@ -100,7 +100,7 @@ for (const pkgId of packageIds) {
 
 {
   const tmp = makeHome();
-  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), ROBOREPO_SKIP_MCP: "1" };
+  const env = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: path.join(tmp, ".roborepo"), SKIP_MCP: "1" };
   try {
     const leakedCommand = writeOwnedCommand(tmp, "claude", "leaked-command", "technical-writing");
     const preflight = spawnSync("bash", [uninstall, "--check-clean"], { env, encoding: "utf8" });

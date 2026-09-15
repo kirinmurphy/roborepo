@@ -268,7 +268,7 @@ async function runInteractiveOnboard({ launchPortal = false, source = "library" 
 }
 
 function writeInteractiveResult(result, title) {
-  const resultFile = process.env.ROBOREPO_INTERACTIVE_RESULT_FILE;
+  const resultFile = process.env.INTERACTIVE_RESULT_FILE;
   if (!resultFile) return;
   const payload = result?.changed
     ? { notice: { text: `${title} updated`, level: result.failed ? "warning" : "success" } }

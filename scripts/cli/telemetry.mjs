@@ -1921,7 +1921,7 @@ function spawnDetachedServer(port) {
   const child = spawn(process.execPath, [process.argv[1], "web", "--no-open", "--port", String(port), "--allow-zero-port"], {
     detached: true,
     stdio: "ignore",
-    env: { ...process.env, ROBOREPO_PORTAL_READY_FILE: readyFile },
+    env: { ...process.env, PORTAL_READY_FILE: readyFile },
   });
   return { child, readyFile };
 }
