@@ -23,7 +23,7 @@ import {
 } from "../../modules/localhoster/index.mjs";
 import { markLocalhosterRefreshFailed } from "../cli/localhoster.mjs";
 
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-localhoster-"));
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "localhoster-"));
 const cloneJson = (value) => JSON.parse(JSON.stringify(value));
 // Docker/process-metrics providers are exercised in their own fixture-driven check scripts; core
 // discovery tests here stub them to no-ops so they stay hermetic and don't shell out to a real

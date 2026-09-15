@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { pidLiveness, reapPortalPids, scanPortalPids } from "../cli/portal-pid-reaper.mjs";
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-portal-pids-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portal-pids-"));
 
 function write(name, contents) {
   fs.writeFileSync(path.join(dir, name), contents);

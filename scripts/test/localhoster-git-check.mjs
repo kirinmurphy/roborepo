@@ -16,7 +16,7 @@ import {
 } from "../../modules/localhoster/index.mjs";
 import { createScanCache, defaultRunGit } from "../../modules/repositories/index.mjs";
 
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-localhoster-git-"));
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "localhoster-git-"));
 const SHA = "463e0e97300f0ac34bd4beaff454c1ddf9a03526";
 
 try {

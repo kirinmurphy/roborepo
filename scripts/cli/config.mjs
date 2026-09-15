@@ -23,14 +23,14 @@ import { buildRootConfigView } from "./root-config-view.mjs";
 
 // Harnesses whose permission model has no per-item "ask" tier, and which are actually present on
 // this machine. The fact and its wording both come from the provider manifest
-// (extensions.roborepo.perCommandAsk / perCommandAskNote) — platform code must not hardcode which
+// (extensions.app.perCommandAsk / perCommandAskNote) — platform code must not hardcode which
 // harness has the limitation, so a new provider declares it without editing this file. Returned as
 // one section-level notice rather than a per-item flag: the caveat is a property of the harness,
 // not of any individual permission.
 function askTierNotices() {
   const notices = [];
   for (const provider of listHarnessProviders()) {
-    const ext = provider.manifest.extensions?.roborepo ?? {};
+    const ext = provider.manifest.extensions?.app ?? {};
     if (ext.perCommandAsk !== false) continue;
     const home = harnessHome[provider.manifest.id];
     if (!home || !fs.existsSync(home)) continue;
@@ -71,14 +71,14 @@ function renderEntry(text) {
 // Ordered per-provider entry for the Config grid's columns and defaults popover: one row/column
 // per registered provider, never a hardcoded pair. Filenames are derived from each manifest's own
 // declared paths — rulesFile/settingsFile straight from paths.rules/paths.rootConfig; hooksFile
-// follows extensions.roborepo.hooksStorage (embedded providers show their root-config file, since
+// follows extensions.app.hooksStorage (embedded providers show their root-config file, since
 // that's genuinely where the hooks live; sidecar providers show their own declared hooks path).
 // Exported (not inlined in readConfigSnapshot) so a synthetic third-provider test can call this
 // directly without pulling in the rest of the snapshot's disk-reading dependencies.
 export function configSnapshotHarnesses() {
   return listHarnessProviders().map((provider) => {
     const { manifest } = provider;
-    const sidecar = manifest.extensions?.roborepo?.hooksStorage === "dedicated-json-sidecar";
+    const sidecar = manifest.extensions?.app?.hooksStorage === "dedicated-json-sidecar";
     return {
       id: provider.id,
       displayName: manifest.displayName,
@@ -516,7 +516,7 @@ function packagePresentationItem(item, tool, contextCost = null) {
 }
 
 function hooksStorageOf(harness) {
-  return getHarnessProvider(harness).manifest.extensions?.roborepo?.hooksStorage;
+  return getHarnessProvider(harness).manifest.extensions?.app?.hooksStorage;
 }
 
 // Generated build output for a sidecar-hooks provider's hooks file (e.g. generated/codex/hooks.json)
@@ -626,7 +626,7 @@ export function loadConfigSource({ kind, id, harness = "claude" }) {
     for (const provider of listHarnessProviders()) {
       if (id === `${provider.id}-settings`) {
         const displayName = provider.manifest.displayName;
-        const language = provider.manifest.extensions?.roborepo?.rootConfigFormat || "json";
+        const language = provider.manifest.extensions?.app?.rootConfigFormat || "json";
         return readExternalSourceFile(rootConfigActive[provider.id], `${displayName} settings`, provider.manifest.paths.rootConfig.path, language);
       }
       if (id === `${provider.id}-hooks` && hooksStorageOf(provider.id) === "dedicated-json-sidecar") {

@@ -73,7 +73,7 @@ for (const provider of listHarnessProviders()) {
   // Only providers whose permissions live in a JSON root config express scope as parseable path
   // rules. Codex encodes scope as a sandbox mode and Gemini as tool-name policy — neither embeds an
   // absolute home path, so neither can drift in this way.
-  if (provider.manifest.extensions?.roborepo?.rootConfigFormat !== "json") continue;
+  if (provider.manifest.extensions?.app?.rootConfigFormat !== "json") continue;
   const rootRel = provider.manifest.paths?.rootConfig?.path?.replace(/^~\//, "");
   if (!rootRel) continue;
   const file = path.join(home, rootRel);

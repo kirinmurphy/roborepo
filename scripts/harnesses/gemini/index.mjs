@@ -101,7 +101,7 @@ function normalizeGeminiRootConfig(content) {
 // `behaviorManifest` here is manifests/inventory/agent-permissions.json's content (behaviors/
 // commands to render), distinct from this module's own `geminiManifest` (globals/harnesses/gemini/
 // provider.json, the harness provider manifest) — renderGeminiPolicyRules needs the LATTER too, for
-// its extensions.roborepo.toolNameMap tool-name translation table, so it's passed separately rather
+// its extensions.app.toolNameMap tool-name translation table, so it's passed separately rather
 // than threaded through the call signature every other provider's render already uses.
 function renderGeminiPermissions(_current, behaviorManifest, overrides) {
   return renderGeminiPolicyFile(geminiManifest, behaviorManifest, overrides);

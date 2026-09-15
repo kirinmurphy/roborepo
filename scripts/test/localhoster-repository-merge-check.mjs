@@ -191,7 +191,7 @@ assert.equal(collapsed.members.find((member) => member.port === 63409).entrypoin
 const mainGit = { provider: { ok: true }, branch: "main", isWorktree: false, ahead: 0, behind: 0 };
 const featureGit = { provider: { ok: true }, branch: "feature/x", isWorktree: true, ahead: 2, behind: 0 };
 // Different `identity` per root (as it is live: a worktree commonly resolves its own alias, e.g.
-// "roborepo:portal", distinct from the main checkout's "git:..." identity) so each becomes its own
+// "builtin:portal", distinct from the main checkout's "git:..." identity) so each becomes its own
 // `project` record with its own `name` — this is what let a worktree's branch/dir name leak onto
 // the repository-level title before the main-checkout-preference fix below.
 const worktreeSnapshot = buildLocalhosterSnapshot({
@@ -201,7 +201,7 @@ const worktreeSnapshot = buildLocalhosterSnapshot({
     composeProjectGit: new Map(),
     instances: [
       instance({ pid: 800, port: 3000, command: "node", identity: MENUGOATS, repositoryId: MENUGOATS, status: 200, title: "Menugoats", rootId: "root-main", git: mainGit }),
-      instance({ pid: 801, port: 3001, command: "node", identity: "roborepo:portal", repositoryId: MENUGOATS, status: 200, title: "feature-branch-name", rootId: "root-feature", git: featureGit }),
+      instance({ pid: 801, port: 3001, command: "node", identity: "builtin:portal", repositoryId: MENUGOATS, status: 200, title: "feature-branch-name", rootId: "root-feature", git: featureGit }),
     ],
   },
   settings: defaultSettings(),
@@ -253,7 +253,7 @@ const unnamedSnapshot = buildLocalhosterSnapshot({
     warnings: [],
     composeProjectGit: new Map(),
     instances: [
-      instance({ pid: 803, port: 3003, command: "node", identity: "roborepo:portal", repositoryId: MENUGOATS, status: 200, title: "feature-branch-name", rootId: "root-feature", git: featureGit }),
+      instance({ pid: 803, port: 3003, command: "node", identity: "builtin:portal", repositoryId: MENUGOATS, status: 200, title: "feature-branch-name", rootId: "root-feature", git: featureGit }),
     ],
   },
   settings: defaultSettings(),

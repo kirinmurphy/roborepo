@@ -38,7 +38,7 @@ attribute is needed).
 
 1. `pageManifest()` derives the browser-safe `{ path, id, title }` shape from `PAGES`.
 2. `pageHtml()` injects `window.PORTAL_MANIFEST = { token, pages: [...] }` into every served
-   page's `<head>`, right beside the existing `<meta name="roborepo-portal-token">` tag.
+   page's `<head>`, right beside the existing `<meta name="cli-portal-token">` tag.
 3. `/api/portal/status` returns the same `pageManifest()` shape, so the terminal-facing status
    check and the browser nav can never drift.
 4. `portal/shared/theme.js` reads `window.PORTAL_MANIFEST.pages` to render the nav and mark the
@@ -189,7 +189,7 @@ silently shadowing another route at request time.
 ## Self-Describing Metadata
 
 The portal serves `/manifest.json`, `/sitemap.xml`, `/robots.txt`, and `/openapi.json` at their conventional root
-paths (`portal-routes-metadata.mjs`), so `roborepo:portal` is itself a live, correct example of the
+paths (`portal-routes-metadata.mjs`), so `builtin:portal` is itself a live, correct example of the
 same same-origin conventions `modules/localhoster/metadata.mjs` discovers on other apps (see
 `docs/reference/services/localhoster.md`'s "Metadata suggestions" section).
 

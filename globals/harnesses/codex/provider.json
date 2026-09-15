@@ -36,7 +36,7 @@
     "session-launch"
   ],
   "extensions": {
-    "roborepo": {
+    "app": {
       "rootConfigFormat": "toml",
       "hooksStorage": "dedicated-json-sidecar",
       "mcpStorage": "toml-mcp_servers-table",

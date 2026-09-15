@@ -14,7 +14,7 @@
   },
   "capabilities": ["root-config"],
   "extensions": {
-    "roborepo": {
+    "app": {
       "rootConfigFormat": "yaml",
       "note": "synthetic fixture proving namespaced extensions round-trip validation"
     }

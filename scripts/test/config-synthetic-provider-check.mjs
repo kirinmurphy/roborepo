@@ -48,7 +48,7 @@ fs.writeFileSync(
       commands: { path: "~/.acme/commands", kind: "directory" },
     },
     capabilities: ["root-config", "rules", "hooks"],
-    extensions: { roborepo: { hooksStorage: "dedicated-json-sidecar" } },
+    extensions: { app: { hooksStorage: "dedicated-json-sidecar" } },
   }, null, 2),
 );
 

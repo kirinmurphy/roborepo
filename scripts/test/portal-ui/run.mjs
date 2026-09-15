@@ -29,7 +29,7 @@ if (!fs.existsSync(browserPath)) {
   process.exit(0);
 }
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-portal-ui-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "portal-ui-"));
 const readyFile = path.join(tmp, "portal.ready");
 const cli = path.join(repoRoot, "scripts", "cli", "main.mjs");
 const server = spawn(

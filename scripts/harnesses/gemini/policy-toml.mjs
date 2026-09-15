@@ -7,7 +7,7 @@
 // approximation or session-wide fallback needed, unlike Codex's binary prefix_rule + approval_policy
 // fallback. Each manifest behavior/command resolves to exactly one [[rule]].
 //
-// Tool-name mapping lives in the PROVIDER manifest's extensions.roborepo.toolNameMap
+// Tool-name mapping lives in the PROVIDER manifest's extensions.app.toolNameMap
 // (globals/harnesses/gemini/provider.json) rather than hardcoded here — it's data (a
 // string-to-string translation table), not logic. Distinct from the BEHAVIOR manifest
 // (manifests/inventory/agent-permissions.json) every render function below also takes: the
@@ -17,7 +17,7 @@
 // READ_FILE_TOOL_NAME="read_file"), not guessed from docs — this is the complete, exhaustive set
 // of write/read tool names Gemini ships, sourced from the binary itself.
 function geminiToolNames(providerManifest, claudeToolNames) {
-  const map = providerManifest.extensions?.roborepo?.toolNameMap ?? {};
+  const map = providerManifest.extensions?.app?.toolNameMap ?? {};
   return claudeToolNames.map((name) => map[name]).filter(Boolean);
 }
 

@@ -97,7 +97,7 @@ export function normalizeMatch(match) {
 }
 
 export function safeIdentity(value) {
-  if (typeof value !== "string" || !/^(git|path|process|roborepo):/.test(value)) throw new Error("invalid project identity");
+  if (typeof value !== "string" || !/^(git|path|process|builtin):/.test(value)) throw new Error("invalid project identity");
   return value;
 }
 

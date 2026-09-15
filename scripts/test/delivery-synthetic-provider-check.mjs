@@ -54,7 +54,7 @@ try {
         commands: { path: "~/.acme/commands", kind: "directory" },
       },
       capabilities: ["root-config", "rules", "permissions", "skills", "slash-commands"],
-      extensions: { roborepo: { rootConfigFormat: "json", hooksStorage: "embedded-in-root-config" } },
+      extensions: { app: { rootConfigFormat: "json", hooksStorage: "embedded-in-root-config" } },
     }, null, 2),
   );
 

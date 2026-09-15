@@ -249,7 +249,7 @@ export function setLocalhosterPortalInfo(info) {
   if (lastSnapshot) {
     const discovery = snapshotDiscovery(lastSnapshot);
     const portal = portalInstance();
-    if (portal && !discovery.instances.some((instance) => instance.project?.identity === "roborepo:portal")) {
+    if (portal && !discovery.instances.some((instance) => instance.project?.identity === "builtin:portal")) {
       discovery.instances.unshift(portal);
       lastSnapshot = buildSnapshot({ discovery, settings: loadSettings({ stateRoot }) });
     }
@@ -753,9 +753,9 @@ function portalInstance() {
   if (!port) return null;
   const origin = port ? `http://127.0.0.1:${port}` : null;
   return {
-    key: "roborepo-portal",
-    associationKey: "roborepo-portal",
-    matchSignature: { key: "roborepo-portal", projectIdentity: "roborepo:portal", relativeCwd: null, command: "roborepo", title: "RoboRepo Portal" },
+    key: "builtin-portal",
+    associationKey: "builtin-portal",
+    matchSignature: { key: "builtin-portal", projectIdentity: "builtin:portal", relativeCwd: null, command: "roborepo", title: "RoboRepo Portal" },
     origin,
     alternateOrigins: [],
     bind: { address: "127.0.0.1", port, scope: "loopback", warning: null },
@@ -769,13 +769,13 @@ function portalInstance() {
     health: { state: "healthy", reason: null, consecutiveFailures: 0, since: null, firstSeenAt: null, lastProbeAt: null },
     process: { pid: process.pid, command: "roborepo" },
     project: {
-      identity: "roborepo:portal",
+      identity: "builtin:portal",
       identityKind: "roborepo",
       confidence: "high",
       projectRoot: appRoot,
       evidence: "built-in portal",
       git: portalGit ?? null,
-      // The synthetic identity above is deliberately not a git: identity — "roborepo:portal" names
+      // The synthetic identity above is deliberately not a git: identity — "builtin:portal" names
       // the portal app, not the repository it ships from. But the checkout underneath appRoot is a
       // real repository, so its canonical id is resolved separately here; without it the portal was
       // the one card that could never link to its own remote and always fell back to "local repo".

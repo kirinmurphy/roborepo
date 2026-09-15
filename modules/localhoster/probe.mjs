@@ -56,7 +56,7 @@ export function fetchLoopbackText(url, { timeoutMs = DEFAULT_TIMEOUT_MS, maxBody
       path: `${parsed.pathname}${parsed.search}`,
       method: "GET",
       timeout: timeoutMs,
-      headers: { "User-Agent": "roborepo-localhoster", Accept: accept },
+      headers: { "User-Agent": "localhoster-probe", Accept: accept },
     }, (res) => {
       const status = res.statusCode || null;
       const location = res.headers.location ? safeRedirect(parsed.href, res.headers.location) : null;
@@ -127,7 +127,7 @@ async function probeOrigin(origin, { timeoutMs, protocol } = {}) {
       path: `${url.pathname}${url.search}`,
       method: "GET",
       timeout: timeoutMs,
-      headers: { "User-Agent": "roborepo-localhoster", Accept: "text/html,*/*;q=0.1" },
+      headers: { "User-Agent": "localhoster-probe", Accept: "text/html,*/*;q=0.1" },
     }, (res) => {
       let body = "";
       res.setEncoding("utf8");
