@@ -131,7 +131,7 @@ For root config rows, the installer may create a timestamped `*_original_*` file
 ## Per-Element Persistence
 
 The sections above describe the mechanism (policy, drift hash, backups) generically. This table is the
-per-element view: for each harness element, what survives a first install and what survives an
+per-element view: for each harness element, what survives a first install and what survives a
 `roborepo update`. The mechanism is always one of the above — this just names which one applies where.
 For each managed element, the table names the user-visible persistence behavior. Maintainer
 implementation details live outside the packaged user docs.

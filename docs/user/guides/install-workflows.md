@@ -159,7 +159,6 @@ there, because that is a deliberate typed choice rather than a button.
 
 ```sh
 roborepo doctor --installed
-roborepo doctor --installed
 ```
 
 `doctor --installed` checks the active machine state, including rendered home rules and base skill copies.

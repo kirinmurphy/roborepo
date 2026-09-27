@@ -175,7 +175,7 @@ Implication: user keeps current behavior, but must merge wanted repo defaults fr
 
 #### Merge review prompt
 
-User-owned config remains active until the selected install mode or collision policy completes. The installer prints a merge prompt that points at both local and repo paths after actions that create backups or staged defaults.
+User-owned config remains active until the selected collision policy completes. The installer prints a merge prompt that points at both local and repo paths after actions that create backups or staged defaults.
 
 ```text
 <repo>/generated/codex/config.toml              # repo candidate
@@ -239,8 +239,8 @@ There are two distinct, firewalled skill layers:
 
 ### Client utilities (same model, for other repos)
 
-One Node command, `roborepo`, is the consumer front door (see the README for the full subcommand
-list). For the dual-harness skill model it offers:
+One Node command, `roborepo`, is the consumer front door (see
+[roborepo CLI Commands](roborepo-cli.md) for the full subcommand list). For the dual-harness skill model it offers:
 
 - `skill export-to-project`: bundles shared skills into a `.zip` and copies them into a target
   project's `.claude/skills` and `.codex/skills` folders.
@@ -301,7 +301,7 @@ sequenceDiagram
   participant Backup as ~/.cli-backups
 
   Repo->>Home: ./scripts/install/main.sh installs repo-owned config
-  Home-->>Home: user-owned config collisions are preserved for adopt/agent merge
+  Home-->>Home: user-owned config collisions are preserved for agent/user merge
   Repo-->>Home: copied owned assets, rendered rules, local root config
   Home-->>Home: runtime files remain local and ignored
 ```

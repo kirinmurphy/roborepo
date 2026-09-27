@@ -281,7 +281,7 @@ that context. It also avoids granting all of `~/.worktrees`, which would let one
 write into another repo's worktree family.
 
 The repository boundary cannot be a path, because no rule syntax can express "wherever the session
-happens to be" — see [[agent-config-repo-scoped-write-permissions]] for why each anchor form fails.
+happens to be".
 So a scope change is an install-time concern, while a *boundary* change takes effect immediately.
 
 Path-scoping changes must be worked through **per provider** — Claude and Codex both, not Claude
@@ -293,7 +293,7 @@ the other.
 
 1. Run `roborepo web` to open the `/config` portal (or run `roborepo package manage`
    in a terminal).
-2. The panel renders the four sections from `GET /api/config`.
+2. The panel renders its sections from `GET /api/config`.
 3. Toggle a package, skill, or telemetry switch — the client POSTs, the server mutates
    live config and returns a fresh snapshot, the panel re-renders.
 4. To change permissions, set a named behavior or arbitrary command to `deny`, `ask`, `allow`, or

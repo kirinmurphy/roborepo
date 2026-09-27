@@ -69,7 +69,7 @@ Package development is a maintainer workflow; package users usually only need `p
 
 | | |
 | --- | --- |
-| `roborepo web` | Starts the local portal. On a fresh install it first performs the same procedural setup as `roborepo init` (workspace/state dirs, harness discovery, initialization record), then opens the portal — so `npm install -g` followed by `roborepo web` is a complete first run. `/config` manages packages/permissions, `/plans` browses plan docs, `/localhoster` lists local web apps, and `/telemetry` shows token usage when telemetry has data. |
+| `roborepo web` | Starts the local portal. On a fresh install it first performs the same procedural setup as `roborepo init` (workspace/state dirs, harness discovery, initialization record), then opens the portal — so `npm install -g` followed by `roborepo web` is a complete first run. `/config` manages packages/permissions, `/plans` browses plan docs, `/localhoster` lists local web apps, and `/tokens` shows token usage when telemetry has data. |
 | `roborepo web --detach [--no-open] [--port <n>]` | Starts the same portal detached and opens it in the browser. A cold start warms its views before binding and can take ~30s. |
 | `roborepo web stop [--port <n>]` | Stops the detached portal. PID files are tracked per port, so pass the same `--port` used to start it. |
 | `roborepo localhoster [--json] [--open]` | Lists active localhost HTTP apps, prints the portal snapshot as JSON, or opens `/localhoster`. |

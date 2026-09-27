@@ -21,7 +21,8 @@ portal/
   config/{index.html,styles.css,app.js}
   plans/{index.html,styles.css,app.js}
   localhoster/{index.html,styles.css,app.js,api.js,state.js,templates.js}
-  telemetry/{index.html,styles.css,app.js}
+  tokens2/{index.html,styles.css,app.js}     — /tokens (v2 token report)
+  telemetry/{index.html,styles.css,app.js}   — /tokens_v1 (v1 dashboard, hidden from nav)
 scripts/cli/portal-server.mjs   — the server: page manifest, route dispatch, static assets
 scripts/cli/portal-router.mjs   — the route table matcher every domain file builds on
 scripts/cli/portal-routes-metadata.mjs — /manifest.json, /sitemap.xml, /robots.txt (generated from PAGES)
@@ -166,7 +167,7 @@ hand-maintained. Each domain's table:
 | `portal-routes-localhoster.mjs` | `localhosterRoutes` | `/api/localhoster`, `/api/localhoster/refresh`, `/api/localhoster/history`, `/api/localhoster/metadata`, `/api/localhoster/links`, `/api/localhoster/association`, `/api/localhoster/project`, `/api/localhoster/alias`, `/api/localhoster/compose-project`, `/api/localhoster/repository-visibility`, `/api/localhoster/repository-pinned` |
 | `portal-routes-repositories.mjs` | `repositoriesRoutes` | `/api/repositories`, `/api/repositories/:id`, `/api/repositories/:id/associations`, `/api/repositories/:id/plans-enrollment` — path-param routes; a method with no matching route on a path that does match returns `405`, matching the old handler's explicit `methodNotAllowed` |
 | `portal-routes-usage.mjs` | `usageRoutes` | `/api/usage`, `/api/usage/refresh` |
-| `portal-routes-telemetry.mjs` | `telemetryRoutes` | `/api/data`, `/api/session`, `/api/insights-llm`, `/api/telemetry/markers` (GET/POST), `/api/telemetry/experiments` (GET/POST), `/api/telemetry/experiments/:id/end` (POST), `/api/telemetry/analysis` (POST) — see `docs/reference/services/telemetry.md` for the marker/experiment/analysis domain |
+| `portal-routes-telemetry.mjs` | `telemetryRoutes` | `/api/data`, `/api/session`, `/api/insights-llm`, `/api/telemetry/markers` (GET/POST), `/api/telemetry/experiments` (GET/POST), `/api/telemetry/experiments/:id/end` (POST), `/api/telemetry/analysis` (POST) — see `docs/user/reference/telemetry.md` for the marker/experiment/analysis domain |
 | `portal-routes-metadata.mjs` | `handleMetadataAsset` | `/manifest.json`, `/sitemap.xml`, `/robots.txt` — called separately from `API_ROUTE_TABLES` since these are unauthenticated static assets, not `/api/*` routes (see "Self-Describing Metadata" below) |
 | `portal-server.mjs` | `handlePortalPage` | Serves a page's `index.html` (with the injected manifest + token) |
 | `portal-server.mjs` | `handlePortalAsset` | Static files under `/portal/` |
@@ -191,7 +192,7 @@ silently shadowing another route at request time.
 The portal serves `/manifest.json`, `/sitemap.xml`, `/robots.txt`, and `/openapi.json` at their conventional root
 paths (`portal-routes-metadata.mjs`), so `builtin:portal` is itself a live, correct example of the
 same same-origin conventions `modules/localhoster/metadata.mjs` discovers on other apps (see
-`docs/reference/services/localhoster.md`'s "Metadata suggestions" section).
+`docs/user/reference/localhoster.md`'s "Metadata suggestions" section).
 
 | Artifact | Source | Why |
 | --- | --- | --- |
@@ -247,8 +248,7 @@ runs:
 
 A forged POST from an unrelated site fails the origin check; a POST from a script that never
 loaded a portal page fails the token check. `portalPostJson` always attaches the token from
-`portalConfig()`, so any page using it automatically satisfies this contract — this is what fixed
-Telemetry's "turn on telemetry" button, which previously POSTed without the token header.
+`portalConfig()`, so any page using it automatically satisfies this contract.
 
 ## Checks to Run
 

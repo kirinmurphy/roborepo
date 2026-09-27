@@ -145,8 +145,9 @@ registry back both this report and the portal, so CLI and portal numbers agree f
 
 ## Portal
 
-`/telemetry` is a frameworkless, dependency-free page (`portal/telemetry/`) polling `/api/data` every
-5 seconds. See `docs/user/reference/portal.md` for the shared portal architecture (loopback bind,
+The v1 dashboard (`/tokens_v1`, hidden from nav) is a frameworkless, dependency-free page
+(`portal/telemetry/`) polling `/api/data` every 5 seconds. The nav-visible `/tokens` page
+(`portal/tokens2/`) reads the same `/api/data` report. See `docs/user/reference/portal.md` for the shared portal architecture (loopback bind,
 mutation-token contract, route dispatch). Telemetry-specific pieces:
 
 - **Global cohort filter bar** — time range, harness, model, repository, and a marker-relative
@@ -196,9 +197,8 @@ mutation-token contract, route dispatch). Telemetry-specific pieces:
   "view docs" popup (`portal/shared/doc-guide-modal.js`) so the popup and the on-disk guide are
   the same content, never a second copy. `renderMarkdown()` (`scripts/cli/markdown-render.mjs`)
   gives every heading a stable slug `id` so a panel's info icon can deep-link straight to its
-  section; fenced ` ```mermaid ` blocks render as a labeled, still-legible source fallback rather
-  than an opaque code block, since the portal has no mermaid.js runtime (zero-dependency,
-  loopback-only architecture).
+  section; fenced ` ```mermaid ` blocks render as diagrams through the locally vendored mermaid
+  runtime (`portal/shared/markdown-mermaid.js`), loaded lazily on first use.
 
 All mutating routes are POST-only and use the portal's standard loopback-origin + mutation-token
 guard (see `docs/user/reference/portal.md`).

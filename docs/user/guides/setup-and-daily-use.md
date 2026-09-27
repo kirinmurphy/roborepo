@@ -1,6 +1,6 @@
 # Setup and Daily Use
 
-This repo owns your agent harness config (Claude Code, Codex) and exposes it at the paths agents already read. Setup installs the core once, then `roborepo init` walks you through choosing which behaviors you want on that machine.
+This repo owns your agent harness config (Claude Code, Codex, Gemini CLI) and exposes it at the paths agents already read. Setup installs the core once, then `roborepo init` walks you through choosing which behaviors you want on that machine.
 
 For install workflow tradeoffs, see [install-workflows.md](install-workflows.md). For system details, see [../reference/architecture.md](../reference/architecture.md).
 
@@ -24,7 +24,7 @@ For install workflow tradeoffs, see [install-workflows.md](install-workflows.md)
 ./scripts/install/main.sh
 ```
 
-This installs the core CLI plus the shared baseline. It detects which harnesses are installed (Claude Code, Codex, or both), copies owned files, renders rules, exports mutable root config as local files, installs global commands, and adds shell snippets to your profile.
+This installs the core CLI plus the shared baseline. It detects which harnesses are installed (Claude Code, Codex, Gemini CLI, or any combination), copies owned files, renders rules, exports mutable root config as local files, installs global commands, and adds shell snippets to your profile.
 
 Set up the installation for first use:
 
@@ -47,7 +47,7 @@ Root config export merges the repo baseline with the active local file when a ro
 
 **The script is safe to re-run** — owned copies and rendered rules are refreshed, and local Claude/Codex settings are merged with the repo baseline instead of replaced. If a past update left recoverable local settings in a backup, `roborepo update` or `roborepo doctor --installed` will point you at `roborepo maintenance repair local-config --dry-run`.
 
-If onboarding has not been completed yet, `roborepo` runs that workflow before most normal commands. `--no-presets-onboard` or `ROBOREPO_PRESETS_ONBOARD=skip` bypasses install-time onboarding and the later command gate for automation.
+If initialization has not completed, a bare interactive `roborepo` routes into `init`; explicit commands always run. `--no-presets-onboard` or `ROBOREPO_PRESETS_ONBOARD=skip` bypasses install-time onboarding for automation.
 
 ### Preview without modifying anything:
 

@@ -15,7 +15,7 @@ subcommand implementations live under `scripts/cli/`, one module per category:
 | `scripts/cli/skills.mjs` | `skill adopt`, `skill inspect`, `skill native`, `skill export-to-project`, `skill link-project` |
 | `scripts/cli/skill-inventory.mjs` | read-only skill inventory used by `skill inspect` and `/config` source popups |
 | `scripts/cli/index.mjs` | `index code\|docs`, `index code --watch`, `run` |
-| `scripts/cli/mcp.mjs` | `mcp add` (Claude + Codex registration) |
+| `scripts/cli/mcp.mjs` | `mcp add` (registration with every MCP-capable harness) |
 | `scripts/cli/presets.mjs` | `library` / `package manage` (one shared `packageLibrary` execution preset), `bundle status\|apply\|check\|remove` |
 | `scripts/cli/initialize.mjs` | `init` — orchestrates setup, harness discovery, the Package Library handoff, and apply |
 | `scripts/cli/initialization-state.mjs` | reads/writes `<stateRoot>/initialization.json`; owns the missing / in-progress / complete distinction |
@@ -151,7 +151,6 @@ roborepo update  [--dry-run] [--verbose]
 roborepo repair  [--dry-run] [--on-conflict overwrite|keep|abort]
 roborepo maintenance repair local-config [--dry-run|--apply]
 roborepo doctor  [--installed] [--verbose]
-roborepo doctor --installed [--verbose]
 roborepo rules   [--check]
 roborepo permissions [--check]
 
@@ -185,7 +184,7 @@ relative or absolute — roborepo resolves it to an absolute path before use.
   recovery.
 - **Day to day** — `index code|docs` are one-shot indexers owned by packages; `index code --watch` runs a live indexer (and
   writes the pidfile the Claude SessionStart hook reads to report watcher status); `mcp add`
-  registers MCP servers with Claude + Codex; `bundle` manages the optional bundle selections;
+  registers MCP servers with every managed harness that supports MCP; `bundle` manages the optional bundle selections;
   `telemetry enable`/`disable` turn capture on and off, `web --detach` opens the
   detached portal, and `telemetry install` handles a telemetry-only install; `run` executes a
   command and prints only a trimmed tail of its output.
@@ -302,9 +301,9 @@ chronological), so the file can't fill the disk.
 **Lifecycle — capture and portal.** `roborepo telemetry enable` turns capture on;
 `roborepo telemetry disable` turns capture off; `roborepo web`
 opens the detached portal. `roborepo web stop` stops the detached server without changing
-capture state. The detached server's PID is tracked in
-`~/.local/state/cli/portal-server.pid`; a stale PID file (process gone) is detected and
-cleaned up. `web` can browse historical spool data with capture off.
+capture state. The detached server's PID is tracked per port in
+`~/.roborepo/portal/server-<port>.pid`; `roborepo maintenance portal-pids --reap` clears entries
+whose process is gone. `web` can browse historical spool data with capture off.
 
 **Telemetry-only install.** `roborepo telemetry install` formalizes a standalone telemetry setup
 without the rest of roborepo: it symlinks `~/.local/bin/roborepo` (if not already present), writes
@@ -325,7 +324,7 @@ hook-trust gate.
 
 Records are versioned by a `schema` field so the spool stays backward compatible. Legacy records
 written before token capture have no `schema` key (treated as v1) and are metadata-only; readers count
-them in event totals but skip them in token analysis. Current records are `schema: 2` and add, on top
+them in event totals but skip them in token analysis. `schema: 2` records add, on top
 of the v1 metadata (`ts`, `harness`, `event`, `session_id`, hashed `cwd`/repo identity, `tool`,
 `prompt`):
 
@@ -340,6 +339,8 @@ of the v1 metadata (`ts`, `harness`, `event`, `session_id`, hashed `cwd`/repo id
   tool result that most recently entered the context window, and the heaviest result of the session.
   Sizes and tool names only — result content is never stored, preserving the hash-only privacy model.
   These tie a spike back to *what* drove it (a large file read, an MCP bundle, an unbounded Bash log).
+
+The current capture schema is `schema: 3`; see [Telemetry](telemetry.md) for its fields.
 
 Per-session token cursors live under `~/.roborepo/telemetry/collector/` and back the `delta_tokens`
 computation.

@@ -8,7 +8,7 @@ sessions before it. Everything stays on your machine; nothing is uploaded.
 
 For the full technical reference (schemas, API routes, privacy details), see
 [Telemetry Service Reference](../reference/telemetry.md). This guide is the "what do I
-click" version, meant to be read inline from the `/telemetry` page itself.
+click" version, meant to be read inline from the `/tokens` page itself.
 
 ## Open The Page
 
@@ -17,7 +17,7 @@ roborepo web
 ```
 
 ```text
-http://127.0.0.1:4317/telemetry
+http://127.0.0.1:4317/tokens
 ```
 
 Local-only, refreshes every 5 seconds. If telemetry isn't on yet, the page shows a "turn on

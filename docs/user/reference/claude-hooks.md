@@ -52,7 +52,7 @@ repo and harness context (hashed, not raw conversation text) and, from the
 transcript, cumulative + per-capture token usage, tool/MCP attribution, tool-result
 sizes (for spike attribution — sizes only, never content), and session counts —
 enough to analyze token spikes and what caused them over time. See the
-[roborepo service doc](roborepo.md) for the record schema and the dashboard.
+[Telemetry reference](telemetry.md) for the record schema and the dashboard.
 Package-owned: authored at `globals/packages/telemetry/hooks-claude.json` and
 composed into the live Claude hook config only when telemetry is enabled —
 disabling telemetry removes these hooks.
