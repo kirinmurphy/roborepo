@@ -4,7 +4,7 @@ Read this to understand what a *harness* is in roborepo, which ones are supporte
 each one actually receives when roborepo manages it.
 
 If you are adding support for a new harness, read
-[Harness Provider Interface](harness-provider-interface.md) instead — this guide covers the product
+[Harness Provider Interface](../../../internal/harness-provider-interface.md) instead — this guide covers the product
 behavior, not the extension mechanism.
 
 ## What a Harness Is
@@ -27,7 +27,7 @@ knows how to talk to one — see the interface guide for that distinction.
 
 | Harness | id | Config home | Root config format |
 | --- | --- | --- | --- |
-| Claude Code | `claude` | `~/.claude` (Windows: `%APPDATA%\Claude`) | JSON (`settings.json`) |
+| Claude Code | `claude` | `~/.claude` | JSON (`settings.json`) |
 | Codex | `codex` | `~/.codex` | TOML (`config.toml`) |
 | Gemini CLI | `gemini` | `~/.gemini` | JSON (`settings.json`) |
 
@@ -117,12 +117,11 @@ you turned off.
 macOS and Linux are the primary platforms and share the same install path. Windows has its own
 PowerShell installer (`scripts/install/install-windows.ps1`) covering all three harnesses.
 
-One Windows difference is worth knowing: Claude Code stores its config under `%APPDATA%\Claude`
-rather than a `~/.claude`-style path. Codex and Gemini use `~/.codex` and `~/.gemini` on every
-platform.
+On Windows, `~` means `%USERPROFILE%`, so Claude Code reads `%USERPROFILE%\.claude`, and Codex and
+Gemini read `%USERPROFILE%\.codex` and `%USERPROFILE%\.gemini`.
 
 ## Where to Go Next
 
 - [First-Time Setup](../first-time-setup.md) — install roborepo and put it on your `PATH`
 - [Setup and Daily Use](../setup-and-daily-use.md) — day-to-day workflows
-- [Harness Provider Interface](harness-provider-interface.md) — add support for a new harness
+- [Harness Provider Interface](../../../internal/harness-provider-interface.md) — add support for a new harness

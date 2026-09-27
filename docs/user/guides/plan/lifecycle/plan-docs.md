@@ -183,4 +183,4 @@ Common modes:
 - Manual refresh is the v1 update model.
 - No database, daemon, cloud sync, direct editor, or automatic LLM prioritization is included.
 
-See [Plans Portal Technical Reference](../../../reference/plans-portal.md) for implementation details.
+See [Plans Portal Reference](../../../reference/plans-portal.md) for exact behavior.

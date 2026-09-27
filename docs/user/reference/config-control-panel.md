@@ -8,10 +8,6 @@ A user can see the current state and change it from either the web dashboard
 (`/config`) or the interactive terminal flow (`roborepo package manage`), without
 hand-editing `~/.claude/settings.json`, `~/.codex/config.toml`, or symlinks.
 
-The panel is organized around user-facing behavior sections, not the internal
-install machinery: **Token Optimization**, **Commands**, **Code Conventions**,
-**Chat-Time Output**, and **Permissions**.
-
 ## Concept Model
 
 The panel is built from a few nouns. Source of truth differs per noun — some live in
@@ -23,7 +19,6 @@ the user's live harness config, some in repo manifests, some in roborepo state.
 | **Resource** | One typed unit of a package's install or presentation | the package config |
 | **Skill** | A shared or native skill, inspected without flattening harness-specific metadata | package-owned `skills/<name>` source or system skill source; `~/.roborepo/skills/<name>` (managed cache); `~/.claude/skills/<name>` and `~/.codex/skills/<name>` (harness install state) |
 | **Permission behavior** | A named behavior or arbitrary command set to `allow`, `ask`, `deny`, or `default` | `manifests/inventory/agent-permissions.json` (defaults); `~/.roborepo/command-overrides.json` (personal overrides); live config (active render) |
-| **Snapshot** | The assembled current state the UI renders | computed by `readConfigSnapshot()` |
 
 ### Resource Types
 
@@ -41,10 +36,6 @@ applies each installable resource; the enable/disable switch dispatches on `reso
 | `service` | A registered async handler's bespoke install | e.g. telemetry's spool + capture hooks |
 | `skill` | A shared-skill link into harness skill dirs | reuses the skill linker |
 
-Adding a new feature of an existing shape is data, not code: declare its resources in the owning
-`package.config.json`. A new shape needs a new `case` in the enable/disable switch
-(`scripts/cli/packages.mjs`).
-
 ### Package composition
 
 A package may list `requires: [pkgId, ...]`. Enabling it enables every required package
@@ -61,8 +52,7 @@ are enabled.
 
 ### The sections
 
-`buildBehaviorView()` (`scripts/cli/config.mjs`) maps the snapshot onto the sections the
-panel renders:
+The panel renders these sections:
 
 - **Global Rules** — start with the selector only; after a file is chosen, show the live
   `CLAUDE.md` / `AGENTS.md` content, the file path, and the default-rule drill-downs.
@@ -84,114 +74,40 @@ panel renders:
   with a delete control, above the shipped defaults collapsed behind a count. Delete reverts to
   the manifest default, or removes the entry outright when it was user-added and has no default.
 
-## Current Behavior
+## Where Changes Go
 
-### Reading state
+Every change writes your **live** harness config (`~/.claude`, `~/.codex`, `~/.gemini`), never the
+repo template under `globals/`. Changes take effect the next time the harness starts a session.
 
-`readConfigSnapshot()` assembles a JSON snapshot from the live harness config, the
-package catalog, skill resources, the permission manifest, and roborepo state files.
-`GET /api/config` returns it; both the web view and the terminal flow render from it.
+Package rows can show `enabled`, `configured`, `disabled`, `partial`, `external`, or `blocked`.
+`configured` means fully installed with a runtime service deliberately turned off (for example,
+telemetry capture disabled); `partial` means the install is genuinely incomplete.
 
-Package rows include `status`, `desired`, and `componentStatus` so the panel can distinguish
-enabled, configured, disabled, partial, external, and blocked package state without treating every
-observed component as an enabled package. `configured` is a fully-installed package whose only
-not-`present` component is a runtime service the user has deliberately turned off (component state
-`inactive`, e.g. telemetry capture disabled) — distinct from `partial`, which means an install is
-genuinely incomplete.
+## Context Cost Estimates
 
-Skill rows include a native-aware `inventory` object from `scripts/cli/skill-inventory.mjs`.
-The skill source popup uses that same inventory, so it can show ownership, managed cache state,
-native collision state, native-only metadata files, and per-harness install state before the skill
-body and bundled context files.
+The panel estimates how many tokens your configuration adds to each harness, so you can see what a
+package costs before and after enabling it. Two kinds of cost are tracked and never mixed:
 
-### Writing state
-
-Every mutation goes through one of the `{ ok, message }` primitives in
-`scripts/cli/config-mutate.mjs` (or the package enable/disable path), so the web server
-and terminal flow share one implementation:
-
-- `mutatePackage(id, enabled)` → `enablePackage` / `disablePackage`
-- `setSkillInstalled(id, enabled)` → materializes/removes the cache entry in `~/.roborepo/skills`
-  and links/unlinks the skill in `~/.claude/skills` and `~/.codex/skills`
-- `setBehaviorBucket(behaviorId, bucket)` → writes a personal behavior override, then re-renders live global permissions
-- `setCommandBucket(tokens, bucket)` → writes a personal arbitrary-command override, then re-renders live global permissions
-
-Writes target the user's **live** config, not the repo template (`globals/`). The repo
-template is changed only by the install/render pipeline.
-
-When `roborepo config apply` or package-mode `roborepo update` runs from inside a repository with
-`docs/plans/plans-config.json`, the post-apply permissions refresh updates Codex's live profile with
-that repository family's concrete worktree root. With `"worktreeRoot": "~/.worktrees"` in
-`plans-config.json`, a normal checkout named `my-repo` renders `~/.worktrees/my-repo`; a nested
-worktree such as `~/.worktrees/my-repo/feature` renders the same family root. Codex profiles require
-concrete `workspace_roots`, so the Codex provider materializes the path instead of using a glob for
-every repository under `~/.worktrees`.
-
-### Web endpoints
-
-The loopback-only portal server (`scripts/cli/portal-server.mjs`) serves `/config`
-and these write endpoints. Each returns the fresh snapshot so the client re-renders from
-one response.
-
-| Endpoint | Body | Result |
+| Cost | What it counts | How it is shown |
 | --- | --- | --- |
-| `POST /api/config/packages` | `{ id, enabled }` | enable/disable a package |
-| `POST /api/config/skills` | `{ id, enabled }` | link/unlink a skill |
-| `POST /api/config/permissions` | `{ behaviorId, bucket }` or `{ tokens, bucket }` | set a named behavior or arbitrary command to `deny`, `ask`, `allow`, or `default` |
+| Startup | Text loaded automatically at chat start: the rendered rules and each installed skill's name and description | A per-harness total in the agent files grid |
+| On-demand | Text loaded only when used: a full skill body or slash command | Per item, rated low (< 1k), medium (1k–3k), or high (> 3k); only medium and high get a chip |
 
-### Harness Context estimates
+On-demand costs are never summed, since skill bodies do not load together. Settings files, hook
+scripts, and MCP schemas are not prompt text and get no token number. Disabled packages show their
+potential cost but add nothing to the totals. When anything is rated medium or high, a warning panel
+above the grid lists it, highest first. All counts are estimates at about 4 characters per token.
 
-The snapshot carries `contextCost` (computed by `scripts/cli/context-cost.mjs`): per-harness
-token estimates for the configuration itself, rendered as a `Usage` row in the agent files
-grid (one `<token-chip>` per harness, colored by level, with a contributing-amounts tooltip),
-plus warning summaries, per-package cost badges, matching chips on the rules-file cells when
-rules are medium/high, and chips in the source-inspect popup header.
-`<token-chip>` is a shared web component (`portal/shared/token-chip.js`, styles in
-`base.css`) so every cost chip renders and behaves identically.
+## Permissions
 
-Two cost classes are tracked and never mixed:
-
-- **Startup** — text included automatically at chat start: the rendered rules payload
-  (`CLAUDE.md` / `AGENTS.md` managed block) plus installed skill/command discovery metadata
-  (frontmatter name and description). The authoritative startup rules number is measured from
-  the full rendered output, not by summing source fragments; the remainder over package
-  fragments is attributed to `core-baseline`.
-- **On-demand** — text loaded only when invoked: full `SKILL.md` bodies and generated slash
-  command wrappers. Deliberately never summed in the UI (skill bodies don't load together, so
-  a machine-wide or section-wide sum is noise). Instead each package's single-invocation cost
-  is rated on its own skill-size scale (`ON_DEMAND_LEVEL_THRESHOLDS`: low < 1k, medium 1k–3k,
-  high > 3k) and only medium/high sizes render a colored per-item chip; low-cost skills show
-  no chip.
-
-Config/settings syntax, hook scripts, and MCP schemas never receive token numbers — they are
-labeled `Not prompt context`, `conditional`, and `runtime-dependent` respectively. Disabled
-packages keep a measured *potential* cost but contribute nothing to active totals.
-
-The warning panel appears above the agent files grid only when medium/high items exist. It sorts
-high items first, then by each item's percent of its own high threshold. Warning labels bold only
-the item name; parenthetical qualifiers such as `(when loaded)` stay plain. The aggregate
-`Skill Discovery Descriptions (in total)` warning includes an info tooltip that explains the
-number is the active total of skill description metadata and distinguishes individual large
-contributors from many small descriptions adding up.
-
-All counts are estimates (`~4 characters per token`, `method: "estimated-v1"`). The
-low/medium/high rating uses threshold families from
-`manifests/platform/context-cost-thresholds.json`: full startup payloads and rendered rules use
-the large startup scale; package rule snippets and skill discovery metadata use the smaller
-Chat-Time Output/snippet scale; single skill/command invocations use the on-demand skill-size
-scale. Results are cached by a stat signature over every input file plus enabled/install state,
-so the 10-second portal poll does not re-read sources.
-
-### Permission scope
-
-Permissions are global machine state. Roborepo no longer has a per-project permission profile layer.
+Permissions are global machine state; there is no per-project permission layer.
 
 Personal changes are stored in `~/.roborepo/command-overrides.json` and layered on top of
 `manifests/inventory/agent-permissions.json` before rendering live Claude/Codex config. Resetting a
 row to `default` removes the personal override and returns to the repo manifest default for that
 behavior or command.
 
-#### Gates and scopes
+### Gates and scopes
 
 File access is two behaviors, not one, and they answer different questions:
 
@@ -208,7 +124,7 @@ Policy Engine), and falls back to the whole-tool decision there. `write-files` d
 unscoped rule of its own: a bare `Write`/`Edit` entry out-ranks every path-scoped rule and would
 silently defeat the scoping.
 
-#### Credential denylist
+### Credential denylist
 
 `read-secrets` denies reads of credential material — `~/.ssh`, `~/.aws`, `~/.gnupg`, cloud config,
 keychains, and `.env`/`*.pem`/private-key files anywhere on disk. It is the one layer the repository
@@ -222,18 +138,13 @@ Two properties make this the security floor rather than one more preference:
 - **Deny is not a prompt.** There is no in-session override. If a denied path needs reading, carve
   it out of the behavior rather than working around it.
 
-The denylist is home-relative by design (`~/.ssh/**`), which is correct on every machine — unlike a
-personal *project* layout, which is not. Both forms contain `~`; only the second is a portability
-bug, which is why `scripts/test/permission-rule-home-path-check.mjs` tests the bucket rather than
-the presence of a tilde.
-
 A denylist only catches what it names. It cannot cover unknown-sensitive files — a tax PDF, a
 client repo under NDA — which is why it complements the scope perimeter instead of replacing it.
 
-#### Changing path scopes
+### Changing path scopes
 
-Scope paths are expanded at **render** time into static harness config — but this is no longer the
-whole story, and the distinction matters when changing one:
+Two different questions decide whether a file access prompts, and they are answered at different
+times:
 
 | Question | Resolved | Mechanism |
 | --- | --- | --- |
@@ -253,49 +164,23 @@ repository family. Writing across checkouts is how one session clobbers another'
 and it is rare — isolation is the reason to create a worktree — so writes stay bounded to the
 checkout in use and prompt otherwise.
 
-Claude reads the family straight from git's own pointer files (`.git`, `commondir`,
-`.git/worktrees/*/gitdir`), costing ~15ms rather than a `git` subprocess. Codex does not enforce the
-read half of this table. It expresses only the write half through a `managed-workspace` permission
-profile, including this repo's derived worktree root from `docs/plans/plans-config.json`.
+Codex enforces only the write half of this table. If a repository's `docs/plans/plans-config.json`
+sets `"worktreeRoot": "~/.worktrees"`, Codex also gets write access to that repository's worktree
+folder, `~/.worktrees/<repo-folder-name>` — not to all of `~/.worktrees`. The folder is filled in
+when `roborepo config apply` or `roborepo update` runs from inside the repository, or when you change
+a permission.
 
-#### Codex worktree permissions coordinator
-
-Codex permission profiles accept only concrete `workspace_roots`; they do not support a dynamic
-"same repo name under my worktree parent" expression. Roborepo is therefore the coordinator that
-materializes those roots.
-
-The flow is:
-
-1. A repo carries `docs/plans/plans-config.json` with `"worktreeRoot": "~/.worktrees"`.
-2. `roborepo config apply`, package-mode `roborepo update`, or a permissions toggle renders live
-   permissions from the current working directory.
-3. The generic permission renderer passes provider context to each harness adapter.
-4. The Codex provider reads the current repo's plan config and contributes
-   `~/.worktrees/<repo-folder-name>` to `workspace_roots`.
-5. Claude and Gemini ignore that Codex-only context. Claude gets repository scoping from its
-   tool-call hook; Gemini cannot express a path predicate and keeps the documented skip.
-
-This keeps the provider seam intact: the platform owns the permission intent, the render
-orchestrator passes context, and each provider decides whether its native permission model can use
-that context. It also avoids granting all of `~/.worktrees`, which would let one repo's session
-write into another repo's worktree family.
-
-The repository boundary cannot be a path, because no rule syntax can express "wherever the session
-happens to be".
-So a scope change is an install-time concern, while a *boundary* change takes effect immediately.
-
-Path-scoping changes must be worked through **per provider** — Claude and Codex both, not Claude
-alone. The two render through different code paths in `scripts/harnesses/permissions-render.mjs`
-and support different permission primitives; a scope that works in one is not evidence it works in
-the other.
+Changes to the fixed path allowlist take effect after the next render (`roborepo update`, or a
+permission change in the panel); the repository boundary is checked on every tool call, so it needs
+no render.
 
 ## Happy Path
 
 1. Run `roborepo web` to open the `/config` portal (or run `roborepo package manage`
    in a terminal).
-2. The panel renders its sections from `GET /api/config`.
-3. Toggle a package, skill, or telemetry switch — the client POSTs, the server mutates
-   live config and returns a fresh snapshot, the panel re-renders.
+2. The panel shows the current state of each section.
+3. Toggle a package, skill, or telemetry switch. The change is written to your live harness config
+   and the panel refreshes.
 4. To change permissions, set a named behavior or arbitrary command to `deny`, `ask`, `allow`, or
    `default`.
 5. Changes take effect the next time the agent harness starts a session.
@@ -319,26 +204,3 @@ the other.
   reports the collision and preserves native-only metadata such as `agents/openai.yaml`.
 - **Missing harness home.** Permission writes only target harness homes that already exist. If no
   harness config is present, the mutation reports that nothing was written.
-
-## Key Files
-
-- `scripts/cli/config.mjs` — `readConfigSnapshot()`, `buildBehaviorView()`,
-  `loadConfigSource()` (orchestrator).
-- `scripts/cli/config-source-lookup.mjs` / `config-source-render.mjs` — source-popup file
-  resolution and HTML rendering.
-- `scripts/cli/root-config-view.mjs` — per-harness root-config drift view (shared by CLI and portal).
-- `scripts/cli/config-live-rules.mjs` — live CLAUDE.md/AGENTS.md reading.
-- `scripts/cli/config-cli-print.mjs` — terminal-only `roborepo config` output.
-- `scripts/cli/skill-inventory.mjs` — shared read-only skill inventory for the CLI and portal.
-- `scripts/cli/context-cost.mjs` — token-cost estimator, collectors, and stat-signature cache
-  behind the snapshot's `contextCost`.
-- `scripts/cli/package-probes.mjs` — read-only package live-state reconciliation.
-- `scripts/cli/config-mutate.mjs` — the shared mutate primitives.
-- `scripts/cli/packages.mjs` — `enablePackage` / `disablePackage` and package dependency
-  resolution.
-- `scripts/cli/permissions-render.mjs` — the permission render core.
-- `scripts/cli/config-dashboard.mjs` — the `/config` web view.
-- `scripts/cli/portal-server.mjs` — the HTTP routes.
-- `portal/config/` — the config page HTML, CSS, and browser JavaScript.
-- `globals/packages/*/package.config.json` — built-in package configs.
-- workspace `packages/*/package.config.json` — imported or locally authored package configs.

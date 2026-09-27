@@ -8,14 +8,14 @@ RoboRepo sits at the intersection of **Git**, **localhost activity**, **agent co
 flowchart LR
   Repo["Repository"]
 
-  Repo --> Git["Git + Worktrees"]
-  Repo --> Local["Localhost"]
-  Repo --> Plans["Plans"]
-  Repo --> Agents["Agent Config"]
-  Repo --> Usage["Tokens + Sessions"]
+  Repo -->|tracks| Git["Git + Worktrees"]
+  Repo -->|runs| Local["Localhost apps"]
+  Repo -->|keeps| Plans["Plans"]
+  Repo -->|uses| Agents["Agent Config"]
+  Repo -->|spends| Usage["Tokens + Sessions"]
 
-  Portal["Web Portal"] --> Repo
-  CLI["CLI"] --> Repo
+  Portal["Web Portal"] -->|browses| Repo
+  CLI["CLI"] -->|manages| Repo
 ```
 
 |                  |                                                    |
@@ -71,18 +71,8 @@ roborepo web
 
 ## Repositories
 
-RoboRepo maintains a canonical identity for repositories observed across its tools.
-
-```mermaid
-flowchart TD
-  Git["Git checkout"] --> Repo["Repository"]
-  Worktree["Git worktree"] --> Repo
-  Localhost["Running localhost app"] --> Repo
-  Plans["docs/plans"] --> Repo
-  Telemetry["Agent session"] --> Repo
-
-  Repo --> State["Shared repository identity"]
-```
+RoboRepo keeps one identity per repository, so a checkout, its worktrees, the localhost apps it
+runs, its plans, and its agent sessions all resolve to the same repository.
 
 Repository-aware data can include:
 
@@ -102,16 +92,16 @@ A repository-first Home and shared repository scope are planned.
 
 ```mermaid
 flowchart LR
-  Home["Home"] --> Repo["Repository"]
+  Home["Home"] -->|opens| Repo["Repository"]
 
-  Repo --> R1["Plans"]
-  Repo --> R2["Tokens"]
-  Repo --> R3["Agents"]
-  Repo --> R4["Localhost"]
+  Repo -->|shows| R1["Plans"]
+  Repo -->|shows| R2["Tokens"]
+  Repo -->|shows| R3["Agents"]
+  Repo -->|shows| R4["Localhost"]
 
-  Scope["Repository Filter"] -.-> R1
-  Scope -.-> R2
-  Scope -.-> R3
+  Scope["Repository Filter"] -.->|filters| R1
+  Scope -.->|filters| R2
+  Scope -.->|filters| R3
 ```
 
 ---
@@ -177,9 +167,9 @@ The Plans portal surfaces:
 
 ```mermaid
 flowchart LR
-  Backlog --> Active --> Completed
-  Active --> Archived
-  Backlog --> Archived
+  Backlog -->|start| Active -->|complete| Completed
+  Active -->|archive| Archived
+  Backlog -->|archive| Archived
 ```
 
 <!-- Screenshot: Plans portal -->
@@ -191,30 +181,9 @@ flowchart LR
 
 ## Agent Configuration
 
-Manage shared agent behavior across supported harnesses.
-
-```mermaid
-flowchart TD
-  Package["RoboRepo Package"]
-
-  Package --> Skill["Skills"]
-  Package --> Command["Commands"]
-  Package --> Rules["Rules"]
-  Package --> Hooks["Hooks"]
-  Package --> MCP["MCP"]
-  Package --> Permissions["Permissions"]
-
-  Skill --> Providers["Harness Providers"]
-  Command --> Providers
-  Rules --> Providers
-  Hooks --> Providers
-  MCP --> Providers
-  Permissions --> Providers
-
-  Providers --> Claude
-  Providers --> Codex
-  Providers --> Gemini
-```
+Manage shared agent behavior across supported harnesses. A package bundles skills, commands,
+rules, hooks, MCP servers, and permissions; roborepo renders each into the native format of
+Claude Code, Codex, and Gemini CLI.
 
 Common actions:
 
@@ -262,12 +231,12 @@ Track:
 
 ```mermaid
 flowchart LR
-  Session["Agent Session"] --> Capture["Local Telemetry"]
-  Capture --> Metrics["Tokens / Tools / Time"]
-  Metrics --> Portal["Tokens Portal"]
+  Session["Agent Session"] -->|hooks record| Capture["Local Telemetry"]
+  Capture -->|aggregates into| Metrics["Tokens / Tools / Time"]
+  Metrics -->|feed| Portal["Tokens Portal"]
 
-  Marker["Change Marker"] --> Portal
-  Portal --> Compare["Before / After"]
+  Marker["Change Marker"] -->|splits| Portal
+  Portal -->|shows| Compare["Before / After"]
 ```
 
 <!-- Screenshot: Tokens portal -->
@@ -286,9 +255,9 @@ flowchart LR
   Workspace["workspaceRoot<br/>User-owned resources"]
   State["stateRoot<br/>Machine-local state"]
 
-  App --> Runtime["RoboRepo"]
-  Workspace --> Runtime
-  State --> Runtime
+  Runtime["RoboRepo"] -->|reads| App
+  Runtime -->|reads + writes| Workspace
+  Runtime -->|reads + writes| State
 ```
 
 ```sh
@@ -337,24 +306,6 @@ The README covers common entry points. See the reference for the full command su
 ---
 
 ## Architecture
-
-```mermaid
-flowchart TD
-  Portal["Portal"]
-  CLI["CLI"]
-
-  Portal --> Domains["Domain Services"]
-  CLI --> Domains
-
-  Domains --> Repositories["Repositories"]
-  Domains --> Plans["Plans"]
-  Domains --> Localhoster["Localhoster"]
-  Domains --> Telemetry["Telemetry"]
-  Domains --> Packages["Packages"]
-
-  Packages --> Providers["Harness Providers"]
-  Providers --> Harnesses["Claude / Codex / Gemini"]
-```
 
 | Layer             | Responsibility                        |
 | ----------------- | ------------------------------------- |

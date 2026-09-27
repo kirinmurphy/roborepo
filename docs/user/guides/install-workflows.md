@@ -47,6 +47,10 @@ Then it applies the default `base` bundle. Choosing the optional behaviors is `r
 | `overwrite` | Move the existing file to `*_original_TIMESTAMP`, then copy the repo file into place. |
 | `abort` | Stop instead of changing the conflicting path. |
 
+Root config files (`settings.json`, `config.toml`) are merged rather than replaced, so your
+settings survive; if you edited one since roborepo last wrote it, `keep` leaves it untouched. See
+[Root Config Drift Detection](../reference/config-collision-handling.md#root-config-drift-detection).
+
 Example:
 
 ```sh

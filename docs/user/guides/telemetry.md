@@ -179,7 +179,7 @@ no shared marker to split around:
 
 ```mermaid
 flowchart TD
-  A[Pick a metric] --> B{Comparison mode}
+  A[Pick a metric] -->|then choose| B{Comparison mode}
   B -->|marker-relative| C[Before / after a marker]
   B -->|cohort A vs cohort B| D[Two independently filtered groups]
   C -->|produces| E[Result: evidence + confidence + next action]
@@ -193,5 +193,3 @@ alert use, so a number never means two different things depending on where you'r
 
 - [Telemetry Service Reference](../reference/telemetry.md) — schemas, CLI commands, API
   routes, privacy/retention details.
-- [Portal Technical Reference](../reference/portal.md) — the shared portal server
-  architecture.

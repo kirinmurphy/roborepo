@@ -6,6 +6,26 @@ loops, cost breakdowns), and lets a user mark configuration changes and compare 
 after them. Everything lives in local JSONL/JSON files under the RoboRepo state directory; nothing
 leaves the machine.
 
+## Turning It On
+
+Capture takes two steps, both deliberate:
+
+1. Enable the `telemetry` package (from `roborepo library` or `/config`). This installs the capture
+   hooks, which do nothing yet.
+2. Run `roborepo telemetry enable`. The hooks start appending records.
+
+`roborepo telemetry disable` stops capture; the portal can still browse data captured earlier. Capture
+is off by default because the spool grows with every session.
+
+**Telemetry-only install.** `roborepo telemetry install` sets up capture without the rest of
+roborepo: it wires only the capture hooks into `~/.claude/settings.json` and `~/.codex/hooks.json`
+and turns capture on. Use it to measure baseline token usage before adopting the full suite; running
+the normal install later upgrades it.
+
+**Codex hook trust.** Codex runs only hooks you have trusted. After install, the next Codex session
+asks you to trust `~/.codex/hooks.json`; approve it once. Codex loads hooks at session start, so
+sessions that were already running do not capture.
+
 ## Capture
 
 `roborepo telemetry capture --harness <claude|codex> --event <HookEvent>` is the hot hook path,
@@ -32,7 +52,7 @@ JSONL line. Each capture (schema v3) carries:
   recently entered context (size only, never content).
 
 Records are appended to per-harness JSONL spools (`telemetry/spool/<harness>.jsonl`), capped at
-~25MB each (oldest lines trimmed, newest ~70% kept). Schema-v2 records (pre-Phase-3) remain readable
+~25MB each (oldest lines trimmed, newest ~70% kept). Older schema-v2 records remain readable
 — every reader treats the spool structurally rather than gating on `.schema`.
 
 ## Markers
@@ -56,8 +76,8 @@ deduplicated configuration snapshot are always resolved automatically — a call
 machine-derived identity fields.
 
 An outcome marker is the only place `Stop` alone is never treated as success: outcome must be set
-explicitly. Task category/scale on an outcome marker are `explicit` when set via the CLI; a separate
-inference path (`telemetry-task-infer.mjs`) exists for analysis-time use but has no live caller today.
+explicitly. Task category and scale on an outcome marker are recorded as `explicit` when set via the
+CLI; they are never inferred.
 
 ## Experiments
 
@@ -136,8 +156,9 @@ declares policies yet; the mechanism is generic and ready for a package to adopt
 
 ## CLI report
 
-`roborepo telemetry report` (add `--deep` for an optional LLM synthesis of the deterministic facts —
-never raw spool/transcript content) prints, in order: deterministic insights (each with confidence
+`roborepo telemetry report` (add `--deep` for an optional LLM synthesis of the deterministic facts,
+run through the headless `claude -p` with your existing Claude auth — only the computed summary is
+sent, never raw spool/transcript content) prints, in order: deterministic insights (each with confidence
 and a next action), data-quality warnings, read warnings, recent markers, experiment readiness, usage
 windows, testing efficiency, cost breakdowns, midpoint regression (labeled exploratory), loops,
 sessions, spikes, and raw contributor tables. The same `analyzeTelemetry()` function and metric
@@ -147,7 +168,7 @@ registry back both this report and the portal, so CLI and portal numbers agree f
 
 The v1 dashboard (`/tokens_v1`, hidden from nav) is a frameworkless, dependency-free page
 (`portal/telemetry/`) polling `/api/data` every 5 seconds. The nav-visible `/tokens` page
-(`portal/tokens2/`) reads the same `/api/data` report. See `docs/user/reference/portal.md` for the shared portal architecture (loopback bind,
+(`portal/tokens2/`) reads the same `/api/data` report. See `docs/internal/portal-architecture.md` for the shared portal architecture (loopback bind,
 mutation-token contract, route dispatch). Telemetry-specific pieces:
 
 - **Global cohort filter bar** — time range, harness, model, repository, and a marker-relative
@@ -167,7 +188,7 @@ mutation-token contract, route dispatch). Telemetry-specific pieces:
   with the same confidence/data-quality treatment as everywhere else.
 - **Session detail** — extended with model history, the session's configuration snapshot (id +
   packages/skills), a phase timeline, semantic operation totals, its explicit outcome/task category
-  (marked `source: "explicit"`, since no live inference caller exists yet), markers within a 15-minute
+  (marked `source: "explicit"`), markers within a 15-minute
   window of the session, and data-quality flags — alongside the existing "surface chat context" /
   copy-prompt / transcript-open actions, which are unchanged.
 - **Marker creation** — a dialog reachable from the cohort filter bar ("+ mark change") posts through
@@ -201,7 +222,7 @@ mutation-token contract, route dispatch). Telemetry-specific pieces:
   runtime (`portal/shared/markdown-mermaid.js`), loaded lazily on first use.
 
 All mutating routes are POST-only and use the portal's standard loopback-origin + mutation-token
-guard (see `docs/user/reference/portal.md`).
+guard (see `docs/internal/portal-architecture.md`).
 
 ## Privacy
 
@@ -260,4 +281,4 @@ the way to remove every telemetry store at once, and `purge --backup` keeps a re
 
 ## Related
 
-- `docs/user/reference/portal.md` — the shared portal server/route/mutation-token architecture.
+- `docs/internal/portal-architecture.md` — the shared portal server/route/mutation-token architecture.

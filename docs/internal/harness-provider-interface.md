@@ -4,7 +4,7 @@ Read this to understand how roborepo supports more than one coding-agent CLI, an
 a new one.
 
 For what the supported harnesses do from a user's point of view, read
-[Supported Harnesses](supported-harnesses.md) first.
+[Supported Harnesses](../user/guides/harnesses/supported-harnesses.md) first.
 
 ## Why the Interface Exists
 
@@ -29,8 +29,8 @@ Support for a harness is split across three layers with a strict rule about what
 
 **Platform** — `scripts/cli/`, `scripts/build/`, `scripts/install/`
 Owns *behavior*: what a rules file should contain, when permissions are re-rendered, how a package
-install proceeds. Knows the vocabulary of capabilities. Must never know that Codex uses TOML or that
-Claude's Windows home is `%APPDATA%\Claude`.
+install proceeds. Knows the vocabulary of capabilities. Must never know that Codex uses TOML or where
+Gemini keeps its policy files.
 
 **Provider** — `scripts/harnesses/<id>/`, `globals/harnesses/<id>/`
 Owns *everything specific to one harness*: its file formats, path layout, native tool names,
@@ -220,8 +220,8 @@ Two constraints worth knowing before editing these scripts:
    shared fragments reach every harness without it.
 
 5. **Update the Windows installer.** `scripts/install/install-windows.ps1` maintains its own
-   `$KnownHarnessIds`, because Claude's Windows home is an environment-variable path the manifest's
-   `~/`-relative schema cannot yet express. `scripts/test/windows-installer-check.ps1` fails CI if
+   `$KnownHarnessIds` rather than deriving it from the manifests (every harness home is
+   `~/`-relative on Windows too; deriving the list is follow-up work). `scripts/test/windows-installer-check.ps1` fails CI if
    the two drift, so this step is enforced rather than remembered. Run it locally with PowerShell
    Core (`brew install --cask powershell@preview`); it is static analysis and needs no Windows.
 
@@ -255,6 +255,6 @@ signal that something reintroduced a fixed-provider assumption.
 
 ## Where to Go Next
 
-- [Supported Harnesses](supported-harnesses.md) — the user-facing view
+- [Supported Harnesses](../user/guides/harnesses/supported-harnesses.md) — the user-facing view
 - `scripts/harnesses/contract.mjs` — capability vocabulary and validation
 - `scripts/harnesses/gemini/` — the most recently added provider, and the clearest worked example

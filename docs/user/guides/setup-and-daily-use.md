@@ -33,7 +33,7 @@ The installer has one materialization model: copy owned files, render generated 
 user-authored root config unless the selected collision policy says otherwise. See
 [install-workflows.md](install-workflows.md) for the step-by-step flow and collision behavior.
 
-Root config export merges the repo baseline with the active local file when a root-config row collides, preserving the local content and cleaning up redundant backup originals after a no-op resolution. The installer does not auto-merge user config for other managed paths, or silently replace non-root conflicts. If another harness file or global command target already exists and is not managed by this repo, install stops before changing files and prints a merge prompt after the blocking action. See [Config Collision Handling](../reference/config-collision-handling.md) for exact behavior.
+When a local file differs from the repo version, the `--on-conflict` policy decides whether it is kept (repo version staged beside it), overwritten (local file backed up), or the install stops. Root config files are merged instead, so your settings survive. See [Config Collision Handling](../reference/config-collision-handling.md) for exact behavior.
 
 **The script is safe to re-run** — owned copies and rendered rules are refreshed, and local Claude/Codex settings are merged with the repo baseline instead of replaced. If a past update left recoverable local settings in a backup, `roborepo update` or `roborepo doctor --installed` will point you at `roborepo maintenance repair local-config --dry-run`.
 
@@ -66,8 +66,7 @@ This runs against temporary `HOME` directories only. See [Config Collision Handl
 ### Manage Agent Permissions
 
 Agent permission defaults start in `manifests/inventory/agent-permissions.json` as flat behavior and
-command buckets. Each entry resolves to `allow`, `ask`, or `deny`; there is no longer a profile
-bundle such as `readonly`, `interactive`, or `workspace`.
+command buckets. Each entry resolves to `allow`, `ask`, or `deny`.
 
 Use the Package Library or config portal for normal machine-level changes:
 
@@ -97,7 +96,7 @@ Everything below is driven by one command, **`roborepo`** — the single front d
 indexing, skills, and maintenance. It is installed and added to your `PATH` automatically by the
 installer (no manual PATH step on macOS/Linux); open a new shell after the first install so it
 resolves. Run `roborepo` with no arguments for an interactive menu, or call a subcommand directly
-as shown below. Full reference: [roborepo CLI](../reference/roborepo.md).
+as shown below. Full reference: [roborepo CLI Commands](../reference/roborepo-cli.md).
 
 ### Browse and manage plan docs
 
@@ -230,5 +229,5 @@ Git Bash is required — hook scripts and bin commands are bash and will not run
 
 | Item          | Path                    |
 | ------------- | ----------------------- |
-| Claude config | `%APPDATA%\Claude\`     |
+| Claude config | `%USERPROFILE%\.claude\` |
 | Codex config  | `%USERPROFILE%\.codex\` |

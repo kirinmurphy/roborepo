@@ -1,12 +1,11 @@
-# Plans Portal Technical Reference
+# Plans Portal Reference
 
 ## Purpose
 
 The Plans portal is a built-in RoboRepo portal page for local Markdown planning documents. It is
 paired with an optional `plan-docs` package that installs the agent-facing `/plan-docs` workflow.
 
-This reference describes the current runtime behavior. Historical implementation details live under
-`docs/plans/`.
+This reference describes what the page discovers, how it judges plans, and what it changes on disk.
 
 ## Concept Model
 
@@ -18,7 +17,6 @@ This reference describes the current runtime behavior. Historical implementation
 | Lifecycle | Folder under `docs/plans` | path, not frontmatter |
 | Readiness | Deterministic validation result | parser/validator |
 | Review state | Relationship between `reviewed_commit` and Git HEAD | Git metadata |
-| Plan key | Server-issued opaque key for API calls | in-memory snapshot |
 
 Lifecycle folders:
 
@@ -31,23 +29,12 @@ archived
 
 Root-level `docs/plans/*.md` files are reported as `unclassified`.
 
-## Runtime Behavior
+## What The Portal Writes
 
-`roborepo web` starts the shared loopback portal server. `/plans` is registered directly in
-`scripts/cli/portal-server.mjs`, alongside Config and Telemetry.
-
-The page uses:
-
-- `modules/plan-docs/index.mjs` for discovery, parsing, validation, Git metadata, rendering, and prompt generation
-- `scripts/cli/plans.mjs` for portal-facing snapshots and package-state integration
-- `portal/plans/` for static HTML/CSS/JS
-- `portal/shared/base.css` and `portal/shared/theme.js` for the uniform portal
-  header, navigation, active-page state, updated-at text, theme toggle, and shared hidden-element
-  behavior
-
-The portal writes to plan files in two ways only: `POST /api/plans/priority` rewrites the
-`priority` frontmatter line, and `POST /api/plans/lifecycle` renames the file into another lifecycle
-folder. `POST /api/plans/settings` writes discovery roots to RoboRepo state, not to any repository.
+The portal changes plan files in two ways only: changing a plan's `priority` rewrites that
+frontmatter line, and moving a plan renames the file into another lifecycle folder. Both check that
+the file has not changed since the page loaded it. Discovery roots you add are saved to RoboRepo
+state, not to any repository.
 
 ## Discovery
 
@@ -87,11 +74,6 @@ never descending into one already visited.
 Linked Git worktrees are skipped as repository candidates. `/plans` treats the primary checkout's
 `docs/plans` files as the canonical source, while implementation workflows that run inside linked
 worktrees mirror plan-status edits back to that primary checkout.
-
-Per-file scan results (parsed content, task counts, and git-derived fields like `reviewState`) are
-cached in-process keyed by the file's mtime, so a file is only re-parsed and re-queried against git
-when it actually changes on disk. Directory listing itself always runs fresh, so added/removed
-files are seen immediately; only the expensive per-file work is skipped for unchanged files.
 
 ## Plan Parsing
 
@@ -150,29 +132,17 @@ Other warnings include:
 Warnings are surfaced in the list view and document drawer. They do not move files automatically.
 
 Section requirements are matched by heading label against a synonym list, so `Purpose` satisfies
-Summary, `Current behavior` satisfies Context, and so on. The list lives in
-`modules/plan-docs/section-synonyms.mjs` and is the single place to extend when a document uses a
-reasonable heading the scanner does not yet recognize.
+Summary, `Current behavior` satisfies Context, and so on.
 
-## Readiness Findings
+## Moving A Plan That Is Not Ready
 
-Each problem is reported as a finding with a stable code, a plain-language message, a resolution
-describing the fix, and optional structured metadata (an unchecked-task count, the accepted heading
-names for a missing section). `plan.validation` carries both `findings` and `warnings`, the latter
-being the message strings, so display and search keep working while the dialog, the API, and prompt
-generation read the structured form.
+Moving a plan into a lifecycle whose requirements it does not meet is rejected, the file stays
+where it is, and the dialog lists every problem with its fix. From there you can:
 
-Moving a plan into a lifecycle whose requirements it does not meet returns `422
-LIFECYCLE_REQUIREMENTS` with every finding at once, and the file is not moved. Validation runs
-against the file on disk — after identity, stale-state, boundary, and collision checks, immediately
-before the rename — so findings always describe current content, and a stale or wrongly targeted
-request gets that answer instead of repair guidance.
-
-The response also carries a server-generated repair prompt built from those same findings. The
-portal offers it as **Copy prompt to resolve warnings** alongside **View Plan** and **Move anyway**;
-the prompt tells an agent to fix the document, leave the file where it is, and preserve the plan ID.
-Because the prompt is generated server-side and returned with the rejection, it can never describe
-requirements different from the ones on screen.
+- **Copy prompt to resolve warnings** — a prompt that tells an agent to fix the document, leave the
+  file where it is, and keep the plan ID.
+- **View Plan** — open the document.
+- **Move anyway** — file it regardless.
 
 Readiness is advisory. Confirming **Move anyway** re-submits with validation bypassed, so a document
 that predates the schema can still be filed.
@@ -198,48 +168,6 @@ Review states:
 
 Repositories without Git remain browsable.
 
-## API
-
-All routes are served by the loopback-only portal server.
-
-| Endpoint | Method | Purpose |
-| --- | --- | --- |
-| `/api/plans` | GET | compact plan index and package state |
-| `/api/plans/document?key=<key>` | GET | one plan's Markdown, rendered HTML, metadata, tasks, and warnings |
-| `/api/plans/prompt` | POST | build repository-aware or portable prompt from server-issued plan keys |
-| `/api/plans/priority` | POST | change one plan's priority, guarded by expected value and mtime |
-| `/api/plans/lifecycle` | POST | move one plan between lifecycle folders, guarded and readiness-validated |
-| `/api/plans/settings` | POST | replace discovery roots |
-| `/api/plans/refresh` | POST | rebuild the in-memory snapshot |
-
-POST routes require the same origin and per-server mutation token protections as other portal
-mutations.
-
-Mutation failures return a structured error:
-
-```jsonc
-{ "error": {
-    "code": "LIFECYCLE_REQUIREMENTS",       // STALE_PLAN, DESTINATION_EXISTS, INVALID_CHANGE, …
-    "message": "Couldn't move \"Plan Title\" to Completed.",
-    "resolution": "Complete or remove the listed items, then try again — or move anyway.",
-    "details": ["Completed plan has unchecked tasks."],   // message strings
-    "findings": [                                          // readiness failures only
-      { "code": "UNCHECKED_REQUIRED_TASKS", "kind": "lifecycle", "severity": "blocking",
-        "message": "Completed plan has unchecked tasks.",
-        "resolution": "Complete or remove the remaining required tasks.",
-        "count": 3, "meta": { "remaining": 3, "total": 7 } }
-    ],
-    "repair": { "prompt": "/plan-docs validate\n…", "planKey": "…", "planId": "…" } } }
-```
-
-`details` is always the message projection of `findings`, so the two cannot describe different
-problems. Both serialization boundaries whitelist error keys explicitly — `sendDomainError` in
-`scripts/cli/portal-routes-plans.mjs` and `portalPostJson` in `portal/shared/api.js` — so a new
-field on `domainError` must be added to both or it is dropped silently.
-
-The browser sends plan keys, never arbitrary file paths. The server resolves plan keys from the
-current snapshot and rechecks repository boundaries before reading document content.
-
 ## Package Integration
 
 The optional package is `plan-docs`.
@@ -260,42 +188,10 @@ The Plans page uses the normalized package catalog state. It does not inspect sk
 
 ## Security And Privacy
 
-- Portal binds to loopback.
-- No arbitrary file-read endpoint exists.
+- The portal binds to loopback only.
+- The browser never sends file paths; the server reads only plans it discovered itself.
 - Discovery roots scope repository discovery only.
-- Document reads require server-issued keys.
-- Plan list/document responses avoid exposing repository absolute roots in plan records.
+- Plan records do not expose absolute repository paths.
 - Portable prompts use repository name, relative path, metadata, warnings, and bounded excerpts.
-- The browser does not execute document scripts. Plan-file writes are limited to the priority and
-  lifecycle routes above, each guarded by expected-value and mtime checks.
-
-## Key Files
-
-- `modules/plan-docs/index.mjs`
-- `scripts/cli/plans.mjs`
-- `scripts/cli/portal-server.mjs`
-- `portal/shared/base.css`
-- `portal/shared/theme.js`
-- `portal/plans/index.html`
-- `portal/plans/app.js`
-- `portal/plans/styles.css`
-- `globals/packages/plan-docs/package.config.json`
-- `globals/packages/plan-docs/skills/plan-docs/`
-- `scripts/test/plan-docs-check.mjs`
-
-## Validation
-
-Targeted checks:
-
-```sh
-npm run test:plans
-npm run test:packages
-node scripts/cli/main.mjs skill render-commands --check
-node scripts/cli/main.mjs skill triggers --check
-```
-
-Broad smoke after shared portal or package changes:
-
-```sh
-npm test
-```
+- The browser does not execute document scripts, and writes only the changes described in
+  [What The Portal Writes](#what-the-portal-writes).

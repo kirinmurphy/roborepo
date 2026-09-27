@@ -46,24 +46,8 @@ two or more genuinely different shapes (different titles) still cannot be auto-a
 there is no reliable way to guess which one is "the" app; those stay in Unrecognized listeners until
 manually associated.
 
-Discovery is split across provider boundaries:
-
-- `capabilities.mjs` reports aggregate platform support plus per-provider states.
-- `listeners.mjs` owns macOS listener and working-directory collection.
-- `origin.mjs` owns loopback-compatible origin candidates and hostname preference ordering.
-- `http-probe.mjs` is the public HTTP probe boundary; `probe.mjs` remains the bounded probe
-  implementation.
-- `discovery.mjs` coordinates provider records, identity, aliases, probing, and browser-safe
-  instance shaping.
-- `instance-shape.mjs` owns the instance record's structure and the association-key derivation.
-- `git.mjs` and `git-refs.mjs` collect Git context; `health.mjs` and `health-policy.mjs` normalize
-  probe results into health states; `history.mjs` and `history-diff.mjs` derive and persist
-  transition events.
-- `docker.mjs` collects running-container/Compose data; `process-metrics.mjs` collects live
-  CPU/memory/elapsed for discovered PIDs. See [Docker and process metrics](#docker-and-process-metrics).
-
-Metadata suggestions are available through the same-origin metadata endpoint and can propose
-manifest, sitemap, robots, and OpenAPI routes without promoting them to saved quick links.
+Localhoster can also suggest routes from an app's manifest, sitemap, robots, and OpenAPI files
+without saving them as quick links. See [Metadata suggestions](#metadata-suggestions).
 
 ## Git context
 
@@ -80,34 +64,8 @@ position. Collection is deliberately split by what can be read correctly:
   stat-comparing the worktree against it, and the commit-graph questions require walking loose
   objects and packfiles.
 
-Six Git subcommands may run, all read-only and none touching the network:
-
-```text
-git status       --porcelain=v1 --untracked-files=normal -z
-git rev-list     --left-right --count <upstream>...HEAD
-git symbolic-ref --quiet refs/remotes/origin/HEAD
-git rev-parse    --verify --quiet <candidate-base>
-git merge-base   HEAD <base>
-git log          -1 --format=%ct <rev>
-```
-
-The last four support base-branch drift: resolving which branch is the base (`origin/HEAD`, else
-`main`/`master`), finding where the current branch left it, and reading commit timestamps so drift
-can be reported in elapsed time rather than only in commit counts.
-
-`modules/repositories/git-exec.mjs` enforces that with an allow-list, so adding a network subcommand
-has to be a deliberate edit rather than an accident. Every invocation is hardened:
-
-- `--no-optional-locks` and `GIT_OPTIONAL_LOCKS=0` stop `git status` from refreshing and rewriting
-  `.git/index`. Without them a background scan would race your own `git add`/`git commit` for
-  `index.lock`.
-- `core.hooksPath=/dev/null` guarantees no repository-local hook executes, since discovery walks
-  arbitrary repositories on the machine.
-- `core.fsmonitor=false` avoids spawning or attaching to a filesystem-monitor daemon.
-- `GIT_TERMINAL_PROMPT=0`, empty askpass variables, and a closed stdin ensure nothing can block
-  waiting for credentials.
-- A timeout and `maxBuffer` are always set, so a slow or hung repository degrades one field rather
-  than stalling the scan.
+Every Git read is local and read-only: roborepo never runs repository hooks, never takes the
+`.git/index` lock, never waits for credentials, and times out rather than stalling the scan.
 
 RoboRepo never fetches. Ahead/behind and base drift reflect remote-tracking refs as of your last
 fetch, so `fetchedAt` (the mtime of `.git/FETCH_HEAD`) is collected alongside them as the bound on
@@ -122,18 +80,13 @@ are likewise `null` when the base branch cannot be resolved, when the branch has
 the base branch itself — no drift badge renders in any of those cases, since a drift figure measured
 against a guessed base would be worse than none.
 
-Git results are cached per scan, keyed by repository root realpath
-(`modules/repositories/scan-cache.mjs`), so N apps running out of one repository cost one collection.
-The cache is created per `discoverInstances` call and discarded when it returns; a process-lifetime
-cache would pin the first reading a long-lived portal ever took.
-
 ## Docker and process metrics
 
 Docker/Compose enrichment and live process metrics run on macOS as part of the same scan that
 collects listeners and Git context — one `docker ps` call and one batched `ps` call per refresh, not
 a separate cadence or on-demand trigger.
 
-**Docker** (`modules/localhoster/docker.mjs`) shells out to `docker ps --format '{{json .}}'`, one
+**Docker**: roborepo runs `docker ps --format '{{json .}}'`, one
 call for the whole scan rather than one per container. Each line is parsed independently, so a
 single malformed line is skipped rather than invalidating the scan. Compose project/service come
 from the `com.docker.compose.project` / `com.docker.compose.service` labels Compose already attaches
@@ -144,16 +97,12 @@ comparable to host-side `lsof` PIDs. A container with no published ports, or who
 discovered listener, never appears. Docker not installed, the daemon not running, and permission
 failures are all reported as a scan warning with zero containers — never a thrown error.
 
-**Process metrics** (`modules/localhoster/process-metrics.mjs`) shells out to `ps
+**Process metrics**: roborepo runs `ps
 -o pid=,ppid=,pcpu=,rss=,etime=,comm= -p <pid1>,<pid2>,...`, one call for every PID discovered in the
 scan rather than one call per PID. A PID that exits between listener discovery and this `ps` call is
 simply absent from the result — never backfilled with a stale or fabricated reading. `cpuPercent`,
 `residentMemoryKb`, and `elapsedSeconds` are current-snapshot facts only; like Git's `dirty` field,
 they are never persisted to settings.
-
-Both providers are gated on the same darwin-only `coreState` as the rest of discovery in
-`capabilities.mjs` — `ps`/`docker` are subprocess calls that assume the same platform boundary as
-`lsof`.
 
 ## Health states
 
@@ -182,12 +131,7 @@ before a state reaches `unhealthy`, so an app alternating pass/fail never gets t
 failure within `STARTING_GRACE_MS` (default 30s) of first sight reads as `starting`, covering the
 window where a dev server has bound its port but is still compiling.
 
-`classifyHealth` is pure: it takes the previous health record and returns the next one, so the
-failure count travels with the snapshot rather than living in module state. The record carries
-`state`, `reason`, `consecutiveFailures`, `since` (when the current state began), `firstSeenAt`, and
-`lastProbeAt`.
-
-Defaults live in `modules/localhoster/health-policy.mjs` and are not per-app settings today.
+The failure threshold and grace window are global defaults, not per-app settings.
 
 ## History
 
@@ -243,39 +187,9 @@ Version 2 adds:
 - app `health` path/status configuration and explainable `match` hints.
 - `preferences`: currently `showNonHttp` and `historyRetentionDays`.
 
-`modules/localhoster/settings.mjs` keeps the public persistence API (`loadSettings`,
-`updateSettings`, `writeSettings`) and mutation orchestration. Strict V2 validation, route
-normalization, identity alias checks, and field normalizers live in
-`modules/localhoster/settings-schema.mjs` so migrations and mutations share one schema boundary.
+## Curating Apps
 
-## API
-
-Read-only:
-
-- `GET /api/localhoster` returns the cached/current snapshot.
-- `GET /api/localhoster/history?key=<opaque-key>` accepts only a key emitted by the current
-  snapshot and returns that app's recorded events, newest first, capped at 200.
-- `GET /api/localhoster/metadata?key=<opaque-key>` accepts only a key emitted by the current
-  snapshot and returns discovered same-origin route suggestions for that app. See
-  [Metadata suggestions](#metadata-suggestions).
-
-Mutating routes are POST-only and inherit the portal's loopback origin check and mutation-token
-check:
-
-- `POST /api/localhoster/refresh`
-- `POST /api/localhoster/links`
-- `POST /api/localhoster/association`
-- `POST /api/localhoster/project`
-- `POST /api/localhoster/alias`
-- `POST /api/localhoster/repository-visibility` — hides or restores a whole repository. Unlike the
-  routes above it writes the repository registry, not Localhoster's settings, so it carries no
-  settings revision: visibility is one boolean per record with no cross-field invariant to protect.
-- `POST /api/localhoster/repository-pinned` — pins or unpins a whole repository in the repository
-  registry so its order is stable across running and idle snapshots.
-
-Revision conflicts return `409` with the current snapshot.
-
-The portal uses these same mutation routes for curation:
+From the portal you can:
 
 - The app dialog can edit project/app names, project/app favorite and hidden flags, hostname
   preference, health path/status policy, and match hints.
@@ -291,8 +205,8 @@ The portal uses these same mutation routes for curation:
 
 ## Metadata suggestions
 
-`GET /api/localhoster/metadata?key=<opaque-key>` inspects an app's own same-origin conventions and
-returns candidate routes as suggestions — never as automatic quick links. A suggestion only becomes
+Localhoster inspects an app's own same-origin conventions and
+suggests candidate routes as suggestions — never as automatic quick links. A suggestion only becomes
 a saved link when the user opens it from the "Suggested routes" action and confirms it through the
 normal add-link form.
 
@@ -310,9 +224,7 @@ Sources inspected, each same-origin and loopback-only:
   valid document (has a `paths` object) wins. Only JSON bodies are parsed; a YAML-only document is
   not discovered. A 200 response that isn't a real document — e.g. a dev server's catch-all route
   serving its HTML shell for any path — is skipped, not treated as a hit.
-  `discoverMetadataSuggestions` also accepts an explicit `openApiUrl` override for a nonstandard
-  path, but nothing in settings/CLI/UI currently supplies one — only the conventional-path guessing
-  runs in production today.
+
 
 Every discovered path is validated the same way a hand-typed quick link is (loopback host, no
 credentials, no protocol-relative URLs), and cross-source duplicates keep only the
@@ -338,24 +250,13 @@ Listeners bound to wildcard or non-loopback interfaces stay visible with a warni
 platforms keep saved settings available while clearly saying automatic discovery is unavailable.
 The unsupported-platform notice links back to this document.
 
-History reads resolve in two steps, and the order matters. The opaque key is first matched against
-the *current* snapshot; an unrecognized key returns `404`. Only then is the resolved instance's
-`associationKey` used to filter events. Because the opaque key is minted by the server from the
-snapshot it just produced, a browser can never hand the server a key for an app it cannot already
-see — that is the enumeration guard on this tokenless `GET` route.
-
-The opaque key includes the origin, so it changes when an app's port changes. A page holding a stale
-key receives `404` and reloads rather than erroring.
-
 Git collection reads only existing local state and never contacts a remote. See
 [Git context](#git-context) for the hardening applied to every Git subprocess.
 
 ## Current Limits
 
-The current V2 foundation stores and resolves confirmed aliases and exposes a manual alias
-confirmation workflow in the portal. It does not yet auto-suggest path-to-Git alias candidates.
-Future final-phase work will surface those prompts when discovery evidence says a `path:<realpath>`
-project and a Git remote identity are likely the same project.
+Aliases are confirmed by hand in the portal. Localhoster does not yet suggest that a
+`path:<realpath>` project and a Git remote identity are the same project.
 
 One alias case *is* now applied automatically: a repository whose Git remote was renamed. Two
 records sharing a `rootId` is direct evidence the same directory was seen under both remotes (a
@@ -372,28 +273,16 @@ collection cover today, including the host-port merge limitation on Docker Deskt
   suggestions](#metadata-suggestions).
 - **OpenAPI-document discovery relies on guessing a conventional path**, since no single convention
   covers every framework the way `/manifest.json`/`/sitemap.xml` do. An app serving its document at a
-  genuinely nonstandard path is not discovered — `discoverMetadataSuggestions` accepts an explicit
-  `openApiUrl` override for that case, but nothing in settings/CLI/UI currently supplies one.
-- **HTTPS self-signed and authenticated-page metadata discovery is fixture-tested only.** It has not
-  been exercised against a real app serving those conditions.
-- **The Suggested routes dialog and add-as-quick-link prefill flow have not been visually verified in
-  a browser.** Discovery itself was verified against a real local app over a real socket; the portal
-  UI built on top of it (`portal/localhoster/suggestions-view.js`, the card action menu entry) has
-  only been reviewed by reading the code and checking `node --check`.
+  genuinely nonstandard path is not discovered.
 
 Known limits in the Git, health, and history behavior described above:
 
 - **`health.path` is stored but not probed.** The setting validates and persists, but probes still
-  hit the origin root. Honoring it requires a second probe per app, which belongs with the
-  origin-candidate work rather than with health normalization.
-- **History is unreachable for stopped apps.** Events remain on disk, but the route resolves only
-  keys the current snapshot minted, and inactive entries carry no opaque key. Surfacing them needs a
-  port-free handle, which belongs with the portal's inactive-card work.
-- **Grace window and failure threshold are global defaults**, not per-app settings. The `health`
-  schema is a strict allow-list, so adding the two keys later is forward compatible and needs no
-  settings version bump.
+  hit the origin root.
+- **History is unreachable for stopped apps.** Events remain on disk, but the portal can only open
+  history for apps that are currently running.
+- **Grace window and failure threshold are global defaults**, not per-app settings.
 - **`dirty`, `ahead`, and `behind` are `null` when `git` is unavailable** or a repository is too slow
   to answer within the timeout. Branch and commit still resolve from the filesystem.
-- **Git polls on every refresh** while the portal is open. Reads are lock-free and deduplicated per
-  repository root, but this is recurring subprocess activity; throttling per root would be a small,
-  contained change if it ever proves noisy.
+- **Git polls on every refresh** while the portal is open. Reads are lock-free and run once per
+  repository root, but this is recurring subprocess activity.

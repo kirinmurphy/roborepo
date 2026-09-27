@@ -4,7 +4,7 @@ This is the map of what a "harness" is made of in this repo, and how the three h
 Codex, and Gemini CLI — are kept in parity. It is the hub: each element below says what it does,
 where its source lives, how parity is achieved across the harnesses, and the exact command you run
 to maintain it. For the underlying filesystem/symlink mechanics, see
-[How It Works](../services/architecture.md). If you want the teaching version — what each harness
+[How It Works](../user/reference/architecture.md). If you want the teaching version — what each harness
 does natively and why each element's parity is solved the way it is — read
 [How the Harnesses Work, and Why Parity Takes the Shape It Does](harnesses-explained.md) first.
 
@@ -89,7 +89,7 @@ roborepo doctor --installed   # check that live harness links are current
 Add the user-facing description to the README (`Automatic Skill Helpers` or `Commands`). Repo-only
 internal skills live under `local/skills/` and never go global or get exported. Full skill-layer
 model: [Skills And Slash Commands](skills-and-commands.md) and
-[shared-skills fan-out](../services/architecture.md#shared-skills-canonical-source--per-harness-fan-out).
+[shared-skills fan-out](../user/reference/architecture.md#shared-skills-canonical-source--per-harness-fan-out).
 
 **Memory — Defer:** both harnesses have native persistent memory (Codex `~/.codex/memories/`,
 Claude `/memory` under `~/.claude/projects/*/memory/`). Memory is per-machine, per-session, and
@@ -138,7 +138,7 @@ for Codex, or the owning package's hook resource), then re-apply:
 roborepo update   # picks up hook and root-config changes on this machine
 ```
 
-Hook details: [Claude Hooks](../services/claude-hooks.md), [Codex Hooks](../services/codex-hooks.md).
+Hook details: [Claude Hooks](../user/reference/claude-hooks.md), [Codex Hooks](../user/reference/codex-hooks.md).
 
 ## MCP servers
 
@@ -222,7 +222,7 @@ roborepo update   # exports baseline when missing/identical, asks before merging
 ```
 
 Merge options and drift behavior are covered in
-[How It Works → Root Config](../services/architecture.md#root-config-export) and
+[How It Works → Root Config](../user/reference/architecture.md#root-config-export) and
 [Config Collision Handling](../user/reference/config-collision-handling.md).
 
 ## Keeping a machine in sync

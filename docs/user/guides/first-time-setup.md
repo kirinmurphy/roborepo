@@ -92,6 +92,10 @@ The installer always materializes config by copying owned files and rendering ge
 | `overwrite` | The repo baseline should replace the local file. | Local files are backed up as `*_original_TIMESTAMP`, then the repo file is copied in. |
 | `abort` | You want manual review before any conflict is changed. | Install stops at the conflicting path. |
 
+Root config files (`settings.json`, `config.toml`) are merged rather than replaced, so your
+settings survive; if you edited one since roborepo last wrote it, `keep` leaves it untouched. See
+[Root Config Drift Detection](../reference/config-collision-handling.md#root-config-drift-detection).
+
 Use `--on-conflict keep`, `--on-conflict overwrite`, or `--on-conflict abort` to make this explicit. Without a flag, roborepo reuses the saved `onConflict` value from `~/.roborepo/install-state.json`; first noninteractive installs default to `keep`.
 
 For the full decision model and terminal-style walkthroughs, see [Install Workflow Choices](install-workflows.md). For exact collision behavior, see [Config Collision Handling](../reference/config-collision-handling.md).

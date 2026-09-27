@@ -143,7 +143,7 @@ Update all surfaces that currently imply Claude/Codex command parity:
 - `docs/internal/skills-and-commands.md`
 - `docs/internal/harnesses-explained.md`
 - `docs/user/reference/architecture.md`
-- `docs/user/reference/roborepo.md`
+- `docs/user/reference/roborepo-cli.md`
 - `docs/user/guides/setup-and-daily-use.md`
 - portal configuration/resource labels and help text
 
