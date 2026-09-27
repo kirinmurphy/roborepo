@@ -901,6 +901,95 @@ test_root_config_drift_silent_update_vs_real_collision() {
     "drifted root config still goes through the ordinary collision path on next install"
 }
 
+# The full main.sh flow runs the JS bundle apply (presets.mjs copyItem) before export_user_config,
+# so the JS step decides what happens to a drifted root config first. The tests above call
+# install-harness.sh directly and never reach that step. Stub harness binaries make detection
+# deterministic instead of depending on what is installed on the host.
+run_full_install_with_stub_harnesses() {
+  local home_dir="$1"
+  local output="$2"
+  shift 2
+  mkdir -p "$home_dir/stub-bin"
+  printf '#!/bin/sh\necho "2.0.0 (Claude Code)"\n' > "$home_dir/stub-bin/claude"
+  printf '#!/bin/sh\necho "codex-cli 0.50.0"\n' > "$home_dir/stub-bin/codex"
+  chmod +x "$home_dir/stub-bin/claude" "$home_dir/stub-bin/codex"
+  PATH="$home_dir/stub-bin:$PATH" HOME="$home_dir" "$repo_root/scripts/install/main.sh" \
+    --no-presets-onboard "$@" </dev/null >"$output" 2>&1
+}
+
+drift_claude_settings() {
+  local home_dir="$1"
+  node -e '
+    const fs = require("node:fs");
+    const file = process.argv[1];
+    const settings = JSON.parse(fs.readFileSync(file, "utf8"));
+    settings.userMarker = "mine";
+    // Also drop a baseline key so the merge has something to restore; otherwise the post-merge file
+    // equals the backup and export_user_config deletes that backup as redundant.
+    delete settings.awaySummaryEnabled;
+    fs.writeFileSync(file, JSON.stringify(settings, null, 2) + "\n");
+  ' "$home_dir/.claude/settings.json"
+}
+
+claude_drift_status() {
+  HOME="$1" node "$repo_root/scripts/cli/root-config-state.mjs" check claude "$1/.claude/settings.json"
+}
+
+test_full_install_drifted_root_config_honors_policy() {
+  local home_dir before
+
+  # keep: user edits survive untouched, one candidate is staged, drift stays visible.
+  home_dir="$(make_home)"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/first.out" --on-conflict keep \
+    || fail "full install (first run) succeeds" "$home_dir/first.out"
+  drift_claude_settings "$home_dir"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/keep.out" --on-conflict keep \
+    || fail "full install keeps a drifted root config" "$home_dir/keep.out"
+  assert_file_contains "$home_dir/.claude/settings.json" '"userMarker"' "full install keep preserves the user's edit"
+  [[ "$(claude_drift_status "$home_dir")" == "drifted" ]] \
+    && pass "full install keep leaves drift visible" \
+    || fail "full install keep leaves drift visible" "$home_dir/keep.out"
+  [[ "$(find "$home_dir/.claude" -maxdepth 1 -name 'settings_update_*' | wc -l | tr -d ' ')" == "1" ]] \
+    && pass "full install keep stages exactly one candidate" \
+    || fail "full install keep stages exactly one candidate" "$home_dir/keep.out"
+
+  # overwrite: the drifted file is backed up, then merged, and recorded clean.
+  home_dir="$(make_home)"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/first.out" --on-conflict keep \
+    || fail "full install (first run) succeeds" "$home_dir/first.out"
+  drift_claude_settings "$home_dir"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/overwrite.out" --on-conflict overwrite \
+    || fail "full install overwrites a drifted root config" "$home_dir/overwrite.out"
+  [[ -n "$(find "$home_dir/.claude" -maxdepth 1 -name 'settings_original_*')" ]] \
+    && pass "full install overwrite backs up the drifted file" \
+    || fail "full install overwrite backs up the drifted file" "$home_dir/overwrite.out"
+  [[ "$(claude_drift_status "$home_dir")" == "clean" ]] \
+    && pass "full install overwrite records the merged file" \
+    || fail "full install overwrite records the merged file" "$home_dir/overwrite.out"
+
+  # abort: stops before writing the drifted file.
+  home_dir="$(make_home)"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/first.out" --on-conflict keep \
+    || fail "full install (first run) succeeds" "$home_dir/first.out"
+  drift_claude_settings "$home_dir"
+  before="$(shasum "$home_dir/.claude/settings.json")"
+  if run_full_install_with_stub_harnesses "$home_dir" "$home_dir/abort.out" --on-conflict abort; then
+    fail "full install abort exits nonzero on a drifted root config" "$home_dir/abort.out"
+  fi
+  pass "full install abort exits nonzero on a drifted root config"
+  [[ "$(shasum "$home_dir/.claude/settings.json")" == "$before" ]] \
+    && pass "full install abort leaves the drifted file unchanged" \
+    || fail "full install abort leaves the drifted file unchanged" "$home_dir/abort.out"
+
+  # abort on a clean file is not a conflict: a baseline update proceeds.
+  home_dir="$(make_home)"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/first.out" --on-conflict keep \
+    || fail "full install (first run) succeeds" "$home_dir/first.out"
+  run_full_install_with_stub_harnesses "$home_dir" "$home_dir/abort-clean.out" --on-conflict abort \
+    && pass "full install abort does not block a clean root config" \
+    || fail "full install abort does not block a clean root config" "$home_dir/abort-clean.out"
+}
+
 # Regression test: export_user_config must NOT record a write when install_copy_item took the
 # "keep" branch, since "keep" leaves home_path exactly as the user had it (stages the repo
 # candidate as a *_update_TIMESTAMP sibling instead). Recording a write there would falsely mark a
@@ -1134,6 +1223,7 @@ test_uninstall_stops_repo_owned_processes
 test_idempotency_no_extra_backups
 test_root_config_drift_silent_update_vs_real_collision
 test_root_config_keep_policy_does_not_record_false_clean
+test_full_install_drifted_root_config_honors_policy
 test_uninstall_preserves_drifted_root_config
 test_uninstall_check_clean_tolerates_drifted_root_config
 test_malformed_claude_config
