@@ -12,7 +12,11 @@ These docs are for people installing and using the roborepo package.
 | Use the CLI | [roborepo CLI Commands](reference/roborepo-cli.md) |
 | Understand exact install collision behavior | [Config Collision Handling](reference/config-collision-handling.md) |
 | Browse and manage plan docs | [Plan Docs Walkthrough](guides/plan/lifecycle/plan-docs.md) |
+| Review an integration branch | [Integration Check Walkthrough](guides/plan/lifecycle/integration-check.md) |
 | Use telemetry | [Telemetry Walkthrough](guides/telemetry.md) |
+| Know which agent CLIs roborepo manages | [Supported Harnesses](guides/harnesses/supported-harnesses.md) |
+| Know what lives in the app, workspace, and state roots | [Application, Workspace, and State Roots](guides/infra/root-domains.md) |
+| Add support for a new harness | [Harness Provider Interface](guides/harnesses/harness-provider-interface.md) |
 
 ## Reference
 
@@ -21,7 +25,11 @@ These docs are for people installing and using the roborepo package.
 | CLI surface | [roborepo CLI Commands](reference/roborepo-cli.md) |
 | Core behavior | [roborepo CLI Reference](reference/roborepo.md) |
 | Filesystem model | [How It Works](reference/architecture.md) |
-| Skills | [roborepo Skills Interface](reference/roborepo-skills.md) |
+| Agent configuration | [Config Control Panel](reference/config-control-panel.md) |
+| Skills | [roborepo Skills Interface](reference/roborepo-skills.md), [Skill Reference Observation](reference/skill-reference-observation.md) |
 | Hooks | [Claude Hooks](reference/claude-hooks.md), [Codex Hooks](reference/codex-hooks.md) |
 | Portal | [Portal](reference/portal.md), [Plans Portal](reference/plans-portal.md) |
 | Localhoster | [Localhoster](reference/localhoster.md) |
+| Telemetry | [Telemetry Service Reference](reference/telemetry.md) |
+| Indexing | [jcodemunch](reference/jcodemunch.md), [jdocmunch](reference/jdocmunch.md) |
+| Chat-time behaviors | [Convention Capture](reference/convention-capture.md) |

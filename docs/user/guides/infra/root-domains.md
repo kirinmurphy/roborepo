@@ -214,12 +214,12 @@ flowchart LR
 ## Edge cases
 
 **Upgrading the package.** The npm directory is version-specific, so harness symlinks pointing at
-the old one go stale. `install-state.json` records the previous install root so `repair` and
+the old one go stale. `install-state.json` records the previous install root so `maintenance repair` and
 `uninstall` can reclaim those links. Its value is expected to be out of date — that is what makes
 reclaim possible.
 
 ```sh
-roborepo repair
+roborepo maintenance repair
 ```
 
 **Shared workspace, two machines.** `stateRoot` is machine-local. Point both machines at one synced

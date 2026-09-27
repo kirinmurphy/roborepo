@@ -39,7 +39,7 @@ A workspace relocated outside the state directory is never deleted by RoboRepo, 
 |                            |                                                                                                                                                                  |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `roborepo update [--verbose]` | Applies this repo's harness config to this machine: copied files, rendered rules, root config export, global command install, and shell wiring. Use after pulling repo changes; `--verbose` includes unchanged items in the report. |
-| `roborepo repair [--dry-run] [--on-conflict ...]` | Repairs a moved or renamed checkout by relinking stale symlinks against the current path; it leaves copied config content alone. |
+| `roborepo maintenance repair [--dry-run] [--on-conflict ...]` | Repairs a moved or renamed checkout by relinking stale symlinks against the current path; it leaves copied config content alone. |
 | `roborepo maintenance repair local-config [--dry-run or --apply]` | Recovers safe local Claude/Codex settings from recent backups when `update` or `doctor --installed` reports local config repair candidates. |
 | `roborepo maintenance stores [list]` | Lists the local stores roborepo keeps on disk — telemetry spools, localhoster history, capture logs — with each one's size against its bound. |
 | `roborepo maintenance stores reset <id> [--all]` | Reclaims space in one store. Applies that store's own retention policy, or with `--all` clears it outright. Store ids come from `stores list`. |
@@ -53,7 +53,7 @@ A workspace relocated outside the state directory is never deleted by RoboRepo, 
 
 |                                            |                                                                                                                      |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `roborepo package create <id> [--kind=empty\|auto-skill\|skill-command\|standalone-command] [--description=...] [--default-enabled=true]` | Scaffolds a new package under `globals/packages/<id>/` (dev checkout) or the workspace packages dir (package mode). Refuses to overwrite an existing package. |
+| `roborepo package dev create <id> [--kind=empty\|auto-skill\|skill-command\|standalone-command] [--description=...] [--default-enabled=true]` | Scaffolds a new package under `globals/packages/<id>/` (dev checkout) or the workspace packages dir (package mode). Refuses to overwrite an existing package. |
 | `roborepo package list`                    | Lists packages grouped by category with concise live enabled/disabled status.                                        |
 | `roborepo package inspect <id>`            | Prints the full manifest for one package.                                                                             |
 | `roborepo package validate [id]`           | Validates one package or the whole catalog against the current manifest schema.                                      |

@@ -218,11 +218,9 @@ Then set it up for first use:
 roborepo web
 ```
 
-The first `roborepo web` performs the same procedural setup `init` does — it creates the workspace
-and state directories, detects installed harnesses, records initialization, and starts the portal.
+The first `roborepo web` runs one-time setup (see [First-Time Setup](first-time-setup.md#install-the-package)).
 It should succeed with no harness binaries installed and no native harness home/config created yet
-— zero detected harnesses is a valid outcome. `roborepo init` is the explicit alternative that adds
-the browser-or-CLI configuration chooser before opening the portal.
+— zero detected harnesses is a valid outcome.
 
 Confirm the result:
 
@@ -234,7 +232,8 @@ roborepo doctor
 ```
 
 The lower-level primitives (`setup`, `harness refresh`, `config apply`) still exist and are what
-the automated package smoke test drives, but a person setting up a machine only needs `init`.
+the automated package smoke test drives, but a person setting up a machine only needs `roborepo web`
+(or `roborepo init` for the terminal chooser).
 
 ### 4. Roll back if needed
 

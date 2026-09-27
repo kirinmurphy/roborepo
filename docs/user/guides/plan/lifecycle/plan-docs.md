@@ -55,13 +55,15 @@ Examples:
 ~/src/specific-repo
 ```
 
-The scanner checks the root itself and one level of child directories. It looks for:
+The scanner walks each root up to 6 levels deep and treats the first folder containing `.git` or
+`docs/plans` as a repository. Inside each repository it reads:
 
 ```text
 docs/plans/**/*.md
 ```
 
-It does not recursively scan your whole home directory by default.
+Hidden folders and common build folders (`node_modules`, `dist`, `build`, and similar) are skipped.
+See [Discovery](../../../reference/plans-portal.md#discovery) for the exact limits.
 
 ## Plan File Layout
 
@@ -174,8 +176,10 @@ Common modes:
 
 ## Current Limits
 
-- The portal is read-only for plan files.
-- File moves between lifecycle folders happen through agent workflows, not browser buttons.
+- The portal edits plan files in only two ways: changing a plan's `priority`, and moving a plan
+  between lifecycle folders. All other plan edits happen in your editor or through agent workflows.
+- A move into a lifecycle whose requirements the plan does not meet is rejected with a list of
+  what is missing. **Move anyway** files it regardless.
 - Manual refresh is the v1 update model.
 - No database, daemon, cloud sync, direct editor, or automatic LLM prioritization is included.
 

@@ -1,80 +1,86 @@
 # First-Time Setup
 
-Use this guide to install the core repo-managed config and put `roborepo` on your `PATH`.
+Use this guide to install RoboRepo, run it for the first time, and choose which behaviors it
+manages.
 
 Works with Claude Code, Codex, and Gemini CLI — any one of them, or any combination. roborepo
 discovers whichever are installed and manages those; see
-[Supported Harnesses](harnesses/supported-harnesses.md) for what each one receives. Supports macOS
-and Linux; Windows support is available but less tested.
+[Supported Harnesses](harnesses/supported-harnesses.md) for what each one receives. Requires
+**Node.js 20+**. Supports macOS and Linux; Windows support is available but less tested.
 
-## Install Configs And CLI
+## Choose An Install Path
 
-The first install runs the installer script directly — this is what puts `roborepo` on your `PATH`.
-Clone the repo, then from its root:
+| Path | Use when | Start with |
+| --- | --- | --- |
+| npm package | You want to use RoboRepo | `npm install -g codethings-roborepo-alpha` |
+| Git checkout | You are developing RoboRepo, or want your config sourced from a clone | `./scripts/install/main.sh` |
+| Offline transfer | Moving a verified package to a machine before it has the repo | [New-Mac Package Install](install-workflows.md#new-mac-package-install) |
 
-Preview install changes:
-
-```sh
-./scripts/install/main.sh --dry-run
-```
-
-Install on a new machine:
-
-```sh
-./scripts/install/main.sh
-```
-
-Or install the published package, with no repo checkout anywhere on the machine:
+## Install The Package
 
 ```sh
 npm install -g codethings-roborepo-alpha
 roborepo web
 ```
 
-The first `roborepo web` performs the same procedural setup that `roborepo init` does: it creates
-the workspace and state directories, detects which agent harnesses are on this machine, records
-that initialization completed, and opens the portal. There is no separate `init` step to remember
-for normal first use — `npm install -g` then `roborepo web` is the whole getting-started flow.
+The first `roborepo web` runs one-time setup, then opens the portal. Setup creates the workspace and
+state directories, detects which agent harnesses are on this machine, and records that
+initialization completed. Later runs only start the portal.
 
-`roborepo init` remains the explicit alternative first-run entry point: it runs the same procedural
-setup, then asks whether to configure settings in the browser or in the CLI. Browser opens
-`roborepo web --detach`; CLI opens the Package Library so you choose which behaviors to enable, and
-applies the result. The CLI chooser walks
-the same sections the `/config` display shows — Token Optimization, Commands, Code Conventions,
-Chat-Time Output, and a read-only Permissions panel — one section per step:
+Prefer the terminal? Run `roborepo init` instead. It runs the same setup, then asks whether to
+configure in the browser or in the CLI.
 
-- `←` / `→` move between sections
-- `↑` / `↓` move within a section
-- `Space` toggles the highlighted item
-- `Enter` advances (and finishes on the last step); `Esc` finishes early
+## Install From A Checkout
 
-Only the baseline is applied automatically; everything else is opt-in (telemetry stays off unless you
-turn it on). Noninteractive runs skip the wizard and apply the baseline headlessly.
+From the root of a clone, preview and then install:
+
+```sh
+./scripts/install/main.sh --dry-run
+./scripts/install/main.sh
+```
+
+The installer puts `roborepo` on your `PATH`; open a new shell afterwards so it resolves. It ends
+with a welcome menu that can open the behavior chooser. Then use `roborepo web` or `roborepo` as
+above.
+
+## Choose Behaviors
+
+Only the baseline is applied automatically; everything else is opt-in (telemetry stays off unless
+you turn it on). Choose behaviors in the portal's `/config` page, or in the terminal chooser:
+
+```sh
+roborepo library
+```
+
+The chooser walks the same sections the `/config` page shows — Token Optimization, Commands, Code
+Conventions, Chat-Time Output, and a read-only Permissions panel — one section per step:
+
+| Key | Action |
+| --- | --- |
+| `←` / `→` | Move between sections |
+| `↑` / `↓` | Move within a section |
+| `Space` | Toggle the highlighted item |
+| `Enter` | Advance (finishes on the last step) |
+| `Esc` | Finish early |
+
+`roborepo library` and `roborepo package manage` are two names for the same chooser. Rerun it any
+time to change your choices. Noninteractive runs skip it and apply the baseline headlessly.
 
 `init` is safe to re-run: once initialization has completed it reports that and exits rather than
 replaying your choices. If it is interrupted partway — `Ctrl-C`, a failed step, a closed terminal —
 the next run resumes instead of starting over. Zero detected harnesses is a valid outcome; install
 or launch a harness later and run `roborepo harness refresh`.
 
-Rerun the chooser any time to change your choices:
+## After Setup
 
 ```sh
-roborepo library
+roborepo                     # interactive menu
+roborepo update              # pick up new or changed config
+roborepo doctor              # health check
+roborepo doctor --installed  # verify the installed harness paths
 ```
 
-`roborepo library` and `roborepo package manage` are two names for the same workflow. `library` is
-the short one; the `package` namespace holds the detailed operations (`list`, `inspect`, `enable`,
-`disable`, `reconcile`).
-
-After the first install, use `roborepo` from anywhere. `roborepo update` re-runs the same installer
-to pick up new or changed config (there is no separate `install` verb):
-
-```sh
-roborepo
-roborepo update
-roborepo doctor
-roborepo doctor --installed
-```
+There is no separate `install` verb; `roborepo update` re-applies configuration.
 
 ## Choose Collision Behavior
 

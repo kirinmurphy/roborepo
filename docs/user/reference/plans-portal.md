@@ -45,7 +45,9 @@ The page uses:
   header, navigation, active-page state, updated-at text, theme toggle, and shared hidden-element
   behavior
 
-The portal does not mutate plan Markdown. Settings writes only update discovery roots.
+The portal writes to plan files in two ways only: `POST /api/plans/priority` rewrites the
+`priority` frontmatter line, and `POST /api/plans/lifecycle` renames the file into another lifecycle
+folder. `POST /api/plans/settings` writes discovery roots to RoboRepo state, not to any repository.
 
 ## Discovery
 
@@ -264,7 +266,8 @@ The Plans page uses the normalized package catalog state. It does not inspect sk
 - Document reads require server-issued keys.
 - Plan list/document responses avoid exposing repository absolute roots in plan records.
 - Portable prompts use repository name, relative path, metadata, warnings, and bounded excerpts.
-- The browser does not execute document scripts or write plan files.
+- The browser does not execute document scripts. Plan-file writes are limited to the priority and
+  lifecycle routes above, each guarded by expected-value and mtime checks.
 
 ## Key Files
 

@@ -37,23 +37,12 @@ npm install -g codethings-roborepo-alpha
 roborepo web
 ```
 
-The first `roborepo web` performs the same one-time machine setup as `roborepo init` — it creates the
-workspace/state directories, detects your installed agent harnesses, and records initialization —
-then opens the portal. On later runs `web` just starts the portal. `roborepo init` remains the
-explicit alternative first-run entry point if you prefer the terminal handoff.
-
-Then use either entry point:
+The first `roborepo web` also runs one-time machine setup. After that, use either entry point:
 
 | Interface  | Start with     |
 | ---------- | -------------- |
 | Web portal | `roborepo web` |
 | Terminal   | `roborepo`     |
-
-```sh
-roborepo web
-roborepo
-roborepo doctor
-```
 
 [First-time setup →](docs/user/guides/first-time-setup.md)  
 [CLI reference →](docs/user/reference/roborepo-cli.md)
@@ -315,7 +304,7 @@ roborepo workspace import <path>
 | `workspaceRoot` | skills, commands, packages, MCP config, overrides |
 | `stateRoot`     | telemetry, local settings, caches, runtime state  |
 
-[Architecture →](docs/user/reference/architecture.md)
+[Workspace roots →](docs/user/guides/infra/root-domains.md)
 
 ---
 
@@ -412,6 +401,7 @@ A separately installed global `roborepo` command can remain pointed at the packa
 | Telemetry         | [docs/user/guides/telemetry.md](docs/user/guides/telemetry.md)                             |
 | Agent config      | [docs/user/reference/config-control-panel.md](docs/user/reference/config-control-panel.md) |
 | Architecture      | [docs/user/reference/architecture.md](docs/user/reference/architecture.md)                 |
+| All user docs     | [docs/user/README.md](docs/user/README.md)                                                 |
 | Documentation map | [docs/internal/docs-map.md](docs/internal/docs-map.md)                                     |
 
 ---

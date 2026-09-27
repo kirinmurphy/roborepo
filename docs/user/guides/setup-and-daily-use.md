@@ -1,6 +1,6 @@
 # Setup and Daily Use
 
-This repo owns your agent harness config (Claude Code, Codex, Gemini CLI) and exposes it at the paths agents already read. Setup installs the core once, then `roborepo init` walks you through choosing which behaviors you want on that machine.
+This repo owns your agent harness config (Claude Code, Codex, Gemini CLI) and exposes it at the paths agents already read. To install RoboRepo and choose behaviors, start with [First-Time Setup](first-time-setup.md); this guide covers checkout details and daily use.
 
 For install workflow tradeoffs, see [install-workflows.md](install-workflows.md). For system details, see [../reference/architecture.md](../reference/architecture.md).
 
@@ -26,18 +26,8 @@ For install workflow tradeoffs, see [install-workflows.md](install-workflows.md)
 
 This installs the core CLI plus the shared baseline. It detects which harnesses are installed (Claude Code, Codex, Gemini CLI, or any combination), copies owned files, renders rules, exports mutable root config as local files, installs global commands, and adds shell snippets to your profile.
 
-Set up the installation for first use:
-
-```sh
-roborepo web
-```
-
-The first `roborepo web` performs the same one-time procedural setup as `roborepo init` — it creates
-the workspace/state directories, detects installed harnesses, records initialization, and opens the
-portal. `roborepo init` is the explicit alternative that adds a browser-or-CLI configuration chooser
-step. That workflow turns on or skips optional behavior packages such as skills, hooks, commands,
-rules, MCP defaults, permissions, and telemetry. To change those choices later, reopen the chooser
-with `roborepo library` — it shows selected options checked and unselected options unchecked.
+Then run `roborepo web` for first-run setup and behavior choices — see
+[First-Time Setup](first-time-setup.md#choose-behaviors).
 
 The installer has one materialization model: copy owned files, render generated rules, and preserve
 user-authored root config unless the selected collision policy says otherwise. See
@@ -58,7 +48,7 @@ If initialization has not completed, a bare interactive `roborepo` routes into `
 ### Verify the install:
 
 ```sh
-./scripts/verify-install.sh
+roborepo doctor --installed
 ```
 
 ### Test installer collision behavior:
@@ -157,19 +147,18 @@ roborepo index docs path/to/dir
 
 Use `roborepo skill new` — it scaffolds a package-owned skill resource and refreshes the shared
 skill cache plus both `~/.claude/skills/<name>` and `~/.codex/skills/<name>` in one step. The
-canonical source lives once in `globals/packages/<package>/skills/<name>/`. If you created a skill
-out-of-band:
+canonical source lives once in `globals/packages/<package>/skills/<name>/`. Related commands:
 
 ```sh
 roborepo skill new              # scaffold + refresh shared skill cache + every harness view
-roborepo skill adopt <name>     # ingest a skill created natively (init_skill.py / by hand)
+roborepo skill adopt <name>     # bring in a skill created outside roborepo (by hand or natively)
 roborepo skill inspect <name>   # inspect ownership, native metadata, collisions, and install state
 roborepo skill native           # summarize native Claude/Codex plugin entrypoints
 roborepo skill native --full    # print native help output inline
-scripts/doctor.sh --installed   # verify the live skill cache and harness links are current
+roborepo doctor --installed     # verify the live skill cache and harness links are current
 ```
 
-If the checkout was moved or renamed, `roborepo repair` relinks stale symlinks to the new path.
+If the checkout was moved or renamed, `roborepo maintenance repair` relinks stale symlinks to the new path.
 It leaves copied config files and directories alone; use `--on-conflict` only for automation or
 noninteractive recovery.
 
@@ -197,24 +186,20 @@ that harness needs rules the others should not get.
 Then render and check:
 
 ```sh
-./scripts/build/render-rules.sh
-./scripts/build/render-rules.sh --check
+roborepo config rules
+roborepo config rules --check
 ```
 
 ### Check harness health
 
-Something feels off — commands missing, config not loading, hooks not firing. Run this to verify key files, JSON/TOML config, helpers, and dependencies. The skill checks are derived from `globals/system/skills/` and `globals/packages/*/skills/`, so adding a skill needs no edit here.
+Something feels off — commands missing, config not loading, hooks not firing. Run this to verify key files, JSON/TOML config, helpers, and dependencies.
 
 ```sh
-roborepo doctor        # concise health summary
-roborepo doctor --verbose  # include every passing check
-scripts/doctor.sh --installed     # also checks global ~/.claude·~/.codex links and managed skills
-scripts/doctor.sh --installed --verbose  # include every passing check
+roborepo doctor                        # concise health summary
+roborepo doctor --verbose              # include every passing check
+roborepo doctor --installed            # also check harness links and managed skills
+roborepo doctor --installed --verbose  # include every passing check
 ```
-
-`doctor.sh` is concise by default; `--verbose` prints every passing check. `verify-install.sh`,
-`test-cli.sh`, and `link-skills.sh` accept `--quiet`/`-q` — prints only failures plus a
-summary line, exit code unchanged. Prefer those flags over piping a checker through `grep`/`head`.
 
 ### Run noisy commands with trimmed output
 
