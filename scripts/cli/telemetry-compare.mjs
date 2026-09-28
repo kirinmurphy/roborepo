@@ -8,6 +8,8 @@
 // as the labeled exploratory fallback (plan: "Retain midpoint regression as a labeled exploratory
 // fallback when no marker is selected").
 
+import { normalizeObservations, canonicalFlowRows } from "./telemetry-observations.mjs";
+import { splitObservationBoundary } from "./telemetry-boundaries.mjs";
 import { getMetric, isKnownMetric, computeMetric } from "./telemetry-metrics.mjs";
 import { applyCohortFilter, normalizeCohortFilter } from "./telemetry-cohort.mjs";
 
@@ -47,6 +49,13 @@ function dominantSession(captures) {
 // the caller explicitly opts into within-session comparison (not implemented here — plan explicitly
 // scopes that out: "unless the analysis explicitly supports within-session phase comparison").
 export function splitCohortsByMarker(captures, marker) {
+  if (marker.schema >= 2) {
+    const observations = normalizeObservations(captures).sessions.filter((item) => marker.scope === "all" || (marker.repository_id && item.repository_id === marker.repository_id));
+    const split = splitObservationBoundary(observations, marker);
+    return { before: canonicalFlowRows(normalizeObservations(split.before.flatMap((item) => item.rows))), after: canonicalFlowRows(normalizeObservations(split.after.flatMap((item) => item.rows))),
+      excluded: [...split.spanning.map((item) => ({ session_id: item.session_id, reason: "session spans the marker timestamp" })),
+        ...split.ambiguous.map((item) => ({ session_id: item.session_id, reason: "ambiguous_boundary" }))] };
+  }
   const markerMs = Date.parse(marker.ts);
   const sessions = new Map();
   for (const event of captures) {

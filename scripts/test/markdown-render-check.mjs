@@ -16,6 +16,11 @@ testPlainCodeBlockUnaffected();
 testExistingFeaturesStillWork();
 testHtmlCommentsDropped();
 testTaskListItems();
+const imageHtml = renderMarkdown('![Example "quoted" caption](../../images/tokens/conditions-light.png)');
+assert.match(imageHtml, /<img src="\.\.\/\.\.\/images\/tokens\/conditions-light.png"/);
+assert.match(imageHtml, /alt="Example &quot;quoted&quot; caption"/);
+assert.doesNotMatch(renderMarkdown('![Bad](javascript:alert)\n![Bad](data:text/html,example)'), /<img/);
+assert.match(renderMarkdown('`![literal](/docs/images/test.png)`'), /<code>!\[literal\]/);
 console.log("markdown-render checks passed");
 
 function testHeadingIdsAndDedup() {

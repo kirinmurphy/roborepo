@@ -1,6 +1,12 @@
 # RoboRepo User Docs
 
-These docs are for people installing and using the roborepo package.
+RoboRepo is a local portal for managing agent configuration, development plans, running apps,
+and session telemetry. Run `roborepo web`, then choose **Agents**, **Plans**, **Tokens**, or
+**Localhost** from the home page.
+
+![RoboRepo portal home, with entry points for Agents, Plans, Tokens, and Localhost.](../images/portal-overview.png)
+
+These docs explain how to install RoboRepo and use those views.
 
 ## Start Here
 
@@ -12,7 +18,7 @@ These docs are for people installing and using the roborepo package.
 | Use the CLI | [roborepo CLI Commands](reference/roborepo-cli.md) |
 | Understand exact install collision behavior | [Config Collision Handling](reference/config-collision-handling.md) |
 | Browse and manage plan docs | [Plan Docs Walkthrough](guides/plan/lifecycle/plan-docs.md) |
-| Use telemetry | [Telemetry Walkthrough](guides/telemetry.md) |
+| Investigate token usage and recorded changes | [Tokens Page User Guide](guides/telemetry.md) |
 
 ## Reference
 

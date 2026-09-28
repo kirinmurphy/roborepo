@@ -70,7 +70,7 @@ RoboRepo
 └── Tokens
 ```
 
-<!-- Screenshot: full portal / navigation -->
+![RoboRepo portal home with Agents, Plans, Tokens, and Localhost.](docs/images/portal-overview.png)
 
 The portal runs locally on your machine.
 
@@ -281,7 +281,7 @@ flowchart LR
   Portal --> Compare["Before / After"]
 ```
 
-<!-- Screenshot: Tokens portal -->
+[Tokens page user guide →](docs/user/guides/telemetry.md)
 
 [Telemetry walkthrough →](docs/user/guides/telemetry.md)
 

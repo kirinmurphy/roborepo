@@ -3,6 +3,9 @@
 // report and the dashboard JSON API so both speak the same numbers. Pure functions over arrays —
 // no I/O — so the server and CLI can each read the spool their own way.
 
+import { buildConditionsReport } from "./telemetry-conditions.mjs";
+import { createHash } from "node:crypto";
+import { normalizeObservations, canonicalFlowRows } from "./telemetry-observations.mjs";
 import { mcpServerOf } from "../harnesses/transcript-parse.mjs";
 import { deriveInsights } from "./telemetry-insights.mjs";
 import { computeMetric } from "./telemetry-metrics.mjs";
@@ -141,6 +144,22 @@ export function analyzeTelemetry(events, options = {}) {
   }
   // Ranked plain-English conclusions derived from the facts above — the "what this means" headline.
   report.insights = deriveInsights(report);
+  if (options.conditions) {
+    const observations = normalizeObservations(scopedEvents, { repositoryHashIndex });
+    // Run existing finding detectors on one representative per operation, separated by
+    // harness so identical provider session IDs cannot contaminate each other's findings.
+    const canonical = canonicalFlowRows(observations);
+    const facts = { spikes: [], loops: [], read_warnings: [] };
+    for (const harness of [...new Set(canonical.map((row) => row.harness))].sort()) {
+      const detected = analyzeTelemetry(canonical.filter((row) => row.harness === harness));
+      for (const key of Object.keys(facts)) facts[key].push(...detected[key]);
+    }
+    report.conditions = buildConditionsReport(scopedEvents, facts, options, observations);
+    for (const [key, kind] of [["spikes", "spike"], ["loops", "loop"], ["read_warnings", "read-warning"]]) {
+      for (const finding of report[key]) finding.condition_context = report.conditions.ledger.find((row) => row.kind === kind && row.session_id === finding.session_id && row.harness === finding.harness)?.context ?? null;
+    }
+    report.version += ":" + createHash("sha256").update(JSON.stringify(report.conditions)).digest("hex").slice(0, 16);
+  }
   return report;
 }
 

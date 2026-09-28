@@ -2,6 +2,11 @@
 
 This repo owns your agent harness config (Claude Code, Codex) and exposes it at the paths agents already read. Setup installs the core once, then `roborepo init` walks you through choosing which behaviors you want on that machine.
 
+The portal home is the starting point for Agents, Plans, Tokens, and Localhost. Use the
+[Tokens page user guide](./telemetry.md) to investigate session costs and recorded changes.
+
+![RoboRepo portal home and its four main destinations.](../../images/portal-overview.png)
+
 For install workflow tradeoffs, see [install-workflows.md](install-workflows.md). For system details, see [../reference/architecture.md](../reference/architecture.md).
 
 ---

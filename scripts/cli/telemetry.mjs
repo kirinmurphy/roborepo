@@ -6,7 +6,8 @@ import net from "node:net";
 import { spawnSync, spawn } from "node:child_process";
 import { markTelemetrySelected } from "./presets.mjs";
 import { repoRoot, stateRoot, harnessHome, rootConfigActive } from "./paths.mjs";
-import { portalPidPathForPort, legacyTelemetryPidPath, telemetryBackupDir, telemetryCollectorDir, telemetryDir, telemetrySpoolDir, telemetryMarkersPath, telemetryExperimentsDir, repositoriesRegistryPath } from "./state-paths.mjs";
+import { portalPidPathForPort, legacyTelemetryPidPath, telemetryBackupDir, telemetryCollectorDir, telemetryDir, telemetrySpoolDir, telemetryMarkersPath, telemetryExperimentsDir, telemetrySnapshotsDir, repositoriesRegistryPath } from "./state-paths.mjs";
+import { conditionDemoEvidence } from "./telemetry-conditions-demo.mjs";
 import { analyzeTelemetry } from "./telemetry-analyze.mjs";
 import { readMarkers, readSnapshot, readSnapshots, readExperiments } from "./telemetry-schemas/persistence.mjs";
 import { readSourceFile } from "./config-source-lookup.mjs";
@@ -426,7 +427,8 @@ function telemetryReport(args) {
     return;
   }
   const markers = readMarkers();
-  const report = analyzeTelemetry(events, { markers });
+  const report = analyzeTelemetry(events, { markers, conditions: args.includes("--conditions"), snapshots: args.includes("--conditions") ? readSnapshots() : [] });
+  if (report.conditions) console.log(JSON.stringify(report.conditions, null, 2));
   // Headline first: the deterministic "what this means" conclusions, before any raw table.
   printInsights(report.insights);
   printDataQualityWarnings(report.data_quality_warnings);
@@ -689,7 +691,10 @@ function telemetryExport(args) {
 // never drift into two separately-maintained copies of the same explanation. readSourceFile()
 // confines the path inside repoRoot, so this can only ever serve this one repo-relative file.
 function loadTelemetryGuide() {
-  return readSourceFile(path.join(repoRoot, "docs", "guides", "telemetry.md"), "Telemetry Walkthrough");
+  const guide = readSourceFile(path.join(repoRoot, "docs", "user", "guides", "telemetry.md"), "Tokens page user guide");
+  if (guide.ok) guide.html = guide.html.replace(/(href|src)="(\.\.?\/[^"#]*)"/g, (_match, attribute, relative) =>
+    `${attribute}="${path.posix.resolve("/docs/user/guides", relative)}"`);
+  return guide;
 }
 
 export async function serveCommand(args, { allowPortFallback = false, openPath = "" } = {}) {
@@ -973,13 +978,26 @@ function spoolSignature() {
   } catch {
     // No experiments dir yet; stable "0:0" until one is created.
   }
-  return `${files.length}:${maxMtime}:${totalSize}|${markersStamp}|${experimentsStamp}`;
+  let snapshotsStamp = "missing";
+  try {
+    snapshotsStamp = fs.readdirSync(telemetrySnapshotsDir).filter((file) => file.endsWith(".json")).sort().map((file) => {
+      const stat = fs.statSync(path.join(telemetrySnapshotsDir, file));
+      return `${file}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    }).join("|");
+  } catch { /* Missing/evicted snapshot evidence is reevaluated as unknown. */ }
+  return `${files.length}:${maxMtime}:${totalSize}|${markersStamp}|${experimentsStamp}|${snapshotsStamp}`;
 }
 
 // Plain full-read of the whole spool. Used by the one-shot CLI paths (`telemetry report`/`export`)
 // where a resident store buys nothing — the process reads once and exits. The long-lived server
 // uses readSpoolEventsCached() instead. Kept as the reference implementation the incremental store
 // is tested against for equality.
+function parsedSpoolRow(line, file, sequence) {
+  const row = JSON.parse(line);
+  Object.defineProperty(row, "spool_provenance", { value: { source: `spool:${file}`, sequence }, enumerable: false });
+  return row;
+}
+
 export function readSpoolEvents() {
   const events = [];
   let files = [];
@@ -990,10 +1008,12 @@ export function readSpoolEvents() {
   }
   for (const file of files) {
     const fullPath = path.join(telemetrySpoolDir, file);
+    let sequence = 0;
     for (const line of fs.readFileSync(fullPath, "utf8").split("\n")) {
       if (!line.trim()) continue;
+      sequence++;
       try {
-        events.push(JSON.parse(line));
+        events.push(parsedSpoolRow(line, file, sequence));
       } catch {
         // Ignore partial/corrupt lines; hooks must never make reports fragile.
       }
@@ -1055,7 +1075,7 @@ export function readSpoolEventsCached() {
 function syncSpoolFile(file) {
   let entry = _spoolStore.get(file);
   if (!entry) {
-    entry = { offset: 0, events: [] };
+    entry = { offset: 0, events: [], sequence: 0 };
     _spoolStore.set(file, entry);
     _spoolDirty = true;
   }
@@ -1068,11 +1088,13 @@ function syncSpoolFile(file) {
     // The file shrank/rotated (capSpool trim) — offset was past EOF, the read restarted from 0, so
     // discard the events accumulated from the pre-trim bytes before re-appending the current ones.
     entry.events = [];
+    entry.sequence = 0;
     _spoolDirty = true;
   }
   for (const line of lines) {
+    entry.sequence++;
     try {
-      entry.events.push(JSON.parse(line));
+      entry.events.push(parsedSpoolRow(line, file, entry.sequence));
       _spoolDirty = true;
     } catch {
       // Ignore corrupt lines, matching readSpoolEvents().
@@ -1216,8 +1238,8 @@ function cachedAnalysisEntry(window, harness, extra = {}) {
   const cohortFilter = (model || repo || repository)
     ? { models: model ? [model] : [], repos: repo ? [repo] : [], repository_ids: repository ? [repository] : [] }
     : null;
-  const repositoryHashIndex = repository ? repositoryHashIndexCached() : null;
-  const report = analyzeTelemetry(windowed, { cohortFilter, markers, markerId, compareMetric: "tokens.total", repositoryHashIndex });
+  const repositoryHashIndex = repositoryHashIndexCached();
+  const report = analyzeTelemetry(windowed, { cohortFilter, markers, markerId, compareMetric: "tokens.total", repositoryHashIndex, conditions: true, snapshots: readSnapshots() });
   // Backfill session titles from transcripts: the transcript always has the first user message
   // (turn 1), whereas the spool only captures prompts when hooks fired — so new sessions or
   // sessions started before telemetry was enabled may have no spool title or a mid-chat title.
@@ -1272,9 +1294,13 @@ const MOCK_SPOOL_PATH = path.join(repoRoot, "portal", "tokens2", "mock-spool.jso
 // Demo marker for the mock report: the mock spool is seeded with sessions on both sides of
 // this timestamp so the "Before vs after your change" section has real pipeline output.
 const MOCK_MARKER = {
-  marker_id: "mk_demo-skill-change",
+  schema: 2,
+  marker_id: "mark_0000000000000001",
+  effective_at: "2026-06-13T12:00:00.000Z",
+  scope: "all",
+  watching_kinds: ["spike", "loop", "read-warning"],
   type: "change",
-  title: "jcodemunch skill swap (demo marker)",
+  title: "Prefer section-level document reads (demo)",
   ts: "2026-06-13T12:00:00.000Z",
 };
 function loadMockAnalysisJson() {
@@ -1287,13 +1313,16 @@ function loadMockAnalysisJson() {
       try { events.push(JSON.parse(line)); } catch { /* ignore corrupt lines */ }
     }
   } catch { /* no mock spool — return empty report */ }
-  const report = analyzeTelemetry(events, { markers: [MOCK_MARKER], markerId: MOCK_MARKER.marker_id });
-  report.available_harnesses = [...new Set(events.map((e) => e.harness).filter(Boolean))].sort();
+  const evidence = conditionDemoEvidence(events);
+  const collectingMarker = { ...MOCK_MARKER, marker_id: "mark_0000000000000002", title: "Limit retry loops (demo)",
+    ts: "2026-06-15T11:59:00.000Z", effective_at: "2026-06-15T11:59:00.000Z", watching_kinds: ["loop"] };
+  const report = analyzeTelemetry(evidence.events, { markers: [MOCK_MARKER, collectingMarker], markerId: MOCK_MARKER.marker_id, conditions: true, snapshots: evidence.snapshots });
+  report.available_harnesses = [...new Set(evidence.events.map((e) => e.harness).filter(Boolean))].sort();
   report.harness_display_names = Object.fromEntries(
     (report.available_harnesses || []).map((id) => [id, hasHarnessProvider(id) ? getHarnessProvider(id).manifest.displayName : id]),
   );
-  report.available_models = [...new Set(events.map((e) => e.session?.model).filter(Boolean))].sort();
-  report.available_repos = [...new Set(events.map((e) => e.repo?.label).filter(Boolean))].sort();
+  report.available_models = [...new Set(evidence.events.map((e) => e.session?.model).filter(Boolean))].sort();
+  report.available_repos = [...new Set(evidence.events.map((e) => e.repo?.label).filter(Boolean))].sort();
   report.available_metrics = listMetrics().map((m) => m.id);
   report.markers = [];
   report.experiments = [];
@@ -1577,6 +1606,11 @@ function createMarkerFromPortalRequest(body) {
   }
   try {
     const marker = createMarker({
+      effective_at: body.effective_at,
+      repository_id: body.repository_id,
+      scope: body.scope,
+      watching_kinds: body.watching_kinds,
+      finding_id: body.finding_id,
       type: body.type,
       title: body.title,
       description: typeof body.description === "string" ? body.description : null,
@@ -1995,7 +2029,7 @@ function rejectArgs(args) {
 }
 
 function rejectSupportedReportArgs(args) {
-  const allowed = new Set(["--since", "--repo", "--group", "--format", "--deep"]);
+  const allowed = new Set(["--since", "--repo", "--group", "--format", "--deep", "--conditions"]);
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg.includes("=")) {
@@ -2003,6 +2037,6 @@ function rejectSupportedReportArgs(args) {
       continue;
     }
     if (!allowed.has(arg)) rejectArgs([arg]);
-    i++;
+    if (!["--deep", "--conditions"].includes(arg)) i++;
   }
 }

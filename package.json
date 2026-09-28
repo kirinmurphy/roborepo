@@ -26,7 +26,8 @@
     "README.md",
     "LICENSE",
     "docs/plans/plans-config.json",
-    "docs/user/"
+    "docs/user/",
+    "docs/images/"
   ],
   "scripts": {
     "build": "npm run --silent pack:dry-run",

@@ -49,6 +49,32 @@
           </header>
           <div class="t2-sec-body">
             <div id="invest-sections"></div>
+            <details id="condition-investigate-events" class="invest-section" hidden>
+              <summary><span class="chev">▸</span><span class="invest-head"><span class="invest-title">Recent problem sessions</span><span class="invest-framing">Find the sessions behind a recommendation</span></span><span class="invest-badge" data-count></span></summary>
+              <div class="invest-body"><p class="condition-help" data-filter></p><button type="button" data-clear hidden>Clear condition filter</button>
+                <div class="condition-events-scroll" data-events tabindex="0" role="region" aria-label="Problem sessions"></div>
+                <details class="condition-coverage-details"><summary>What context was captured?</summary><div id="investigation-condition-coverage" class="condition-coverage-band" hidden></div><p>Unknown context is excluded from comparisons, never counted as absence.</p></details>
+              </div>
+            </details>
+            <div class="panel condition-metrics-panel" id="condition-model-section"><h3>Model token usage per session</h3><p>Use this to investigate expensive sessions, not to rank models: tasks differ. Usage is cumulative per session; model attribution is approximate.</p><div id="condition-model-metrics" class="condition-grid"></div></div>
+          </div>
+        </section>
+        <section class="t2-section" id="condition-report" hidden>
+          <header class="t2-sec-head"><h2 class="tier-head">Do problems follow a condition?</h2><portal-info-icon data-doc-anchor="compare-conditions" aria-label="About Do problems follow a condition?" title="About this section"></portal-info-icon></header>
+          <div class="t2-sec-body">
+            <p class="condition-help">Look for a setup worth investigating. These are associations, not proof of a cause; inspect similar sessions before changing your setup.</p>
+            <div id="condition-cards" class="condition-grid"></div><p class="condition-ledger-note">Rates count affected sessions with and without a condition. Unknown context is excluded. Small samples show raw counts; overlapping categories cannot be added together.</p>
+          </div>
+        </section>
+        <section class="t2-section" id="condition-ledger-section" hidden>
+          <header class="t2-sec-head"><h2 class="tier-head">What happened, in order</h2><portal-info-icon data-doc-anchor="use-the-event-ledger" aria-label="About What happened, in order" title="About this section"></portal-info-icon></header>
+          <div class="t2-sec-body">
+            <p class="condition-help">Timestamps are for display; persisted event order is authoritative when times collide.</p>
+            <div class="panel condition-ledger-panel">
+              <div id="condition-ledger"></div>
+              <button id="condition-ledger-more" type="button" hidden>Show more ledger rows</button>
+              <p class="condition-ledger-note"><strong>Scope note:</strong> Automatic rows reflect observed configured package resource changes. Skills-only changes and exact content revisions need additional evidence. Global markers retain their global scope.</p>
+            </div>
           </div>
         </section>
         <!-- Timeline strip: WHEN did flagged things happen. Marks only — no day totals, no volume.
@@ -61,6 +87,10 @@
             <div id="timeline-strip" class="timeline-strip"></div>
             <p class="timeline-legend" id="timeline-legend"></p>
           </div>
+        </section>
+        <section class="t2-section" id="condition-changes-section">
+          <header class="t2-sec-head"><h2 class="tier-head">Your changes</h2><portal-info-icon data-doc-anchor="interpret-the-result-of-a-change" aria-label="About Your changes" title="About this section"></portal-info-icon></header><p class="condition-help">Record what you tried, then check whether problems become less frequent.</p>
+          <div class="t2-sec-body"><div id="condition-changes"></div><button type="button" id="condition-mark-change">+ Mark a change</button></div>
         </section>
         <!-- Agent-ready prompt: distilled from the Investigate evidence above -->
         <section class="t2-section">
@@ -84,9 +114,9 @@
     </main>
     <!-- Session drill-down: what the session was, what happened (deterministic findings from
          /api/session), what to do, and the copy-prompt-for-agent action. -->
-    <dialog id="tokens2session-modal" class="t2-session-modal" data-dialog-size="md">
+    <dialog id="tokens2session-modal" class="t2-session-modal" data-dialog-size="md" aria-labelledby="tokens2session-title">
       <div class="modal-head">
-        <span class="modal-title" data-slot="title">Session</span>
+        <span class="modal-title" id="tokens2session-title" data-slot="title">Session</span>
         <span class="modal-path" data-slot="sub"></span>
         <portal-close-button data-slot="close"></portal-close-button>
       </div>
@@ -113,5 +143,48 @@
     <script src="/portal/shared/harness-warning.js" type="module"></script>
     <script src="/portal/shared/notice.js" type="module"></script>
     <script src="/portal/tokens2/app.js" type="module"></script>
+    <template id="condition-card-template">
+      <article class="panel condition-card"><header class="condition-card-head"><h3></h3><span data-coverage></span><button type="button" data-condition-open>Full outcomes →</button></header>
+        <div class="condition-columns"><div class="condition-fewer"><h4>Fewer with condition</h4><ul data-fewer></ul></div><div class="condition-more"><h4>More with condition</h4><ul data-more></ul></div></div>
+        <details class="condition-thin" hidden><summary>More evidence needed <span data-thin-count></span></summary><ul data-thin></ul></details><p class="condition-empty" data-empty hidden></p><p class="condition-next" data-next></p><dialog data-condition-dialog><header><h3></h3><button type="button" data-condition-close aria-label="Close">×</button></header><p>Known presence compared with known absence. Unknown observations are excluded from both rates and shown in coverage.</p><table class="condition-outcomes"><thead><tr><th>Condition</th><th>Outcome</th><th>With</th><th>Without</th><th>Coverage</th></tr></thead><tbody data-condition-details></tbody></table></dialog>
+      </article>
+    </template>
+    <template id="condition-metric-template">
+      <article class="panel"><h4></h4><p data-value></p><p data-mix></p><p data-coverage></p><p data-attribution></p></article>
+    </template>
+    <template id="condition-ledger-template">
+      <article class="condition-ledger-row"><time></time><div class="condition-ledger-event"><span data-icon aria-hidden="true"></span><div><button type="button"></button><p></p></div></div><span data-status></span></article>
+    </template>
+    <dialog id="condition-change-dialog" data-dialog-size="md" aria-labelledby="condition-change-title">
+      <form id="condition-change-form" aria-labelledby="condition-change-title">
+        <h2 id="condition-change-title">Mark a change</h2>
+        <label>What changed <input name="title" required maxlength="240"></label>
+        <label>Intent <select name="intent"><option value="response">I am making this change now</option><option value="suspected">I made this change earlier</option></select></label>
+        <label>Effective time <input name="effective_at" type="datetime-local" required></label>
+        <label>Repository scope <select name="repository"></select></label>
+        <fieldset><legend>Watch for</legend>
+          <label><input type="checkbox" name="watching" value="spike" checked>Spikes</label>
+          <label><input type="checkbox" name="watching" value="loop" checked>Loops</label>
+          <label><input type="checkbox" name="watching" value="read-warning" checked>Read warnings</label>
+          <label><input type="checkbox" name="watching" value="over-testing">Over-testing (comparison unavailable)</label>
+        </fieldset>
+        <label>Related finding (optional) <select name="finding_id"><option value="">None</option></select></label>
+        <input type="hidden" name="supersedes">
+        <p role="alert" data-change-error></p>
+        <button type="button" data-change-cancel>Cancel</button><button type="submit">Record change</button>
+      </form>
+    </dialog>
+    <template id="condition-change-template"><article class="panel condition-change-card"><header><h3></h3><time data-change-time></time></header><p data-change-scope></p><div data-change-verdicts></div><button type="button">Edit change</button></article></template>
+    <template id="condition-investigate-event-template">
+      <article class="condition-investigate-row"><div class="condition-investigate-summary"><strong data-problem></strong><span data-repository></span><b data-amount></b><span data-findings></span></div><div data-chips></div><div class="condition-investigate-meta"><time></time><button type="button">Session details</button></div></article>
+    </template>
+    <template id="condition-chip-template"><span class="condition-chip"></span></template>
+    <template id="condition-outcome-row-template"><tr><td data-condition></td><td data-outcome></td><td data-with></td><td data-without></td><td data-coverage></td></tr></template>
+    <template id="condition-outcome-item-template"><li><strong></strong><span class="condition-outcome-pill"></span><small></small><button class="condition-inspect" type="button">Inspect sessions →</button></li></template>
+    <template id="condition-marked-changes-template"><article class="panel condition-card condition-marked-change"><h3>Marked changes</h3><p class="condition-help">A quick check on your experiments. Open a change for the evidence and next step.</p><div data-changes></div></article></template>
+    <template id="condition-marked-change-entry-template"><section class="condition-change-link"><a></a><span></span></section></template>
+    <template id="condition-change-verdict-template"><div class="condition-change-verdict"><strong></strong><span></span><p></p></div></template>
+    <template id="condition-session-context-template"><section class="condition-session-context"><dl class="condition-session-facts" data-facts></dl></section></template>
+    <template id="condition-session-fact-template"><div><dt></dt><dd></dd></div></template>
   </body>
 </html>

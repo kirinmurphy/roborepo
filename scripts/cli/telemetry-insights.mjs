@@ -110,9 +110,12 @@ export function deriveInsights(report) {
   if (worstReg && worstReg.before_avg_tokens > 0 && worstReg.delta_tokens / worstReg.before_avg_tokens >= 0.5) {
     const beforeShare = Math.round((worstReg.before_share ?? 0) * 100);
     const afterShare = Math.round((worstReg.after_share ?? 0) * 100);
+    let shareDirection = "unchanged from";
+    if (afterShare > beforeShare) shareDirection = "up from";
+    if (afterShare < beforeShare) shareDirection = "down from";
     out.push({
       severity: "warn",
-      headline: `${worstReg.group} now takes ${afterShare}% of tool tokens, up from ${beforeShare}% in the earlier half`,
+      headline: `${worstReg.group} now takes ${afterShare}% of tool tokens, ${shareDirection} ${beforeShare}% in the earlier half`,
       detail: `${fmt(worstReg.before_avg_tokens)} → ${fmt(worstReg.after_avg_tokens)} tok/call — the calls themselves got ${pct(worstReg.delta_tokens / worstReg.before_avg_tokens)}% heavier`,
       metric: worstReg.delta_tokens,
       kind: "midpoint_regression",

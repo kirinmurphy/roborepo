@@ -40,6 +40,7 @@ const APP_NAME = "roborepo";
 // resolvePortalPort in telemetry.mjs). See portal-source-hash.mjs for why this exists.
 const SOURCE_HASH = computePortalSourceHash();
 const STATIC_TYPES = {
+  ".png": "image/png",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".html": "text/html; charset=utf-8",

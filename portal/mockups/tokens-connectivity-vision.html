@@ -141,26 +141,26 @@
 
     <div class="panel">
       <div class="sec-head-row">
-        <h3 style="font-size:var(--lg)">Model token cost per operation</h3>
-        <button class="info-i" title="One canonical operation flow counts once even if several telemetry rows mirror usage. Coverage = valid token observations / eligible observations.">i</button>
+        <h3 style="font-size:var(--lg)">Model token usage per session</h3>
+        <button class="info-i" title="Each session contributes its latest unambiguous cumulative usage once. Coverage = valid token observations / eligible observations.">i</button>
       </div>
       <div class="metric-grid">
         <div class="metric-card">
           <h4>codex</h4>
-          <div class="big">640 tok / flow</div>
-          <div class="sub">input:output 4.2:1 · 286 valid / 286 eligible flows · coverage complete</div>
-          <div class="sub">model attribution: 286 exact / 286 eligible</div>
+          <div class="big">640 tok / session</div>
+          <div class="sub">input:output 4.2:1 · 286 valid / 286 eligible sessions · coverage complete</div>
+          <div class="sub">model attribution: 0 exact / 286 approximate</div>
         </div>
         <div class="metric-card">
           <h4>opus</h4>
-          <div class="big">980 tok / flow</div>
-          <div class="sub">input:output 5.1:1 · 418 valid / 432 eligible flows · <span class="partial">97% partial coverage</span></div>
-          <div class="sub">model attribution: 318 exact · 114 approximate</div>
+          <div class="big">980 tok / session</div>
+          <div class="sub">input:output 5.1:1 · 418 valid / 432 eligible sessions · <span class="partial">97% partial coverage</span></div>
+          <div class="sub">model attribution: 0 exact · 432 approximate</div>
         </div>
         <div class="metric-card">
           <h4>gemini</h4>
-          <div class="big">720 tok / flow</div>
-          <div class="sub">input:output 3.8:1 · 88 valid / 104 eligible flows · <span class="partial">85% partial coverage</span></div>
+          <div class="big">720 tok / session</div>
+          <div class="sub">input:output 3.8:1 · 88 valid / 104 eligible sessions · <span class="partial">85% partial coverage</span></div>
           <div class="sub">model attribution: 0 exact · 104 approximate</div>
         </div>
       </div>
@@ -228,7 +228,7 @@
       <div class="ledger">
         <div class="row"><div class="when">Aug 20</div><div><div class="whatline"><span class="ico">↗</span><div><b>Spike</b><span class="sub">payments-api · +612k over threshold</span></div></div></div><div class="badge">2nd spike this month</div></div>
         <div class="row is-change"><div class="when">Aug 15</div><div><div class="whatline"><span class="ico">✎</span><div><b>Marked change — switched doc lookups to jdocmunch</b><span class="sub">effective Aug 15 · watching read warnings</span></div></div></div><div class="badge">9 before / 4 after · still collecting</div></div>
-        <div class="row is-change"><div class="when">Aug 12</div><div><div class="whatline"><span class="ico">⇣</span><div><b>Ambient context changed — rules content</b><span class="sub">first observed by this session · exact file/revision unresolved until fingerprints exist</span></div></div></div><div class="badge">Phase 2 · coarse change</div></div>
+        <div class="row is-change"><div class="when">Aug 12</div><div><div class="whatline"><span class="ico">⇣</span><div><b>Configured ambient package surface changed</b><span class="sub">first observed by this session · package with ambient resources enabled</span></div></div></div><div class="badge">Phase 2 · coarse change</div></div>
         <div class="row"><div class="when">Aug 9</div><div><div class="whatline"><span class="ico">↗</span><div><b>Spike</b><span class="sub">payments-api · +340k over threshold</span></div></div></div><div class="badge"></div></div>
         <div class="row"><div class="when">Aug 5</div><div><div class="whatline"><span class="ico">↻</span><div><b>Loop</b><span class="sub">Bash ×8 in a row</span></div></div></div><div class="badge"></div></div>
         <div class="row is-change"><div class="when">Aug 2</div><div><div class="whatline"><span class="ico">⇣</span><div><b>Package disabled — marketing-drafts ambient footprint changed</b><span class="sub">configured package state changed an ambient primitive · first observed by this session</span></div></div></div><div class="badge">Phase 2 · auto-tracked</div></div>

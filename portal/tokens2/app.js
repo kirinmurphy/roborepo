@@ -8,6 +8,8 @@ import { portalGetJson, portalPostJson, portalHideLoading, portalHideLoadingNow,
 import { pageState } from "/portal/telemetry/state.js";
 import { activePresentedHarnesses, formatHarnessList } from "/portal/shared/harness-cohort.js";
 import { harnessWarningElement } from "/portal/shared/harness-warning.js";
+import { createConditionsReport } from "./conditions-report.js";
+import { sessionConditionLine, capturedSessionFindings } from "./conditions-context.js";
 import { createDocGuideModal } from "/portal/shared/doc-guide-modal.js";
 
 // ── State ──
@@ -37,6 +39,12 @@ const tokShort = (n) => {
 const pct = (n) => Math.round(n * 100);
 const esc = (s) => String(s == null ? "" : s).replace(
   /[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+const conditionsView = createConditionsReport({
+  openSession: openSessionModal,
+  getData: () => lastSessionData,
+  onSaved: async () => { lastVersion = null; await load(); },
+});
 
 // ── Init ──
 init();
@@ -172,6 +180,7 @@ async function load(force) {
     return;
   }
   if (firstLoad) { firstLoad = false; portalHideLoading(); }
+  if (document.querySelector("dialog[open]")) return;
   if (!force && data.version === lastVersion) return;
   lastVersion = data.version;
   lastSessionData = data;
@@ -205,6 +214,7 @@ async function load(force) {
   renderAgentPrompt(data);
   renderInvestigationSections(data);
   renderTimelineStrip(data);
+  conditionsView.render(data, setupReady);
   renderFullData(data);
 }
 
@@ -217,8 +227,8 @@ function renderMeta(data) {
   if (!el) return;
   const sessions = data.sessions || [];
   const parts = [
-    fmt(sessions.length) + " sessions",
-    fmt(data.capture_count ?? 0) + " captures",
+    fmt(data.conditions?.data_quality.sessions ?? sessions.length) + " observed sessions",
+    fmt(data.event_count ?? data.capture_count ?? 0) + " captures",
   ];
   // Period: first session start → last session end (no precomputed field; derived here).
   const firstTs = sessions.length ? sessions.reduce((m, s) => (s.first_ts < m ? s.first_ts : m), sessions[0].first_ts) : null;
@@ -363,26 +373,28 @@ const sessionModalBody = sessionModal.querySelector('[data-slot="body"]');
 sessionModal.querySelector('[data-slot="close"]').addEventListener("click", () => sessionModal.close());
 portalWireBackdropClose(sessionModal, () => sessionModal.close());
 
+let sessionRequest = 0;
 function openSessionModal(sessionId, harness, finding, contextTitle) {
   sessionModal.querySelector('[data-slot="title"]').textContent = contextTitle || "Session detail";
   sessionModal.querySelector('[data-slot="sub"]').textContent = "";
   sessionModalBody.replaceChildren(loadingNote("loading session…"));
   sessionModal.showModal();
-  loadSessionIntoModal(sessionId, harness, finding, contextTitle);
+  loadSessionIntoModal(sessionId, harness, finding, ++sessionRequest);
 }
 
-async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
+async function loadSessionIntoModal(sessionId, harness, finding, requestId) {
   let detail;
   try {
     const qs = `id=${encodeURIComponent(sessionId)}&harness=${encodeURIComponent(harness || "")}&finding=${encodeURIComponent(finding || "abnormal token usage")}`;
     detail = await portalGetJson("/api/session?" + qs);
   } catch (err) {
+    if (requestId !== sessionRequest || !sessionModal.open) return;
     sessionModalBody.replaceChildren(loadingNote("could not load session: " + ((err && err.message) || err)));
     return;
   }
-  if (!sessionModal.open) return; // user closed it while the fetch was in flight
+  if (requestId !== sessionRequest || !sessionModal.open) return; // user closed it while the fetch was in flight
 
-  const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId) || {};
+  const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId && (!harness || x.harness === harness)) || {};
   const frag = document.createDocumentFragment();
 
   // 1. What this session was.
@@ -393,11 +405,12 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
     <div class="sess-fact"><span>Agent</span><span>${esc(s.harness || harness || "unknown")}</span></div>
     ${when ? `<div class="sess-fact"><span>When</span><span>${esc(when)}</span></div>` : ""}
     ${s.activity ? `<div class="sess-fact"><span>Activity</span><span>${esc(s.activity)}</span></div>` : ""}`;
-  frag.appendChild(who);
+  // Condition facts already supply repository and harness; retain the legacy facts only as a fallback.
+  if (!lastSessionData.conditions) frag.appendChild(who);
 
   // 2+3. What happened + what to do (server-built deterministic findings; fallback to the one
   // finding text the page already has when the server couldn't compute rows).
-  const findings = (detail && detail.findings) || [];
+  const findings = detail?.findings?.length ? detail.findings : capturedSessionFindings(lastSessionData, sessionId, harness);
   const whatHappened = document.createElement("div");
   whatHappened.className = "sess-findings";
   if (findings.length) {
@@ -416,7 +429,7 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
     }
   } else {
     whatHappened.innerHTML = `<div class="sess-finding"><p class="sess-finding-summary"><span class="sess-dot dot-warn"></span>${esc(finding || "This session used more tokens than similar sessions.")}</p>
-      <p class="sess-finding-hint">${detail && detail.found === false ? "The full transcript is no longer on disk (rotated out), but the agent prompt below still carries the facts." : ""}</p></div>`;
+      <p class="sess-finding-hint">${detail && detail.found === false ? "The transcript is unavailable. Use the captured evidence and the agent prompt below to investigate." : ""}</p></div>`;
   }
   frag.appendChild(whatHappened);
 
@@ -451,6 +464,8 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
     frag.appendChild(turns);
   }
 
+  const conditionContext = sessionConditionLine(lastSessionData, sessionId, harness, { findings, fallbackFinding: finding, includeFacts: true });
+  if (conditionContext) frag.prepend(conditionContext);
   sessionModalBody.replaceChildren(frag);
   sessionModal.querySelector('[data-slot="sub"]').textContent =
     (s.repo || "unknown") + (harness ? ` · ${harness}` : "");

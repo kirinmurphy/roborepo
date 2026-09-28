@@ -1,7 +1,12 @@
+@import url("./conditions.css");
+
 /* Tokens2 page-specific styles. Palette/reset/chrome from portal/shared/base.css. */
 
 /* ── Page body: 1024px column, grid rhythm (generous spacing between layers) ── */
-main { max-width: 1024px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 48px; }
+/* The approved /tokens composition uses a 1060px content column. Keep the shared portal
+   wrapper's narrower default for other pages, while giving this report the same breathing room
+   as its reference layout. */
+main.inner { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 48px; }
 /* Sections own their header + content; the section container carries ONE consistent
    bottom margin. The head strip gets only a small padding — hierarchy comes from the
    head-to-body contrast, not from inflating the header's own spacing. */
@@ -223,6 +228,16 @@ hr.banner-break { border: none; border-top: 1px solid var(--line); margin: 24px 
 .reg-row.reg-head { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .06em;
   color: var(--dim); border-top: none; }
 .reg-row.reg-head .reg-col, .reg-row.reg-head .reg-detail { color: var(--dim); font-weight: 400; }
+@media (max-width: 760px) {
+  .reg-row { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+  .reg-row .reg-detail { grid-column: 1 / -1; text-align: left; white-space: normal; }
+  .raw-table, .raw-table-scroll { min-width: 0; max-width: 100%; overflow: auto; }
+  .dq-notice { max-width: 100%; flex-wrap: wrap; align-items: flex-start; }
+  .dq-notice > * { min-width: 0; overflow-wrap: anywhere; }
+  body:has(#tokens2content) .portal-header .inner { flex-wrap: wrap; }
+  body:has(#tokens2content) .portal-header nav { width: 100%; margin-left: 0; flex-wrap: wrap; }
+  body:has(#tokens2content) .portal-header nav a { padding: .25rem .65rem; }
+}
 
 /* ── Distilled report ── */
 /* ── Full data drawer ── */

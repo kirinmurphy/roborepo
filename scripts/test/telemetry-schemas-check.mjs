@@ -83,7 +83,9 @@ function testSnapshotContentAddressing() {
   };
   const snapshotA = buildEffectiveSnapshot(configSnapshot, { harness: "claude", model: "sonnet" });
   const snapshotB = buildEffectiveSnapshot(configSnapshot, { harness: "codex", model: "gpt" });
-  assert.equal(snapshotA.snapshot_id, snapshotB.snapshot_id, "identical configuration must hash to the same snapshot id regardless of harness/model");
+  assert.notEqual(snapshotA.snapshot_id, snapshotB.snapshot_id, "v2 provider coverage must be part of snapshot identity");
+  assert.equal(computeSnapshotId({ ...snapshotA, schema: 1 }), computeSnapshotId({ ...snapshotB, schema: 1 }), "v1 identity remains stable");
+  assert.equal(snapshotA.snapshot_id, buildEffectiveSnapshot(configSnapshot, { harness: "claude", model: "other" }).snapshot_id, "model alone does not change configuration identity");
   assert.ok(snapshotB.unavailable.includes("codex_config_toml_parsed"), "codex snapshots must flag the parsed-config.toml gap");
   assert.ok(!snapshotA.unavailable.includes("codex_config_toml_parsed"), "claude snapshots must not carry the codex-only gap");
 
