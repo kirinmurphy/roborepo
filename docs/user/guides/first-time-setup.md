@@ -23,8 +23,8 @@ npm install -g codethings-roborepo-alpha
 roborepo web
 ```
 
-The first `roborepo web` runs one-time setup, then opens the portal. Setup creates the workspace and
-state directories, detects which agent harnesses are on this machine, and records that
+The first `roborepo web` runs one-time setup, then opens the portal. Setup creates RoboRepo's
+directories under `~/.roborepo`, detects which agent harnesses are on this machine, and records that
 initialization completed. Later runs only start the portal.
 
 Prefer the terminal? Run `roborepo init` instead. It runs the same setup, then asks whether to

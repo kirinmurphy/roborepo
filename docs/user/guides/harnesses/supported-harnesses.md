@@ -91,7 +91,7 @@ Two consequences worth knowing:
 - **Installing a new agent CLI is enough.** Install Gemini CLI, run `roborepo update`, and it
   starts receiving rules, skills, and commands. No config edit.
 - **Discovery cannot invent a harness.** Only providers roborepo ships can be discovered. A provider
-  is executable code, so a workspace cannot point roborepo at an arbitrary module and have it run.
+  is executable code, so configuration cannot point roborepo at an arbitrary module and have it run.
 
 ## Commands
 

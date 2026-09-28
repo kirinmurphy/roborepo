@@ -34,10 +34,10 @@ doc of record first; supporting docs should add context, not redefine the behavi
 | Area | Doc of record | Supporting docs |
 | --- | --- | --- |
 | Skills and slash commands | [Skills And Slash Commands](skills-and-commands.md) | [roborepo Skills Interface](../user/reference/roborepo-skills.md) |
-| Claude hooks | [Claude Hooks](../user/reference/claude-hooks.md) | [Harness Anatomy and Parity](harness-anatomy.md#hooks) |
-| Codex hooks | [Codex Hooks](../user/reference/codex-hooks.md) | [Harness Anatomy and Parity](harness-anatomy.md#hooks) |
-| Code indexing | [jcodemunch](../user/reference/jcodemunch.md) | [roborepo CLI Commands](../user/reference/roborepo-cli.md#index-code-and-docs) |
-| Docs indexing | [jdocmunch](../user/reference/jdocmunch.md) | [roborepo CLI Commands](../user/reference/roborepo-cli.md#index-code-and-docs) |
+| Claude hooks | [Claude Hooks](../user/reference/claude-hooks.md) | [Hooks Internals](hooks-internals.md), [Harness Anatomy and Parity](harness-anatomy.md#hooks) |
+| Codex hooks | [Codex Hooks](../user/reference/codex-hooks.md) | [Hooks Internals](hooks-internals.md), [Harness Anatomy and Parity](harness-anatomy.md#hooks) |
+| Code indexing | [jcodemunch](../user/reference/jcodemunch.md) | [roborepo CLI Commands](../user/reference/roborepo-cli.md#indexing) |
+| Docs indexing | [jdocmunch](../user/reference/jdocmunch.md) | [roborepo CLI Commands](../user/reference/roborepo-cli.md#indexing) |
 | Convention capture | [Convention Capture](../user/reference/convention-capture.md) | [Config Control Panel](../user/reference/config-control-panel.md) |
 | Plans portal and workflows | [Plans Portal Reference](../user/reference/plans-portal.md) | [Plan Docs Walkthrough](../user/guides/plan/lifecycle/plan-docs.md) |
 | Telemetry and the telemetry portal | [Telemetry Service Reference](../user/reference/telemetry.md) | [Telemetry Walkthrough](../user/guides/telemetry.md) |
@@ -60,6 +60,9 @@ Each user reference below has a maintainer companion for module maps, routes, an
 | [Config Control Panel](../user/reference/config-control-panel.md) | [Config Control Panel Internals](config-panel-internals.md) |
 | [Localhoster](../user/reference/localhoster.md) | [Localhoster Internals](localhoster-internals.md) |
 | [Config Collision Handling](../user/reference/config-collision-handling.md) | [Config Collision Internals](config-collision-internals.md) |
+| [Telemetry](../user/reference/telemetry.md) | [Telemetry Internals](telemetry-internals.md) |
+| [Claude Hooks](../user/reference/claude-hooks.md), [Codex Hooks](../user/reference/codex-hooks.md) | [Hooks Internals](hooks-internals.md) |
+| Workspace roots (withheld from user docs until plan `74h2tlim` completes) | [Application, Workspace, and State Roots](root-domains.md) |
 | Skill visibility package | [Skill Reference Observation](skill-reference-observation.md) |
 
 ## Maintenance Notes

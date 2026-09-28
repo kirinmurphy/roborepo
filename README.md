@@ -245,38 +245,6 @@ flowchart LR
 
 ---
 
-## Workspace
-
-RoboRepo separates the application from user-owned configuration and machine state.
-
-```mermaid
-flowchart LR
-  App["appRoot<br/>RoboRepo application"]
-  Workspace["workspaceRoot<br/>User-owned resources"]
-  State["stateRoot<br/>Machine-local state"]
-
-  Runtime["RoboRepo"] -->|reads| App
-  Runtime -->|reads + writes| Workspace
-  Runtime -->|reads + writes| State
-```
-
-```sh
-roborepo workspace status
-roborepo workspace use <path>
-roborepo workspace validate
-roborepo workspace import <path>
-```
-
-| Root            | Contains                                          |
-| --------------- | ------------------------------------------------- |
-| `appRoot`       | installed RoboRepo application                    |
-| `workspaceRoot` | skills, commands, packages, MCP config, overrides |
-| `stateRoot`     | telemetry, local settings, caches, runtime state  |
-
-[Workspace roots →](docs/user/guides/infra/root-domains.md)
-
----
-
 ## CLI
 
 `roborepo` is the terminal interface to the same system.
@@ -291,7 +259,6 @@ roborepo
 ├── web
 ├── library
 ├── localhoster
-├── workspace
 ├── package
 ├── skill
 ├── telemetry

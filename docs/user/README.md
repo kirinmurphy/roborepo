@@ -15,7 +15,6 @@ These docs are for people installing and using the roborepo package.
 | Review an integration branch | [Integration Check Walkthrough](guides/plan/lifecycle/integration-check.md) |
 | Use telemetry | [Telemetry Walkthrough](guides/telemetry.md) |
 | Know which agent CLIs roborepo manages | [Supported Harnesses](guides/harnesses/supported-harnesses.md) |
-| Know what lives in the app, workspace, and state roots | [Application, Workspace, and State Roots](guides/infra/root-domains.md) |
 
 ## Reference
 

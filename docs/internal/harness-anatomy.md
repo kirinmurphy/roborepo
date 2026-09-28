@@ -89,7 +89,7 @@ roborepo doctor --installed   # check that live harness links are current
 Add the user-facing description to the README (`Automatic Skill Helpers` or `Commands`). Repo-only
 internal skills live under `local/skills/` and never go global or get exported. Full skill-layer
 model: [Skills And Slash Commands](skills-and-commands.md) and
-[shared-skills fan-out](../user/reference/architecture.md#shared-skills-canonical-source--per-harness-fan-out).
+[shared-skills fan-out](../user/reference/architecture.md#shared-skills-canonical-source--machine-local-cache).
 
 **Memory — Defer:** both harnesses have native persistent memory (Codex `~/.codex/memories/`,
 Claude `/memory` under `~/.claude/projects/*/memory/`). Memory is per-machine, per-session, and
@@ -138,7 +138,7 @@ for Codex, or the owning package's hook resource), then re-apply:
 roborepo update   # picks up hook and root-config changes on this machine
 ```
 
-Hook details: [Claude Hooks](../user/reference/claude-hooks.md), [Codex Hooks](../user/reference/codex-hooks.md).
+Hook details: [Hooks Internals](hooks-internals.md); user summaries in [Claude Hooks](../user/reference/claude-hooks.md) and [Codex Hooks](../user/reference/codex-hooks.md).
 
 ## MCP servers
 

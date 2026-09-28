@@ -115,7 +115,7 @@ On current package installs, run:
 roborepo uninstall
 ```
 
-**Removing the npm package alone does not remove your RoboRepo configuration, workspace, or the
+**Removing the npm package alone does not remove your RoboRepo configuration, or the
 files RoboRepo projected into your harnesses.** Those live outside the package directory, so npm
 does not know about them. Development-checkout mode still skips npm removal because npm does not own
 the checkout.
@@ -125,28 +125,20 @@ wiring, package projections, and machine-local state. If a genuine pre-install b
 `~/.roborepo/backups/pre-install/`, it is restored. Content that has drifted from what RoboRepo
 wrote, and harness files RoboRepo does not own, are left alone and reported.
 
-### Your workspace is preserved
+### What uninstall keeps
 
-By default your workspace survives, including the common case where it sits at
-`~/.roborepo/workspace` inside the state directory:
+By default `~/.roborepo/workspace` survives uninstall:
 
 ```sh
-roborepo uninstall            # workspace preserved
+roborepo uninstall            # ~/.roborepo/workspace preserved
 roborepo uninstall --dry-run  # preview; changes nothing
 ```
 
-To remove it as well, ask explicitly:
+To remove it as well, ask explicitly. Combined with `--dry-run`, it still only previews:
 
 ```sh
 roborepo uninstall --delete-workspace
 ```
-
-Two limits on that flag, both deliberate:
-
-- It applies only to a workspace **inside** the RoboRepo state directory. A workspace you relocated
-  with `roborepo workspace use <path>` is never deleted by RoboRepo, even with the flag — RoboRepo
-  did not create that location, so removing it is yours to do.
-- Combined with `--dry-run` it still previews rather than deletes.
 
 Noninteractive runs refuse to remove anything unless you pass `--yes`, so a script cannot delete
 your configuration by accident:
@@ -187,8 +179,7 @@ npm run prepare:new-mac-install -- --output-dir ~/roborepo-transfer
 ```
 
 This packs the real npm tarball, installs it into an isolated prefix and temporary home (nothing
-touches your real `~/.roborepo` or global npm), and runs `version`, `setup`, `workspace status`,
-`config apply`, and `doctor` against it. Only after all of that passes does it write three files
+touches your real `~/.roborepo` or global npm), and runs a package-mode smoke test against it. Only after all of that passes does it write three files
 into `~/roborepo-transfer` (real npm-generated names, e.g. `codethings-roborepo-alpha-0.1.0-beta.0.tgz`):
 
 - `<tarball-name>.tgz` — the tarball that passed every check
@@ -230,7 +221,6 @@ Confirm the result:
 
 ```sh
 roborepo version
-roborepo workspace status
 roborepo harness list
 roborepo doctor
 ```
@@ -245,32 +235,7 @@ the automated package smoke test drives, but a person setting up a machine only 
 npm uninstall -g codethings-roborepo-alpha
 ```
 
-### 5. Observe harness discovery
-
-Use this as an observation sequence for the real new-machine test:
-
-1. Install RoboRepo with no harnesses installed.
-2. Run:
-   ```sh
-   roborepo version
-   roborepo setup
-   roborepo workspace status
-   roborepo harness refresh
-   roborepo harness list
-   roborepo config apply
-   roborepo doctor
-   ```
-3. Install one harness binary, but do not launch it yet.
-4. Run `roborepo harness refresh`, `roborepo harness list`, and `roborepo doctor`; record what
-   RoboRepo sees.
-5. Launch that harness once so it creates its native home/config.
-6. Run `roborepo harness refresh`, `roborepo harness list`, `roborepo config apply`, and
-   `roborepo doctor` again; record the difference.
-
-This is only an observation sequence. It does not expand harness presence signals or implement a
-new provider behavior.
-
-### 6. Clone for development later
+### 5. Clone for development later
 
 Clone the repository only after the packaged baseline works. Do not run the checkout installer just
 to materialize harness config; doing that can replace or shadow the packaged global command with a

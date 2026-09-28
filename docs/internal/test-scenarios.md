@@ -479,3 +479,27 @@ The repository already isolates prefix, home, state, and workspace for this purp
 | Understand root resolution | `docs/user/reference/architecture.md` |
 | Look up CLI commands | `docs/user/reference/roborepo-cli.md` |
 | Navigate maintainer documentation | `docs/internal/docs-map.md` |
+
+## Observe Harness Discovery On A New Machine
+
+Use this as an observation sequence for the real new-machine test:
+
+1. Install RoboRepo with no harnesses installed.
+2. Run:
+   ```sh
+   roborepo version
+   roborepo setup
+   roborepo harness refresh
+   roborepo harness list
+   roborepo config apply
+   roborepo doctor
+   ```
+3. Install one harness binary, but do not launch it yet.
+4. Run `roborepo harness refresh`, `roborepo harness list`, and `roborepo doctor`; record what
+   RoboRepo sees.
+5. Launch that harness once so it creates its native home/config.
+6. Run `roborepo harness refresh`, `roborepo harness list`, `roborepo config apply`, and
+   `roborepo doctor` again; record the difference.
+
+This is only an observation sequence. It does not expand harness presence signals or implement a
+new provider behavior.

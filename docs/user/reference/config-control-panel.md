@@ -15,7 +15,7 @@ the user's live harness config, some in repo manifests, some in roborepo state.
 
 | Noun | What it is | Source of truth |
 | --- | --- | --- |
-| **Package** | A named feature made of typed resources | `globals/packages/<package>/package.config.json` and workspace package configs; live config (enabled state) |
+| **Package** | A named feature made of typed resources | `globals/packages/<package>/package.config.json`; live config (enabled state) |
 | **Resource** | One typed unit of a package's install or presentation | the package config |
 | **Skill** | A shared or native skill, inspected without flattening harness-specific metadata | package-owned `skills/<name>` source or system skill source; `~/.roborepo/skills/<name>` (managed cache); `~/.claude/skills/<name>` and `~/.codex/skills/<name>` (harness install state) |
 | **Permission behavior** | A named behavior or arbitrary command set to `allow`, `ask`, `deny`, or `default` | `manifests/inventory/agent-permissions.json` (defaults); `~/.roborepo/command-overrides.json` (personal overrides); live config (active render) |

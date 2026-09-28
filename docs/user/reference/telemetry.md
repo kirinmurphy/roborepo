@@ -28,11 +28,8 @@ sessions that were already running do not capture.
 
 ## Capture
 
-`roborepo telemetry capture --harness <claude|codex> --event <HookEvent>` is the hot hook path,
-wired into `SessionStart`, `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, and `Stop`. It lives in
-its own minimal-import module (`scripts/cli/telemetry-capture.mjs`) so every hook invocation does not
-pay to load the portal/config/analysis dependency graph — a `node` cold-start just to append one
-JSONL line. Each capture (schema v3) carries:
+Capture runs from the harness hooks `SessionStart`, `PreToolUse`, `PostToolUse`,
+`UserPromptSubmit`, and `Stop`. Each capture (schema v3) carries:
 
 - timestamp, harness, event, session ID;
 - hashed working directory and repository identity (root hash, remote hash, branch, short SHA);
@@ -101,15 +98,14 @@ data-quality issue was flagged (one session dominating a cohort, or excluded ses
 
 Snapshots are content-addressed (`cfg_<24-hex>`, hashed from normalized packages/rules/skills/hooks/
 commands/feature-flags — session-specific fields like `harness`/`model`/`created_at` are excluded
-from the hash) and deduplicated on write. Built once per session at `SessionStart` (dynamic-imported
-only on that event, to keep the hot capture path's import graph small) and referenced by every later
-capture in that session. `readConfigSnapshot()` has documented gaps (no full hook command strings, no
-MCP server registration detail, no parsed Codex `config.toml`) — snapshots record these as
-`unavailable` dimensions rather than guessing.
+from the hash) and deduplicated on write. One is built per session at `SessionStart` and referenced
+by every later capture in that session. Details a snapshot cannot read (full hook command strings,
+MCP server registration detail, parsed Codex `config.toml`) are recorded as `unavailable` rather
+than guessed.
 
 ## Cohorts, metrics, and comparisons
 
-**Metrics registry** (`scripts/cli/telemetry-metrics.mjs`) is the single source of truth for every
+**Metrics registry** is the single source of truth for every
 metric formula, unit, and directionality used by the CLI report, the portal, alerts, and experiments
 — UI components never define their own formulas. 26 metrics across six groups: tokens, time, calls,
 testing, outcome, reliability. Each metric declares `direction_good` (`lower`/`higher`/`neutral`) and
@@ -117,12 +113,12 @@ a `minimum_sample` below which a value is technically computable but should be t
 low-confidence. Robust summaries (trimmed mean, median, percentile) are used for heavy-tailed
 token/duration distributions rather than plain averages.
 
-**Cohort filter** (`scripts/cli/telemetry-cohort.mjs`) is a normalized object shared by the CLI and
+**Cohort filter** is a normalized object shared by the CLI and
 portal: `time`, `harnesses`, `models`, `repos`, `packages`/`skills` (exposure, resolved via
 `config_snapshot_id`), `operations`, `phases`, `outcomes`, `task_categories`, `snapshot_ids`. The same
 filter object scopes every panel — no panel-local filter silently redefines the global cohort.
 
-**Marker-relative comparison** (`scripts/cli/telemetry-compare.mjs`) is the preferred way to answer
+**Marker-relative comparison** is the preferred way to answer
 "did this change something": given a `change` marker, sessions are split into before/after cohorts
 (sessions spanning the marker are excluded), equalized (equal session count or equal duration), and
 compared per metric. Every comparison reports cohort sizes, excluded-session reasons, effect size,
@@ -135,7 +131,7 @@ and a confidence label:
 - **data-quality warning** — one session dominates a cohort (>40% of its captures), or sessions were
   excluded for spanning the marker.
 
-The older earlier-vs-later **midpoint regression** (`telemetry-analyze.mjs`'s `regression()`) is
+The older earlier-vs-later **midpoint regression** is
 retained as a labeled *exploratory fallback* for when no marker is selected — the portal and CLI both
 mark it `exploratory: true` and describe it as not tied to any specific change.
 
@@ -148,7 +144,7 @@ rule *caused* a result — wording stays at "exposed to" / "correlates with."
 ## Package telemetry policies
 
 A package's `package.config.json` may declare `telemetry.policies`: `[{ metric, operator, value,
-minimum_samples, severity }]`. `scripts/cli/telemetry-policy.mjs` validates policy shape (known
+minimum_samples, severity }]`. RoboRepo validates policy shape (known
 metric id, valid operator, numeric threshold) and evaluates a policy against a computed metric value
 + sample size, returning `satisfied` / `violated` / `insufficient-samples` / `unknown`. Policies are
 advisory only — nothing in this system blocks a command or tool call. No package in this repository
@@ -166,63 +162,9 @@ registry back both this report and the portal, so CLI and portal numbers agree f
 
 ## Portal
 
-The v1 dashboard (`/tokens_v1`, hidden from nav) is a frameworkless, dependency-free page
-(`portal/telemetry/`) polling `/api/data` every 5 seconds. The nav-visible `/tokens` page
-(`portal/tokens2/`) reads the same `/api/data` report. See `docs/internal/portal-architecture.md` for the shared portal architecture (loopback bind,
-mutation-token contract, route dispatch). Telemetry-specific pieces:
-
-- **Global cohort filter bar** — time range, harness, model, repository, and a marker-relative
-  comparison selector. Serializes into the URL (`?range=`, `&end=`, `&harness=`, `&model=`, `&repo=`,
-  `&marker_id=`) so a filtered view can be bookmarked, copied, and restored on reload.
-- **Timeline marker overlay** — markers render as colored vertical lines (by type) on the token-usage
-  chart; overlapping markers cluster; hover shows title/timestamp/SHA/packages/skills/metric; click
-  opens marker detail, with a "compare across this marker" action for `change` markers.
-- **Action-item panel** — each deterministic insight shows severity, confidence, headline, detail,
-  next action, and an "open analysis" button that expands the Analysis explorer pre-filled with that
-  finding's metric/marker.
-- **Testing-efficiency panel** — leads with the most actionable abnormality (redundant full-suite
-  reruns without an intervening edit), then a compact metrics table.
-- **Analysis explorer** (`portal/telemetry/analysis-explorer.js`) — a collapsed-by-default drawer for
-  high-cardinality comparisons the global filter bar deliberately does not expose: pick a metric from
-  the registry, compare across a marker or between two independently-filtered cohorts, see the result
-  with the same confidence/data-quality treatment as everywhere else.
-- **Session detail** — extended with model history, the session's configuration snapshot (id +
-  packages/skills), a phase timeline, semantic operation totals, its explicit outcome/task category
-  (marked `source: "explicit"`), markers within a 15-minute
-  window of the session, and data-quality flags — alongside the existing "surface chat context" /
-  copy-prompt / transcript-open actions, which are unchanged.
-- **Marker creation** — a dialog reachable from the cohort filter bar ("+ mark change") posts through
-  the same validation/persistence path as the CLI (`createMarker` in `telemetry-markers.mjs`); no
-  browser-side duplication of marker rules.
-
-## API
-
-- `GET /api/data?range=&end=&harness=&model=&repo=&marker_id=` — the full analysis report, cohort-
-  scoped. Response includes `available_harnesses`/`available_models`/`available_repos`/
-  `available_metrics`, window-scoped `markers`, `experiments`, `testing_efficiency`, `cohort`
-  (present when a model/repo filter is active), and `marker_comparison` (present when `marker_id`
-  resolves).
-- `GET /api/session?id=&harness=&finding=&repo=` — bridges a flagged event to its transcript, plus
-  `spool_context` (model history, config snapshot, phase timeline, operation totals, outcome, nearby
-  markers, data-quality flags) derived from the spool alone, present even when the transcript itself
-  is not found on disk.
-- `GET /api/insights-llm` — on-demand LLM synthesis of deterministic facts (may take seconds).
-- `GET/POST /api/telemetry/markers` — list or create a marker. POST reuses `createMarker()`.
-- `GET/POST /api/telemetry/experiments`, `POST /api/telemetry/experiments/:id/end` — list, start, or
-  end an experiment. Reuse `startExperiment()`/`endExperiment()`.
-- `POST /api/telemetry/analysis` — `{ metric, marker_id }` for a marker-relative comparison, or
-  `{ metric, cohort_a, cohort_b }` for a direct two-cohort comparison (no before/after language — no
-  shared timestamp to split sessions around). Validates the metric id against the registry and
-  returns `400` for an unknown one along with the full known-metric list.
-- `GET /api/telemetry/guide` — server-rendered `docs/user/guides/telemetry.md`, backing the page's
-  "view docs" popup (`portal/shared/doc-guide-modal.js`) so the popup and the on-disk guide are
-  the same content, never a second copy. `renderMarkdown()` (`scripts/cli/markdown-render.mjs`)
-  gives every heading a stable slug `id` so a panel's info icon can deep-link straight to its
-  section; fenced ` ```mermaid ` blocks render as diagrams through the locally vendored mermaid
-  runtime (`portal/shared/markdown-mermaid.js`), loaded lazily on first use.
-
-All mutating routes are POST-only and use the portal's standard loopback-origin + mutation-token
-guard (see `docs/internal/portal-architecture.md`).
+The `/tokens` page shows the same analysis as `roborepo telemetry report`, refreshing every 5
+seconds. The earlier dashboard stays available at `/tokens_v1` with the filter bar, marker
+creation, and Analysis explorer. See the [Telemetry Walkthrough](../guides/telemetry.md) for both.
 
 ## Privacy
 
@@ -281,4 +223,4 @@ the way to remove every telemetry store at once, and `purge --backup` keeps a re
 
 ## Related
 
-- `docs/internal/portal-architecture.md` — the shared portal server/route/mutation-token architecture.
+- [Telemetry Walkthrough](../guides/telemetry.md) — what the portal pages show.

@@ -48,24 +48,12 @@ bare non-interactive invocations open the normal menu rather than a wizard, so s
 Zero detected harnesses is a valid initialization: install or launch a supported harness later and
 run `roborepo harness refresh`.
 
-## Workspace
-
-| Command | What it does |
-| --- | --- |
-| `roborepo version` | Prints the package version and the resolved `appRoot`, `workspaceRoot`, and `stateRoot`. |
-| `roborepo workspace status` | Prints the same roots plus workspace manifest state. |
-| `roborepo workspace use <path>` | Selects a Git-portable workspace. |
-| `roborepo workspace validate` | Checks typed workspace resources. |
-| `roborepo workspace import <path> [--dry-run]` | Copies custom additions from an existing checkout into the workspace and reports changed built-ins separately, without modifying the checkout. |
-
-See [Application, Workspace, and State Roots](../guides/infra/root-domains.md) for what each root
-holds.
-
 ## Setup and Maintenance
 
 | Command | What it does |
 | --- | --- |
 | `roborepo update [--dry-run] [--verbose]` | Re-applies harness config on this machine: copied files, rendered rules, root config, command install, and shell wiring. Use after pulling repo changes or upgrading the package; `--verbose` includes unchanged items in the report. |
+| `roborepo version` | Prints the package version and the directories RoboRepo runs from. |
 | `roborepo config status` | Shows enabled behaviors and packages. |
 | `roborepo config root inspect` | Read-only report of each harness root config (`~/.claude/settings.json`, `~/.codex/config.toml`): baseline vs. active file and its drift state — `in sync`, `drifted` (edited since roborepo's last write), `staged update pending`, or untracked. |
 | `roborepo doctor [--verbose]` | Runs harness health checks for config files, links, helper commands, dependencies, and generated outputs. |
@@ -87,14 +75,11 @@ From a development checkout, two more commands render generated files after you 
 
 | Command | What it does |
 | --- | --- |
-| `roborepo uninstall [--dry-run] [--yes] [--delete-workspace]` | Removes RoboRepo-managed harness configuration and machine-local state. Your workspace is preserved by default. `--dry-run` previews without changing anything; `--yes` is required to run destructively without a TTY; `--delete-workspace` also removes a workspace stored inside the RoboRepo state directory. |
+| `roborepo uninstall [--dry-run] [--yes] [--delete-workspace]` | Removes RoboRepo-managed harness configuration and machine-local state. Your workspace is preserved by default. `--dry-run` previews without changing anything; `--yes` is required to run destructively without a TTY; `--delete-workspace` also removes `~/.roborepo/workspace`. |
 
 Removal has two owners. In package mode, `roborepo uninstall` removes what RoboRepo created and then
 runs npm against the prefix that contains the current `roborepo` binary. Removing the npm package
-alone leaves your RoboRepo configuration and workspace in place.
-
-A workspace relocated outside the state directory is never deleted by RoboRepo, including with
-`--delete-workspace`. See
+alone leaves your RoboRepo configuration in place. See
 [install-workflows.md](../guides/install-workflows.md#uninstall) for the full ownership model.
 
 ## Packages
@@ -108,7 +93,7 @@ A workspace relocated outside the state directory is never deleted by RoboRepo, 
 | `roborepo package reconcile` | Re-applies every enabled package and drops enabled-but-unknown stale entries. |
 | `roborepo package adopt-live [--dry-run]` | Detects externally installed package behavior and marks it enabled without reinstalling it. |
 | `roborepo package validate [id]` | Validates one package or the whole catalog against the manifest schema. |
-| `roborepo package dev create <id> [--kind=empty\|auto-skill\|skill-command\|standalone-command] [--description=...] [--default-enabled=true]` | Scaffolds a new package under `globals/packages/<id>/` (dev checkout) or the workspace packages dir (package mode). Refuses to overwrite an existing package. |
+| `roborepo package dev create <id> [--kind=empty\|auto-skill\|skill-command\|standalone-command] [--description=...] [--default-enabled=true]` | Scaffolds a new package under `globals/packages/<id>/` (dev checkout) or `~/.roborepo/workspace/packages/<id>/` (package mode). Refuses to overwrite an existing package. |
 
 Most users only need `list`, `inspect`, `enable`, and `disable`.
 

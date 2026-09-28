@@ -19,7 +19,7 @@ Discovery is split across provider boundaries:
   probe results into health states; `history.mjs` and `history-diff.mjs` derive and persist
   transition events.
 - `docker.mjs` collects running-container/Compose data; `process-metrics.mjs` collects live
-  CPU/memory/elapsed for discovered PIDs. See [Docker and process metrics](#docker-and-process-metrics).
+  CPU/memory/elapsed for discovered PIDs. See [Docker and process metrics](../user/reference/localhoster.md#docker-and-process-metrics).
 
 ## Git Collection
 
@@ -86,7 +86,7 @@ Read-only:
   snapshot and returns that app's recorded events, newest first, capped at 200.
 - `GET /api/localhoster/metadata?key=<opaque-key>` accepts only a key emitted by the current
   snapshot and returns discovered same-origin route suggestions for that app. See
-  [Metadata suggestions](#metadata-suggestions).
+  [Metadata suggestions](../user/reference/localhoster.md#metadata-suggestions).
 
 Mutating routes are POST-only and inherit the portal's loopback origin check and mutation-token
 check:

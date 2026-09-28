@@ -16,87 +16,43 @@ For install workflow tradeoffs, see [install-workflows.md](install-workflows.md)
 
 ---
 
-## Setup
+## Checkout Notes
 
-### Clone the repo, then run:
+These apply when you installed from a Git checkout with `./scripts/install/main.sh` (see
+[First-Time Setup](first-time-setup.md#install-from-a-checkout)).
 
-```sh
-./scripts/install/main.sh
-```
+- **Safe to re-run.** Owned copies and rendered rules are refreshed, and your local Claude/Codex
+  settings are kept. When a local file differs from the repo version, the `--on-conflict` policy
+  decides what happens — see [Config Collision Handling](../reference/config-collision-handling.md).
+- **Preview first** with `./scripts/install/main.sh --dry-run`; verify afterwards with
+  `roborepo doctor --installed`.
+- **Recovering settings.** If a past update left recoverable local settings in a backup,
+  `roborepo update` or `roborepo doctor --installed` points you at
+  `roborepo maintenance repair local-config --dry-run`; `--apply` restores them.
+- **Moved checkout.** If you move or rename the checkout, `roborepo maintenance repair` relinks
+  stale symlinks to the new path and leaves copied config alone.
+- **Automation.** `--no-presets-onboard` or `ROBOREPO_PRESETS_ONBOARD=skip` skips install-time
+  onboarding.
 
-This installs the core CLI plus the shared baseline. It detects which harnesses are installed (Claude Code, Codex, Gemini CLI, or any combination), copies owned files, renders rules, exports mutable root config as local files, installs global commands, and adds shell snippets to your profile.
+### Change Permission Defaults
 
-Then run `roborepo web` for first-run setup and behavior choices — see
-[First-Time Setup](first-time-setup.md#choose-behaviors).
-
-The installer has one materialization model: copy owned files, render generated rules, and preserve
-user-authored root config unless the selected collision policy says otherwise. See
-[install-workflows.md](install-workflows.md) for the step-by-step flow and collision behavior.
-
-When a local file differs from the repo version, the `--on-conflict` policy decides whether it is kept (repo version staged beside it), overwritten (local file backed up), or the install stops. Root config files are merged instead, so your settings survive. See [Config Collision Handling](../reference/config-collision-handling.md) for exact behavior.
-
-**The script is safe to re-run** — owned copies and rendered rules are refreshed, and local Claude/Codex settings are merged with the repo baseline instead of replaced. If a past update left recoverable local settings in a backup, `roborepo update` or `roborepo doctor --installed` will point you at `roborepo maintenance repair local-config --dry-run`.
-
-If initialization has not completed, a bare interactive `roborepo` routes into `init`; explicit commands always run. `--no-presets-onboard` or `ROBOREPO_PRESETS_ONBOARD=skip` bypasses install-time onboarding for automation.
-
-### Preview without modifying anything:
-
-```sh
-./scripts/install/main.sh --dry-run
-```
-
-### Verify the install:
-
-```sh
-roborepo doctor --installed
-```
-
-### Test installer collision behavior:
-
-```sh
-./scripts/test/test-install-collisions.sh
-```
-
-This runs against temporary `HOME` directories only. See [Config Collision Handling](../reference/config-collision-handling.md#validation) for what it covers.
-
----
-
-## Maintenance
-
-### Manage Agent Permissions
-
-Agent permission defaults start in `manifests/inventory/agent-permissions.json` as flat behavior and
-command buckets. Each entry resolves to `allow`, `ask`, or `deny`.
-
-Use the Package Library or config portal for normal machine-level changes:
-
-```sh
-roborepo library
-roborepo web
-```
-
-Render or check the repo baseline after editing the manifest:
+Day to day, change permissions in the `/config` page or `roborepo library`. To change the defaults
+every machine starts from, edit `manifests/inventory/agent-permissions.json` in the checkout, then
+render and check:
 
 ```sh
 roborepo permissions
 roborepo permissions --check
 ```
 
-The renderer updates the generated permission block in `generated/codex/config.toml`, the shell prefix
-rules in `generated/codex/rules/default.rules`, and Claude `permissions.allow` / `permissions.deny` /
-`permissions.ask` in `generated/claude/settings.json`. Existing `~/.codex/config.toml` and
-`~/.claude/settings.json` files are local root config, so run `roborepo update` and follow the root
-config merge/export flow before a newly rendered baseline affects an already set up machine.
+The rendered defaults reach an existing machine on the next `roborepo update`.
 
 ---
 
 ## Daily Use
 
-Everything below is driven by one command, **`roborepo`** — the single front door for setup,
-indexing, skills, and maintenance. It is installed and added to your `PATH` automatically by the
-installer (no manual PATH step on macOS/Linux); open a new shell after the first install so it
-resolves. Run `roborepo` with no arguments for an interactive menu, or call a subcommand directly
-as shown below. Full reference: [roborepo CLI Commands](../reference/roborepo-cli.md).
+Everything below runs through `roborepo`. Run it with no arguments for an interactive menu, or call
+a command directly. Full reference: [roborepo CLI Commands](../reference/roborepo-cli.md).
 
 ### Browse and manage plan docs
 
@@ -157,15 +113,7 @@ roborepo skill native --full    # print native help output inline
 roborepo doctor --installed     # verify the live skill cache and harness links are current
 ```
 
-If the checkout was moved or renamed, `roborepo maintenance repair` relinks stale symlinks to the new path.
-It leaves copied config files and directories alone; use `--on-conflict` only for automation or
-noninteractive recovery.
-
-If local Claude/Codex settings were damaged by an older update, use
-`roborepo maintenance repair local-config --dry-run` to inspect recoverable settings, then
-`roborepo maintenance repair local-config --apply` to restore them after repair backups are written.
-
-### Edit global rules
+### Edit global rules (checkout)
 
 Global instruction files are generated tracked outputs:
 
