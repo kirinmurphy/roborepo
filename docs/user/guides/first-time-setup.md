@@ -6,7 +6,8 @@ manages.
 Works with Claude Code, Codex, and Gemini CLI — any one of them, or any combination. roborepo
 discovers whichever are installed and manages those; see
 [Supported Harnesses](harnesses/supported-harnesses.md) for what each one receives. Requires
-**Node.js 20+**. Supports macOS and Linux; Windows support is available but less tested.
+**Node.js 20+**. Supports macOS and Linux; Windows is available but less tested — see
+[Windows](#windows).
 
 ## Choose An Install Path
 
@@ -30,6 +31,11 @@ initialization completed. Later runs only start the portal.
 Prefer the terminal? Run `roborepo init` instead. It runs the same setup, then asks whether to
 configure in the browser or in the CLI.
 
+Setup itself leaves your existing Claude and Codex config alone; behaviors you turn on afterwards
+are merged into it. Setup is safe to re-run: once complete it reports that and exits, and an
+interrupted run resumes instead of starting over. Zero detected harnesses is fine; install or launch
+a harness later and run `roborepo harness refresh`.
+
 ## Install From A Checkout
 
 From the root of a clone, preview and then install:
@@ -42,6 +48,10 @@ From the root of a clone, preview and then install:
 The installer puts `roborepo` on your `PATH`; open a new shell afterwards so it resolves. It ends
 with a welcome menu that can open the behavior chooser. Then use `roborepo web` or `roborepo` as
 above.
+
+On its first run the installer asks what to do with Claude or Codex files you already have — keep
+them, overwrite them, or stop — see
+[Collision Policy](install-workflows.md#collision-policy).
 
 ## Choose Behaviors
 
@@ -66,11 +76,6 @@ Conventions, Chat-Time Output, and a read-only Permissions panel — one section
 `roborepo library` and `roborepo package manage` are two names for the same chooser. Rerun it any
 time to change your choices. Noninteractive runs skip it and apply the baseline headlessly.
 
-`init` is safe to re-run: once initialization has completed it reports that and exits rather than
-replaying your choices. If it is interrupted partway — `Ctrl-C`, a failed step, a closed terminal —
-the next run resumes instead of starting over. Zero detected harnesses is a valid outcome; install
-or launch a harness later and run `roborepo harness refresh`.
-
 ## After Setup
 
 ```sh
@@ -80,22 +85,33 @@ roborepo doctor              # health check
 roborepo doctor --installed  # verify the installed harness paths
 ```
 
-There is no separate `install` verb; `roborepo update` re-applies configuration.
+There is no separate `install` verb; `roborepo update` re-applies configuration. On a package
+install, the first `roborepo update` asks what to do with Claude or Codex files you already have —
+keep them, overwrite them, or stop — see [Collision Policy](install-workflows.md#collision-policy).
 
-## Choose Collision Behavior
+## Windows
 
-The installer always materializes config by copying owned files and rendering generated rules. There is no install mode. Existing user config is preserved unless you choose to overwrite it.
+Windows needs two things first:
 
-| Policy | Use when | Result |
-| --- | --- | --- |
-| `keep` | You already have local Claude/Codex config you want active. | Local files stay active; repo candidates are staged beside them as `*_update_TIMESTAMP`. |
-| `overwrite` | The repo baseline should replace the local file. | Local files are backed up as `*_original_TIMESTAMP`, then the repo file is copied in. |
-| `abort` | You want manual review before any conflict is changed. | Install stops at the conflicting path. |
+- **Git for Windows** ([git-scm.com](https://git-scm.com)), which provides Git Bash for hook scripts
+  and bin commands.
+- **Developer Mode** (`Settings > System > For Developers`) or an **administrator PowerShell**, so
+  the installer can create symlinks.
 
-Root config files (`settings.json`, `config.toml`) are merged rather than replaced, so your
-settings survive; if you edited one since roborepo last wrote it, `keep` leaves it untouched. See
-[Root Config Drift Detection](../reference/config-collision-handling.md#root-config-drift-detection).
+From a checkout, install from PowerShell, or run the usual installer from Git Bash, which calls the
+same PowerShell script:
 
-Use `--on-conflict keep`, `--on-conflict overwrite`, or `--on-conflict abort` to make this explicit. Without a flag, roborepo reuses the saved `onConflict` value from `~/.roborepo/install-state.json`; first noninteractive installs default to `keep`.
+```powershell
+.\scripts\install\install-windows.ps1
+```
 
-For the full decision model and terminal-style walkthroughs, see [Install Workflow Choices](install-workflows.md). For exact collision behavior, see [Config Collision Handling](../reference/config-collision-handling.md).
+Harness config lives under your user profile, as on other platforms:
+
+| Harness | Path |
+| --- | --- |
+| Claude Code | `%USERPROFILE%\.claude\` |
+| Codex | `%USERPROFILE%\.codex\` |
+| Gemini CLI | `%USERPROFILE%\.gemini\` |
+
+After a checkout install, add `~/.local/bin` to your `PATH` to call `roborepo` from PowerShell — see
+[Install and PATH](../reference/roborepo-cli.md#install-and-path).

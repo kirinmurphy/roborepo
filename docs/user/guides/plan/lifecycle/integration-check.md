@@ -52,18 +52,6 @@ version that will not survive. Work before step 8 can overlap freely.
 Steps 1–6 can write — they change what is checked out and, at step 5, can create a merge commit.
 Steps 7–13 only read.
 
-Re-running is safe. Preflight, the audit, and the diff only read; checkout and fast-forward land in
-the same place however many times you repeat them. Step 5 is the only step that writes, and it is
-guarded by "only if behind", so it does nothing when the branch is already current.
-
-Put precisely: a first run may create one merge commit if the branch was behind; every run after
-that, against an unchanged repository, creates none. (If the base branch itself gains commits in
-between, merging again is correct — that is a new input, not a repeat.)
-
-Inside the read-only half, cheap deterministic work runs before expensive model-driven work: scope
-the diff, then run the tests, and only start reviewing once the suite is green. A red suite means
-the code is about to change, so reviewing it first would be analysis thrown away.
-
 ## Gates
 
 At these points the workflow stops and asks rather than deciding for you:
@@ -78,6 +66,13 @@ At these points the workflow stops and asks rather than deciding for you:
 | Failing tests | A findings report over a red suite misrepresents the branch |
 
 ## Re-Running
+
+Re-running is safe. Preflight, the audit, and the diff only read; checkout and fast-forward land in
+the same place however many times you repeat them. Step 5 is the only step that creates a commit,
+and it is guarded by "only if behind", so it does nothing when the branch is already current. A
+first run may create one merge commit if the branch was behind; every run after that, against an
+unchanged repository, creates none. (If the base branch itself gains commits in between, merging
+again is correct — that is a new input, not a repeat.)
 
 Running the check again reports the delta: which findings are resolved, which are still open, and
 which are new since the last run.

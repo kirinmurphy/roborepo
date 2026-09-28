@@ -8,14 +8,14 @@ doc of record first; supporting docs should add context, not redefine the behavi
 | I need to... | Start here | Then read |
 | --- | --- | --- |
 | Install roborepo on a machine | [First-Time Setup](../user/guides/first-time-setup.md) | [Install Workflows](../user/guides/install-workflows.md) |
-| Use roborepo day to day | [Setup and Daily Use](../user/guides/setup-and-daily-use.md) | [roborepo CLI Commands](../user/reference/roborepo-cli.md) |
+| Use roborepo day to day | [Daily Use](../user/guides/setup-and-daily-use.md) | [roborepo CLI Commands](../user/reference/roborepo-cli.md) |
 | Browse and manage plan docs | [Plan Docs Walkthrough](../user/guides/plan/lifecycle/plan-docs.md) | [Plans Portal Reference](../user/reference/plans-portal.md) |
 | Review an integration branch | [Integration Check Walkthrough](../user/guides/plan/lifecycle/integration-check.md) | — |
 | See token/tool cost and mark changes over time | [Telemetry Walkthrough](../user/guides/telemetry.md) | [Telemetry Service Reference](../user/reference/telemetry.md) |
 | Understand collision behavior | [Config Collision Handling](../user/reference/config-collision-handling.md) | [Install Workflows](../user/guides/install-workflows.md) |
 | Use the CLI | [roborepo CLI Commands](../user/reference/roborepo-cli.md) | [roborepo CLI Internals](cli-internals.md) |
 | Know which agent CLIs roborepo manages | [Supported Harnesses](../user/guides/harnesses/supported-harnesses.md) | [Harness Provider Interface](harness-provider-interface.md) |
-| Choose or inspect behavior packages | [Config Control Panel](../user/reference/config-control-panel.md) | [Setup and Daily Use](../user/guides/setup-and-daily-use.md) |
+| Choose or inspect behavior packages | [Config Control Panel](../user/reference/config-control-panel.md) | [Daily Use](../user/guides/setup-and-daily-use.md) |
 
 ## Harness Architecture
 

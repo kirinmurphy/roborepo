@@ -24,6 +24,17 @@ There are two pieces:
 The Plans page works even when the optional package is disabled. Enabling Plan Docs adds workflow
 prompt buttons such as `/plan-docs start`, `/plan-docs sync`, `/plan-docs review`, and `/plan-docs handoff`.
 
+## Typical Workflow
+
+1. Run `roborepo web` and open `/plans`.
+2. Add a discovery root.
+3. Open a plan and check warnings, tasks, blockers, and review state.
+4. Enable /plan-docs workflows if not already enabled.
+5. Copy `/plan-docs start` for the chosen plan.
+6. Let the agent verify the plan against the repo before changing files.
+7. After work, copy `/plan-docs sync` or run `/plan-docs sync` directly.
+8. Use `/plan-docs review` when you think the plan is complete.
+
 ## Open The Plans Page
 
 Start the local portal:
@@ -162,17 +173,6 @@ Common modes:
 /plan-docs review    decide complete/incomplete/blocked/superseded
 /plan-docs handoff   prepare a next-chat handoff
 ```
-
-## Typical Workflow
-
-1. Run `roborepo web` and open `/plans`.
-2. Add a discovery root.
-3. Open a plan and check warnings, tasks, blockers, and review state.
-4. Enable /plan-docs workflows if not already enabled.
-5. Copy `/plan-docs start` for the chosen plan.
-6. Let the agent verify the plan against the repo before changing files.
-7. After work, copy `/plan-docs sync` or run `/plan-docs sync` directly.
-8. Use `/plan-docs review` when you think the plan is complete.
 
 ## Current Limits
 

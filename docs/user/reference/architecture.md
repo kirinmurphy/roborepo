@@ -100,6 +100,9 @@ Repo files are source input. The global harness path receives concrete files or 
 
 Implication: updates become active only after `roborepo update`, package enable/disable, or another explicit render/copy action.
 
+Which packages are enabled is recorded in `~/.roborepo/enabled-packages.json`; enabling or disabling a
+package updates it and re-renders the home rules files.
+
 ### Root Config Export
 
 Repo files are portable baselines. Active global files are local copies or existing user-owned files.

@@ -98,7 +98,8 @@ flowchart LR
 
 ## Localhoster
 
-Discover running local HTTP applications and associate them with repositories.
+Discover running local HTTP applications and associate them with repositories. Automatic
+discovery currently runs on macOS.
 
 ```sh
 roborepo localhoster
@@ -112,19 +113,6 @@ roborepo localhoster --open
 | Worktrees | linked checkout context           |
 | Process   | PID, CPU, memory, uptime          |
 | Docker    | container and Compose metadata    |
-
-```mermaid
-sequenceDiagram
-  participant Scan as Localhoster
-  participant OS as Local machine
-  participant Git
-  participant Portal
-
-  Scan->>OS: Find HTTP listeners
-  Scan->>OS: Resolve processes
-  Scan->>Git: Resolve repository + branch
-  Scan->>Portal: Publish repository-aware apps
-```
 
 ![Localhoster listing two running apps, each tied to its GitHub repository and branch](docs/images/localhoster.png)
 
@@ -148,7 +136,6 @@ The Plans portal surfaces:
 
 |                 |                                |
 | --------------- | ------------------------------ |
-| Lifecycle       | backlog → active → completed   |
 | Readiness       | deterministic validation       |
 | Priority        | plan metadata                  |
 | Dependencies    | blockers and relationships     |
@@ -262,12 +249,13 @@ The README covers common entry points. See the reference for the full command su
 | Portal            | browser interface                     |
 | CLI               | terminal interface                    |
 
-[Architecture →](docs/user/reference/architecture.md)  
-[Harness architecture →](docs/internal/harnesses-explained.md)
+[Architecture →](docs/user/reference/architecture.md)
 
 ---
 
 ## Development
+
+Requires **Node.js 20+**.
 
 ```sh
 git clone https://github.com/kirinmurphy/roborepo.git
@@ -277,8 +265,6 @@ npm test
 ./bin/roborepo --help
 ```
 
-Requires **Node.js 20+**.
-
 Use the checkout-local executable while developing:
 
 ```sh
@@ -287,7 +273,12 @@ Use the checkout-local executable while developing:
 
 A separately installed global `roborepo` command can remain pointed at the packaged installation.
 
-### Documentation
+Maintainer docs start at the [documentation map](docs/internal/docs-map.md); for how harness
+support works, see [How the Harnesses Work](docs/internal/harnesses-explained.md).
+
+---
+
+## Documentation
 
 |                   |                                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------------ |
@@ -299,7 +290,6 @@ A separately installed global `roborepo` command can remain pointed at the packa
 | Agent config      | [docs/user/reference/config-control-panel.md](docs/user/reference/config-control-panel.md) |
 | Architecture      | [docs/user/reference/architecture.md](docs/user/reference/architecture.md)                 |
 | All user docs     | [docs/user/README.md](docs/user/README.md)                                                 |
-| Documentation map | [docs/internal/docs-map.md](docs/internal/docs-map.md)                                     |
 
 ---
 

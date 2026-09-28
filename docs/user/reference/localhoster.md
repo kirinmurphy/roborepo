@@ -187,6 +187,13 @@ Version 2 adds:
 - app `health` path/status configuration and explainable `match` hints.
 - `preferences`: currently `showNonHttp` and `historyRetentionDays`.
 
+One alias case is applied automatically: a repository whose Git remote was renamed. Two
+records sharing a `rootId` is direct evidence the same directory was seen under both remotes (a
+`rootId` is a hash of an absolute path), and the most-recently-seen root separates a rename from a
+deleted-and-recloned directory. That case is aliased on sight rather than prompted, because an alias
+leaves both records intact and is undone by removing one entry. Merging records — which would
+rewrite checkout ownership — is still never done automatically.
+
 ## Curating Apps
 
 From the portal you can:
@@ -257,13 +264,6 @@ Git collection reads only existing local state and never contacts a remote. See
 
 Aliases are confirmed by hand in the portal. Localhoster does not yet suggest that a
 `path:<realpath>` project and a Git remote identity are the same project.
-
-One alias case *is* now applied automatically: a repository whose Git remote was renamed. Two
-records sharing a `rootId` is direct evidence the same directory was seen under both remotes (a
-`rootId` is a hash of an absolute path), and the most-recently-seen root separates a rename from a
-deleted-and-recloned directory. That case is aliased on sight rather than prompted, because an alias
-leaves both records intact and is undone by removing one entry. Merging records — which would
-rewrite checkout ownership — is still never done automatically.
 
 See [Docker and process metrics](#docker-and-process-metrics) for what Docker/Compose and process
 collection cover today, including the host-port merge limitation on Docker Desktop for macOS.

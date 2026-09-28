@@ -7,7 +7,7 @@ These docs are for people installing and using the roborepo package.
 | I need to... | Read |
 | --- | --- |
 | Install roborepo | [First-Time Setup](guides/first-time-setup.md) |
-| Use roborepo day to day | [Setup and Daily Use](guides/setup-and-daily-use.md) |
+| Use roborepo day to day | [Daily Use](guides/setup-and-daily-use.md) |
 | Understand install/update choices | [Install Workflows](guides/install-workflows.md) |
 | Use the CLI | [roborepo CLI Commands](reference/roborepo-cli.md) |
 | Understand exact install collision behavior | [Config Collision Handling](reference/config-collision-handling.md) |

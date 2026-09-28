@@ -74,6 +74,17 @@ The panel renders these sections:
   with a delete control, above the shipped defaults collapsed behind a count. Delete reverts to
   the manifest default, or removes the entry outright when it was user-added and has no default.
 
+## Happy Path
+
+1. Run `roborepo web` to open the `/config` portal (or run `roborepo package manage`
+   in a terminal).
+2. The panel shows the current state of each section.
+3. Toggle a package, skill, or telemetry switch. The change is written to your live harness config
+   and the panel refreshes.
+4. To change permissions, set a named behavior or arbitrary command to `deny`, `ask`, `allow`, or
+   `default`.
+5. Changes take effect the next time the agent harness starts a session.
+
 ## Where Changes Go
 
 Every change writes your **live** harness config (`~/.claude`, `~/.codex`, `~/.gemini`), never the
@@ -173,17 +184,6 @@ a permission.
 Changes to the fixed path allowlist take effect after the next render (`roborepo update`, or a
 permission change in the panel); the repository boundary is checked on every tool call, so it needs
 no render.
-
-## Happy Path
-
-1. Run `roborepo web` to open the `/config` portal (or run `roborepo package manage`
-   in a terminal).
-2. The panel shows the current state of each section.
-3. Toggle a package, skill, or telemetry switch. The change is written to your live harness config
-   and the panel refreshes.
-4. To change permissions, set a named behavior or arbitrary command to `deny`, `ask`, `allow`, or
-   `default`.
-5. Changes take effect the next time the agent harness starts a session.
 
 ## Required Rules
 

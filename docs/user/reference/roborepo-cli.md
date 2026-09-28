@@ -52,7 +52,7 @@ run `roborepo harness refresh`.
 
 | Command | What it does |
 | --- | --- |
-| `roborepo update [--dry-run] [--verbose]` | Re-applies harness config on this machine: copied files, rendered rules, root config, command install, and shell wiring. Use after pulling repo changes or upgrading the package; `--verbose` includes unchanged items in the report. |
+| `roborepo update [--dry-run] [--verbose] [--on-conflict keep\|overwrite\|abort]` | Re-applies harness config on this machine: copied files, rendered rules, root config, command install, and shell wiring. Use after pulling repo changes or upgrading the package; `--verbose` includes unchanged items in the report. `--on-conflict` sets the [collision policy](../guides/install-workflows.md#collision-policy). |
 | `roborepo version` | Prints the package version and the directories RoboRepo runs from. |
 | `roborepo config status` | Shows enabled behaviors and packages. |
 | `roborepo config root inspect` | Read-only report of each harness root config (`~/.claude/settings.json`, `~/.codex/config.toml`): baseline vs. active file and its drift state — `in sync`, `drifted` (edited since roborepo's last write), `staged update pending`, or untracked. |
@@ -75,12 +75,10 @@ From a development checkout, two more commands render generated files after you 
 
 | Command | What it does |
 | --- | --- |
-| `roborepo uninstall [--dry-run] [--yes] [--delete-workspace]` | Removes RoboRepo-managed harness configuration and machine-local state. Your workspace is preserved by default. `--dry-run` previews without changing anything; `--yes` is required to run destructively without a TTY; `--delete-workspace` also removes `~/.roborepo/workspace`. |
+| `roborepo uninstall [--dry-run] [--yes] [--delete-workspace]` | Removes RoboRepo-managed harness configuration and machine-local state, then (in package mode) the npm package. `~/.roborepo/workspace` is preserved by default. `--dry-run` previews without changing anything; `--yes` is required to run destructively without a TTY; `--delete-workspace` also removes `~/.roborepo/workspace`. |
 
-Removal has two owners. In package mode, `roborepo uninstall` removes what RoboRepo created and then
-runs npm against the prefix that contains the current `roborepo` binary. Removing the npm package
-alone leaves your RoboRepo configuration in place. See
-[install-workflows.md](../guides/install-workflows.md#uninstall) for the full ownership model.
+Run `roborepo uninstall` rather than `npm uninstall`: removing the npm package alone leaves your
+RoboRepo configuration in place. See [Uninstall](../guides/install-workflows.md#uninstall).
 
 ## Packages
 

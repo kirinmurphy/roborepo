@@ -118,13 +118,10 @@ you turned off.
 ## Platform Support
 
 macOS and Linux are the primary platforms and share the same install path. Windows has its own
-PowerShell installer (`scripts/install/install-windows.ps1`) covering all three harnesses.
-
-On Windows, `~` means `%USERPROFILE%`, so Claude Code reads `%USERPROFILE%\.claude`, and Codex and
-Gemini read `%USERPROFILE%\.codex` and `%USERPROFILE%\.gemini`.
+PowerShell installer covering all three harnesses — see [Windows](../first-time-setup.md#windows).
 
 ## Where to Go Next
 
 - [First-Time Setup](../first-time-setup.md) — install roborepo and put it on your `PATH`
-- [Setup and Daily Use](../setup-and-daily-use.md) — day-to-day workflows
+- [Daily Use](../setup-and-daily-use.md) — day-to-day workflows
 - [Harness Provider Interface](../../../internal/harness-provider-interface.md) — add support for a new harness

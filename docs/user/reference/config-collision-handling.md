@@ -58,6 +58,9 @@ The merge never discards local settings: it keeps every local value and adds rep
 Under `keep`, a drifted file stays drifted, so `roborepo config root inspect` keeps reporting it;
 repeated updates stage the candidate only once while it is unchanged.
 
+The merge also removes a top-level `model` key from Claude's global `settings.json`, so global
+harness config never overrides the harness default or your per-session model choice.
+
 The installer records the merged active file after it writes it, so later drift reports are based on
 the current state of the file.
 
@@ -95,10 +98,6 @@ personal overrides in a profile that roborepo never touches.
 managed > CLI args > project local > project > user). There is no roborepo-provided substitute;
 Claude users manage personal root-config changes in `~/.claude/settings.json` directly and rely on
 drift detection to be told, honestly, when an update would collide.
-
-Claude global `settings.json` must not pin a `model`. Roborepo removes a top-level `model` key
-during install/update merges and JS-side root-config writes so global harness config does not
-override harness defaults or per-session user choice.
 
 ## Merge Prompt Behavior
 

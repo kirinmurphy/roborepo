@@ -7,6 +7,13 @@ project.
 Use native Claude/Codex commands when the action is harness-specific, such as plugin marketplace
 management, plugin enable/disable state, updates, validation, or one-session plugin loading.
 
+## Terms
+
+- `global` means installed machine state: `~/.roborepo/skills`, `~/.claude/skills`, and
+  `~/.codex/skills`.
+- `project` means the current repo or worktree.
+- The CLI namespace is singular: `roborepo skill`.
+
 ## Command Reference
 
 | Command | What it does |
@@ -91,10 +98,3 @@ should become shared and version-controlled, run:
 ```sh
 roborepo skill adopt <name>
 ```
-
-## Naming Rules
-
-- `global` means installed machine state: `~/.roborepo/skills`, `~/.claude/skills`, and
-  `~/.codex/skills`.
-- `project` means the current repo or worktree.
-- The CLI namespace is singular: `roborepo skill`.
