@@ -13,6 +13,7 @@ pass=0
 fail=0
 quiet=0
 cfg_srv=""
+cfg_guard=""
 
 # --quiet|-q : suppress per-test "ok:" lines; still print every FAIL + the summary.
 for arg in "$@"; do
@@ -34,6 +35,9 @@ cleanup() {
   local status=$?
   if [[ -n "${cfg_srv:-}" ]]; then
     kill "${cfg_srv}" 2>/dev/null || true
+  fi
+  if [[ -n "${cfg_guard:-}" ]]; then
+    kill "${cfg_guard}" 2>/dev/null || true
   fi
   chmod -R u+rwx "${work}" 2>/dev/null || true
   rm -rf "${work}" 2>/dev/null || true
@@ -776,6 +780,11 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" PORTAL_READY_FILE="${cfg_ready}" \
     node "${cli}" web --no-open --port 0 --allow-zero-port >"${cfg_home}/portal.log" 2>&1 &
   cfg_srv=$!
+  # The EXIT trap stops the server on every exit it gets to run on, but a SIGKILLed suite (the usual
+  # timeout enforcement in CI and agent harnesses) runs no trap and would orphan it. The watchdog
+  # survives the suite and stops the server once this shell is gone.
+  "${repo_root}/scripts/test/lib/kill-when-orphaned.sh" "$$" "${cfg_srv}" </dev/null >/dev/null 2>&1 &
+  cfg_guard=$!
   cfg_port=""
   for _ in $(seq 1 50); do
     if [[ -f "${cfg_ready}" ]]; then
