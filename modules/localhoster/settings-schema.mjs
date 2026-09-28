@@ -97,7 +97,9 @@ export function normalizeMatch(match) {
 }
 
 export function safeIdentity(value) {
-  if (typeof value !== "string" || !/^(git|path|process|builtin):/.test(value)) throw new Error("invalid project identity");
+  // roborepo: identities name the portal itself; compose: identities name Docker Compose groups.
+  // Both are first-class localhoster projects, alongside checkout and process identities.
+  if (typeof value !== "string" || !/^(git|path|process|builtin|roborepo|compose):/.test(value)) throw new Error("invalid project identity");
   return value;
 }
 
