@@ -51,21 +51,13 @@ The first `roborepo web` also runs one-time machine setup. After that, use eithe
 
 ## Portal
 
-```text
-RoboRepo
-├── Agents
-├── Plans
-├── Localhoster
-└── Tokens
-```
-
-<!-- Screenshot: full portal / navigation -->
-
 The portal runs locally on your machine.
 
 ```sh
 roborepo web
 ```
+
+![The portal home page: navigation and the four areas — Agents, Plans, Tokens, and Localhost](docs/images/portal-home.png)
 
 ---
 
@@ -83,8 +75,6 @@ Repository-aware data can include:
 | Dirty state    | Health       | Agent configuration |
 | Ahead / behind | Docker       | Token activity      |
 | Worktrees      | CPU / memory | Sessions            |
-
-<!-- Screenshot: repository-aware Localhoster card -->
 
 ### Coming soon
 
@@ -136,7 +126,7 @@ sequenceDiagram
   Scan->>Portal: Publish repository-aware apps
 ```
 
-<!-- Screenshot: Localhoster -->
+![Localhoster listing two running apps, each tied to its GitHub repository and branch](docs/images/localhoster.png)
 
 [Localhoster reference →](docs/user/reference/localhoster.md)
 
@@ -172,7 +162,7 @@ flowchart LR
   Backlog -->|archive| Archived
 ```
 
-<!-- Screenshot: Plans portal -->
+![The Plans page: lifecycle tabs and a plan card with priority, review state, and workflow actions](docs/images/plans.png)
 
 [Plan Docs walkthrough →](docs/user/guides/plan/lifecycle/plan-docs.md)  
 [Plans reference →](docs/user/reference/plans-portal.md)
@@ -204,7 +194,7 @@ Automatic helpers:
 | `supabase-integration-testing` | Real Supabase integration tests      |
 | `test-harness`                 | Choosing and validating test runs    |
 
-<!-- Screenshot: Agents / Config -->
+![A package section on the Agents page: slash-command skills with token costs and on/off toggles](docs/images/agents-config.png)
 
 [Config control panel →](docs/user/reference/config-control-panel.md)  
 [Supported harnesses →](docs/user/guides/harnesses/supported-harnesses.md)
@@ -239,7 +229,7 @@ flowchart LR
   Portal -->|shows| Compare["Before / After"]
 ```
 
-<!-- Screenshot: Tokens portal -->
+![The Tokens page: identifiable waste this week and all time, and a ranked action item](docs/images/tokens.png)
 
 [Telemetry walkthrough →](docs/user/guides/telemetry.md)
 
@@ -253,18 +243,7 @@ flowchart LR
 roborepo
 ```
 
-```text
-roborepo
-├── init
-├── web
-├── library
-├── localhoster
-├── package
-├── skill
-├── telemetry
-├── harness
-└── doctor
-```
+![The roborepo main menu, grouped into setup, Agent Config, Support, and Navigation](docs/images/cli-menu.png)
 
 The README covers common entry points. See the reference for the full command surface.
 

@@ -18,7 +18,10 @@ and MCP server registrations. Each one stores them in a *different file, format,
 
 roborepo keeps one version-controlled source of truth for that configuration and renders it into
 whatever native form each harness expects. You edit rules once; Claude gets `~/.claude/CLAUDE.md`,
-Codex gets `~/.codex/AGENTS.md`, Gemini gets `~/.gemini/GEMINI.md`.
+Codex gets `~/.codex/AGENTS.md`, Gemini gets `~/.gemini/GEMINI.md`. The Agents page in the portal
+shows each harness's native files side by side:
+
+![The Agents page file grid: startup token cost, rules, config, and hooks files for Claude Code and Codex](../../../images/harness-files.png)
 
 The word "harness" is roborepo's term for the tool. "Provider" is the code inside roborepo that
 knows how to talk to one — see the interface guide for that distinction.
