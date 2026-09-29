@@ -6,7 +6,7 @@
   "usage": "roborepo runtime [--json] [--open]",
   "execution": {
     "adapter": "module",
-    "module": "scripts/cli/runtime.mjs",
-    "export": "runtimeCommand"
+    "module": "scripts/cli/developer-runtime.mjs",
+    "export": "developerRuntimeCommand"
   }
 }

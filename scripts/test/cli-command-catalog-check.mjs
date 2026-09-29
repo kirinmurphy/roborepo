@@ -25,6 +25,19 @@ for (const { tokens, node } of executableNodes) {
   assert.ok(node.execution.adapter, `${tokens.join(" ")} has execution adapter`);
 }
 
+// A module-adapter command must point at a file that exists and exports the named function. Without
+// this, renaming a CLI module leaves its manifest dangling and the command fails only when run.
+for (const { tokens, node } of executableNodes) {
+  const { adapter, module: modulePath, export: exportName } = node.execution;
+  if (adapter !== "module") continue;
+  const label = `roborepo ${tokens.join(" ")}`;
+  const file = path.join(repoRoot, modulePath);
+  assert.ok(fs.existsSync(file), `${label}: execution.module does not exist: ${modulePath}`);
+  const source = fs.readFileSync(file, "utf8");
+  const exported = new RegExp(`export\\s+(?:async\\s+)?(?:function\\s*\\*?\\s*|const\\s+|let\\s+|var\\s+|class\\s+)${exportName}\\b|export\\s*\\{[^}]*\\b${exportName}\\b[^}]*\\}`);
+  assert.ok(exported.test(source), `${label}: ${modulePath} does not export ${exportName}`);
+}
+
 const rootHelp = renderHelp(catalog);
 assert.match(rootHelp, /Primary commands:/);
 assert.doesNotMatch(rootHelp, /skill render-commands/);
