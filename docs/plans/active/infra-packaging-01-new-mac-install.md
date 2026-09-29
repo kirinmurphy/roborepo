@@ -508,7 +508,7 @@ uninstall must not be treated as permission to delete personal workspace content
       **Both descoped 2026-08-22.** npm is the primary workflow and that machine is npm-only for
       now. Coexistence is a real question, but it is not this plan's — it belongs to whoever first
       puts a development checkout on a package-installed machine, and answering it now would mean
-      creating the very state the clean baseline exists to avoid. `docs/user/guides/infra/root-domains.md`
+      creating the very state the clean baseline exists to avoid. `docs/internal/root-domains.md`
       documents the intended contract; verifying it moves to that future work.
 - [x] Record actual results, known provider-specific findings, and anything not verified in this
       plan's final `Verification` section before completion. **Done 2026-08-24.** The Phase 4 table

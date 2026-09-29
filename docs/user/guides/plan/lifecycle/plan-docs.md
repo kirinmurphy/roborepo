@@ -24,6 +24,17 @@ There are two pieces:
 The Plans page works even when the optional package is disabled. Enabling Plan Docs adds workflow
 prompt buttons such as `/plan-docs start`, `/plan-docs sync`, `/plan-docs review`, and `/plan-docs handoff`.
 
+## Typical Workflow
+
+1. Run `roborepo web` and open `/plans`.
+2. Add a discovery root.
+3. Open a plan and check warnings, tasks, blockers, and review state.
+4. Enable /plan-docs workflows if not already enabled.
+5. Copy `/plan-docs start` for the chosen plan.
+6. Let the agent verify the plan against the repo before changing files.
+7. After work, copy `/plan-docs sync` or run `/plan-docs sync` directly.
+8. Use `/plan-docs review` when you think the plan is complete.
+
 ## Open The Plans Page
 
 Start the local portal:
@@ -55,13 +66,15 @@ Examples:
 ~/src/specific-repo
 ```
 
-The scanner checks the root itself and one level of child directories. It looks for:
+The scanner walks each root up to 6 levels deep and treats the first folder containing `.git` or
+`docs/plans` as a repository. Inside each repository it reads:
 
 ```text
 docs/plans/**/*.md
 ```
 
-It does not recursively scan your whole home directory by default.
+Hidden folders and common build folders (`node_modules`, `dist`, `build`, and similar) are skipped.
+See [Discovery](../../../reference/plans-portal.md#discovery) for the exact limits.
 
 ## Plan File Layout
 
@@ -161,22 +174,13 @@ Common modes:
 /plan-docs handoff   prepare a next-chat handoff
 ```
 
-## Typical Workflow
-
-1. Run `roborepo web` and open `/plans`.
-2. Add a discovery root.
-3. Open a plan and check warnings, tasks, blockers, and review state.
-4. Enable /plan-docs workflows if not already enabled.
-5. Copy `/plan-docs start` for the chosen plan.
-6. Let the agent verify the plan against the repo before changing files.
-7. After work, copy `/plan-docs sync` or run `/plan-docs sync` directly.
-8. Use `/plan-docs review` when you think the plan is complete.
-
 ## Current Limits
 
-- The portal is read-only for plan files.
-- File moves between lifecycle folders happen through agent workflows, not browser buttons.
+- The portal edits plan files in only two ways: changing a plan's `priority`, and moving a plan
+  between lifecycle folders. All other plan edits happen in your editor or through agent workflows.
+- A move into a lifecycle whose requirements the plan does not meet is rejected with a list of
+  what is missing. **Move anyway** files it regardless.
 - Manual refresh is the v1 update model.
 - No database, daemon, cloud sync, direct editor, or automatic LLM prioritization is included.
 
-See [Plans Portal Technical Reference](../../../reference/plans-portal.md) for implementation details.
+See [Plans Portal Reference](../../../reference/plans-portal.md) for exact behavior.

@@ -17,6 +17,7 @@ import {
   parseLsofFieldOutput,
   probeHttpCandidate,
   resolveProjectIdentity,
+  resolveProjectAlias,
   settingsPathFor,
   updateSettings,
   validateSettings,
@@ -194,6 +195,8 @@ try {
   assert.deepEqual(renamed.projects["git:github.com/kirinmurphy/visa_planner"].apps.web.match.title, ["Visa Planner"]);
   assert.equal(renamed.projects["git:github.com/kirinmurphy/visa_planner"].apps.web.originPreference, "127.0.0.1");
   assert.ok(fs.existsSync(settingsPathFor(stateRoot)));
+  assert.equal(resolveProjectAlias({}, "compose:my_stack"), "compose:my_stack");
+  assert.equal(resolveProjectAlias({}, "roborepo:portal"), "roborepo:portal");
   assert.throws(() => updateSettings({ stateRoot, input: { revision: 1, type: "project", projectIdentity: "git:github.com/x/y", name: "Y" } }), /revision conflict/);
   assert.throws(() => validateSettings({ version: 2, revision: 1, projects: {}, associations: {}, aliases: {}, composeProjects: {}, preferences: { showNonHttp: false, historyRetentionDays: 14 }, future: true }), /unknown/);
   assert.throws(() => validateSettings({ version: 2, revision: 1, projects: { "git:github.com/x/y": { apps: { web: { links: [{ id: "x", label: "X", path: "/x" }, { id: "x", label: "X2", path: "/x2" }] } } } }, associations: {}, aliases: {}, composeProjects: {}, preferences: { showNonHttp: false, historyRetentionDays: 14 } }), /duplicate/);

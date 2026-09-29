@@ -87,6 +87,26 @@ timestamped_path() {
   esac
 }
 
+# Newest existing <name>_<tag>_<timestamp><ext> sibling of a file, or nothing. Timestamps sort
+# lexically, so the last glob match is the newest.
+latest_timestamped_sibling() {
+  local path="$1"
+  local tag="$2"
+  local dir base name ext match latest=""
+
+  dir="$(dirname "${path}")"
+  base="$(basename "${path}")"
+  case "${base}" in
+    *.*) name="${base%.*}"; ext=".${base##*.}" ;;
+    *) name="${base}"; ext="" ;;
+  esac
+  for match in "${dir}/${name}_${tag}_"*"${ext}"; do
+    [[ -f "${match}" ]] && latest="${match}"
+  done
+  [[ -n "${latest}" ]] && echo "${latest}"
+  return 0
+}
+
 copy_tree() {
   local src="$1"
   local dest="$2"
@@ -747,13 +767,22 @@ export_user_config() {
   fi
 
   # Honor --on-conflict abort for root configs too. A genuine collision is a real local file the
-  # user already had (not absent, not one of roborepo's own repo symlinks). The layered-merge path
-  # is otherwise non-destructive, but the documented abort contract is "stop before writing
-  # anything" (docs/user/reference/config-collision-handling.md, root-config-layered-inheritance),
-  # so we bail before mutating instead of silently merging.
-  if [[ "${ROBOREPO_ON_CONFLICT:-}" == "abort" && -e "${home_path}" && ! -L "${home_path}" ]]; then
-    echo "abort: install canceled by user" >&2
-    exit 1
+  # user already had or edited (drift status "unwritten" or "drifted") that the merge would change.
+  # A clean file is only receiving a baseline update, which is not a conflict. The documented abort
+  # contract is "stop before writing anything" (docs/user/reference/config-collision-handling.md),
+  # so we bail before mutating instead of silently merging. Matches abortOnConflict in presets.mjs.
+  if [[ "${ROBOREPO_ON_CONFLICT:-}" == "abort" && -f "${home_path}" && ! -L "${home_path}" ]]; then
+    local abort_status abort_tmp
+    abort_status="$(root_config_drift_status "${harness}" "${home_path}")"
+    if [[ "${abort_status}" == "drifted" || "${abort_status}" == "unwritten" ]]; then
+      abort_tmp="$(mktemp "${home_path}.abortcheck.XXXXXX")"
+      if ! node "${merge_helper}" "${harness}" "${src}" "${home_path}" "${abort_tmp}" || ! cmp -s "${abort_tmp}" "${home_path}"; then
+        rm -f "${abort_tmp}"
+        echo "abort: install canceled by user (${home_path} conflicts with the repo version; this file was not changed)" >&2
+        exit 1
+      fi
+      rm -f "${abort_tmp}"
+    fi
   fi
 
   # Drift-aware collision routing (docs/plans/completed/root-config-layered-inheritance.md, and
@@ -774,6 +803,14 @@ export_user_config() {
     if [[ "${drift_status}" == "drifted" ]]; then
       case "${ROBOREPO_ON_CONFLICT:-}" in
         keep)
+          # The JS bundle apply may already have staged this exact candidate earlier in the same
+          # install; don't pile up a duplicate per run.
+          local staged
+          staged="$(latest_timestamped_sibling "${home_path}" update)"
+          if [[ -n "${staged}" ]] && cmp -s "${staged}" "${src}"; then
+            say ok "${home_path} ${RR_DIM}(drifted local root config kept; candidate already staged as $(basename "${staged}"))${RR_RESET}"
+            return 0
+          fi
           stage_update_item "${repo_rel}" "${home_path}"
           say ok "${home_path} ${RR_DIM}(drifted local root config kept; candidate staged as *_update_*)${RR_RESET}"
           return 0

@@ -6,9 +6,8 @@ The `skill-visibility` package renders one line at the end of a response:
 > 🧩 **Skills loaded:** plan-docs, technical-writing
 ```
 
-That line was self-reported for its whole life, and it carried the weakness in its own rule text:
-an agent that skipped a required reference is exactly the agent that will not report having
-skipped it. This document describes the hook that replaced recall with observation, the one
+A `PostToolUse` hook tells the agent which skill references it actually read, so the line reports
+observed reads rather than the agent's recall. This document describes that hook, the one
 assumption it rests on, and how to re-check that assumption when the harness changes.
 
 ## How it works

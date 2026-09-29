@@ -21,11 +21,8 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 # Known harness ids and their Windows home roots. Not yet derived from the Node provider registry
 # (scripts/harnesses/) the way the bash installers are (see harness_detected_rows in
-# scripts/lib/manifests-data.sh) — Claude's Windows home (%APPDATA%\Claude) is an absolute
-# environment-variable path, not `~`-relative like every other platform, and
-# scripts/harnesses/paths.mjs's expandHome() has no token for that yet. Modeling it properly needs
-# a provider-manifest schema change (a platforms.win32 path override plus a new path-expansion
-# form), tracked as follow-up work rather than bundled into this iteration-only pass. See
+# scripts/lib/manifests-data.sh). Every harness home is `~`-relative on Windows too (Claude Code
+# reads %USERPROFILE%\.claude), so deriving this list from the manifests is follow-up work. See
 # docs/plans/active/discoverable-harness-provider-architecture-plan.md Phase 4.
 $KnownHarnessIds = @("claude", "codex", "gemini")
 $adoptRootConfig = @{
@@ -35,12 +32,12 @@ $adoptRootConfig = @{
 }
 
 # Kept in sync with globals/harnesses/*/provider.json by scripts/test/windows-installer-check.ps1,
-# which fails CI if a provider is added there without being handled here. Codex and Gemini use
-# plain ~/-relative homes that match their manifests directly; only Claude diverges on Windows.
+# which fails CI if a provider is added there without being handled here. Every home is
+# ~/-relative, matching the manifests directly.
 function Resolve-ManifestHomeRoot {
   param($HomeRoot)
   switch ($HomeRoot) {
-    "claude" { return (Join-Path $env:APPDATA "Claude") }
+    "claude" { return (Join-Path $env:USERPROFILE ".claude") }
     "codex"  { return (Join-Path $env:USERPROFILE ".codex") }
     "gemini" { return (Join-Path $env:USERPROFILE ".gemini") }
     default { throw "manifest: unknown home_root '$HomeRoot'" }

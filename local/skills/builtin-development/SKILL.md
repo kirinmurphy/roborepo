@@ -32,9 +32,10 @@ schema, resource-type validation depth, apply/reconcile behavior, and the comple
 
 | Question | Doc |
 |----------|-----|
-| Symlink map, sync flow, two skill layers, client utilities | `docs/user/reference/architecture.md` |
+| Symlink map, sync flow | `docs/user/reference/architecture.md` |
+| Shared vs. internal skill layers | `docs/internal/skills-and-commands.md` |
 | The current `roborepo` CLI surface | `docs/user/reference/roborepo-cli.md`, `manifests/platform/cli/command-definitions/**`, `manifests/platform/cli/removed.json` |
-| Detailed CLI internals and install/PATH notes | `docs/user/reference/roborepo.md` |
+| Detailed CLI internals | `docs/internal/cli-internals.md` |
 | Conflict / collision behavior on install | `docs/user/reference/config-collision-handling.md` |
 | Rules generation + layering | `docs/internal/rules-parity-and-layering.md` |
 | Skill/command mechanisms and trigger fixtures | `docs/internal/skills-and-commands.md`, `docs/user/reference/roborepo-skills.md` |

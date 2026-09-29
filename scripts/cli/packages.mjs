@@ -102,7 +102,7 @@ function parseCreateArgs(rest) {
   }
   const id = positional[0] || flags.get("id") || flags.get("name");
   if (!/^[a-z0-9][a-z0-9-]*$/.test(String(id || ""))) {
-    console.error("usage: roborepo package create <id> [--kind=empty|auto-skill|skill-command|standalone-command] [--description=<text>] [--default-enabled=true]");
+    console.error("usage: roborepo package dev create <id> [--kind=empty|auto-skill|skill-command|standalone-command] [--description=<text>] [--default-enabled=true]");
     process.exit(2);
   }
   return {

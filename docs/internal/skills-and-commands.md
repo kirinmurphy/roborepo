@@ -233,3 +233,18 @@ Memory is per-machine, per-session, written continuously at runtime, and has no
 stable export contract. roborepo does not manage, sync, or carry memory across
 machines. `roborepo update` does not restore memory. This is a deliberate stance
 (Defer), not a gap.
+
+## Two Skill Layers: Shared vs. Internal
+
+There are two distinct, firewalled skill layers:
+
+- **Shared** — package-owned `globals/packages/<package>/skills/<name>/` plus the required system
+  `globals/system/skills/builtin-support/`. Materialized into `~/.roborepo/skills/<name>` and
+  symlinked from each installed harness's native skills dir at install/update time; global on both
+  harnesses and exportable to other repos when package-owned. Advisory coding skills any repo may
+  receive.
+- **Internal** — `local/skills/<name>/`, linked **only** into this repo's own project-scope
+  dotdirs (`.claude/skills`, `.codex/skills`) by `link-skills.sh`. These describe how to
+  develop/maintain this repo and are **never** global and **never** exported. The separation is
+  structural: the export/installer tools read package-owned and system shared skill sources, with
+  no code path to `local/skills/`.

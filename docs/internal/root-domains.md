@@ -107,10 +107,10 @@ machine has one workspace and one set of settings no matter which copy runs.
 
 ```mermaid
 flowchart TD
-  PKG["roborepo<br/>(installed)"] --> WS["~/.roborepo/workspace"]
-  DEV["./bin/roborepo<br/>(checkout)"] --> WS
-  PKG --> ST["~/.roborepo<br/>settings"]
-  DEV --> ST
+  PKG["roborepo<br/>(installed)"] -->|uses| WS["~/.roborepo/workspace"]
+  DEV["./bin/roborepo<br/>(checkout)"] -->|uses| WS
+  PKG -->|uses| ST["~/.roborepo<br/>settings"]
+  DEV -->|uses| ST
 ```
 
 ```console
@@ -154,9 +154,9 @@ Git worktree the two entry points diverge:
 ```mermaid
 flowchart LR
   G["roborepo<br/>(anywhere)"] -->|symlink| MAIN["main checkout<br/>bin/roborepo"]
-  W["./bin/roborepo<br/>(inside worktree)"] --> WT["worktree<br/>bin/roborepo"]
-  MAIN --> MC["main's code"]
-  WT --> WC["your branch's code"]
+  W["./bin/roborepo<br/>(inside worktree)"] -->|is| WT["worktree<br/>bin/roborepo"]
+  MAIN -->|runs| MC["main's code"]
+  WT -->|runs| WC["your branch's code"]
 ```
 
 So testing a branch requires `./bin/roborepo` from inside that worktree. Typing `roborepo` there
@@ -214,12 +214,12 @@ flowchart LR
 ## Edge cases
 
 **Upgrading the package.** The npm directory is version-specific, so harness symlinks pointing at
-the old one go stale. `install-state.json` records the previous install root so `repair` and
+the old one go stale. `install-state.json` records the previous install root so `maintenance repair` and
 `uninstall` can reclaim those links. Its value is expected to be out of date — that is what makes
 reclaim possible.
 
 ```sh
-roborepo repair
+roborepo maintenance repair
 ```
 
 **Shared workspace, two machines.** `stateRoot` is machine-local. Point both machines at one synced

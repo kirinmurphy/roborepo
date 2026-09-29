@@ -20,7 +20,7 @@ Optional packages now live under `globals/packages/<package-id>/package.config.j
 Skill invocation policy and slash-command entrypoints are declared inside the owning package,
 not in separate inventory manifests.
 
-`roborepo skill new` and `roborepo package create` write package directories. The remaining
+`roborepo skill new` and `roborepo package dev create` write package directories. The remaining
 inventory files are hand-edited shared registries.
 
 After editing any file here, run `roborepo doctor` (and `roborepo permissions --check` /

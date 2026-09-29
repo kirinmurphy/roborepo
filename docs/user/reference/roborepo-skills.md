@@ -1,18 +1,25 @@
-# roborepo Skills Interface
+# RoboRepo Skills Interface
 
 `roborepo skill` is the parity-managed skills interface. Use it when a skill or command should be
-shared through roborepo source, installed into every harness that supports skills, or exported into a
+shared through RoboRepo source, installed into every harness that supports skills, or exported into a
 project.
 
 Use native Claude/Codex commands when the action is harness-specific, such as plugin marketplace
 management, plugin enable/disable state, updates, validation, or one-session plugin loading.
+
+## Terms
+
+- `global` means installed machine state: `~/.roborepo/skills`, `~/.claude/skills`, and
+  `~/.codex/skills`.
+- `project` means the current repo or worktree.
+- The CLI namespace is singular: `roborepo skill`.
 
 ## Command Reference
 
 | Command | What it does |
 | --- | --- |
 | `roborepo skill new` | Scaffolds a shared automatic helper, skill-backed slash command, or standalone slash command. |
-| `roborepo skill adopt <name>` | Moves an unmanaged native skill from `~/.codex/skills` or `~/.claude/skills` into shared roborepo source. |
+| `roborepo skill adopt <name>` | Moves an unmanaged native skill from `~/.codex/skills` or `~/.claude/skills` into shared RoboRepo source. |
 | `roborepo skill sync-global` | Refreshes `~/.roborepo/skills` and the installed harness skill views from shared skill source. |
 | `roborepo skill inspect <name>` | Reports source, ownership, managed marker/cache state, native collision state, harness install state, frontmatter, context files, and native-only metadata. |
 | `roborepo skill export-to-project` | Copies shared skills into the current project and leaves a shareable zip bundle. |
@@ -71,7 +78,7 @@ the repo changes skill descriptions or invocation policy.
 
 ## Native Escape Hatch
 
-`roborepo skill native` is a guide, not a wrapper. It prints the static roborepo decision rule plus
+`roborepo skill native` is a guide, not a wrapper. It prints the static RoboRepo decision rule plus
 a short curated summary of the native surfaces. Run `roborepo skill native --full` when you need the
 installed CLIs' exact current help:
 
@@ -81,9 +88,8 @@ codex plugin --help
 codex plugin marketplace --help
 ```
 
-The default output is intentionally short and stable. `--full` queries the native CLIs live and
-prints fallback examples for any unavailable section. The docs intentionally avoid freezing the full
-native command catalog because Claude and Codex own those interfaces.
+The default output is short and stable. `--full` queries the native CLIs live and prints fallback
+examples for any unavailable section.
 
 Use native commands for harness-specific marketplace state and plugin lifecycle. If a native skill
 should become shared and version-controlled, run:
@@ -91,10 +97,3 @@ should become shared and version-controlled, run:
 ```sh
 roborepo skill adopt <name>
 ```
-
-## Naming Rules
-
-- `global` means installed machine state: `~/.roborepo/skills`, `~/.claude/skills`, and
-  `~/.codex/skills`.
-- `project` means the current repo or worktree.
-- The CLI namespace is singular: `roborepo skill`.

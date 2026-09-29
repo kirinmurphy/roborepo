@@ -1,7 +1,7 @@
 ---
 id: k8mngttv
 priority: high
-next_action: Resolve Phase 1 token-metric scope, then implement shared observation normalization and condition evaluability before aggregation and portal work
+next_action: Review the verified codex/telemetry-tokens-conditions-report implementation and integrate through the normal plan lifecycle
 blocked_by: []
 depends_on: []
 related:
@@ -324,12 +324,11 @@ attribution.
 
 ### 5. Relative model metrics
 
-**Pending product decision:** current captures support session totals but not reliably
-attributable per-flow usage. Recommendation: ship clearly labeled session metrics in Phase 1,
-with flow metrics only where directly attributable usage exists. Alternative: expand capture
-and its schema to guarantee the required flow usage before shipping Phase 1. The flow-specific
-requirements below describe the intended surface when supported; they are not a license to
-reinterpret cumulative session counters. Resolve this choice before implementation.
+**Resolved during implementation:** ship clearly labeled session metrics using the latest
+unambiguous cumulative counters, with valid/eligible coverage. Existing captures do not provide
+directly attributable flow usage, so flow token metrics remain unavailable. This avoids expanding
+capture solely to manufacture a per-call metric. The flow-specific requirements below remain
+the intended surface when a future capture contract supports them.
 
 For each model with supported flow usage:
 
@@ -461,41 +460,41 @@ modules, keeping orchestration in existing entry points. New multi-element porta
 in HTML templates with data filled by JavaScript.
 
 
-- [ ] Add shared pure observation normalization / flow dedupe API
-- [ ] Add deterministic observation identity and fallback-identity metadata
-- [ ] Add condition evaluability + presence model; derive present / absent / unknown
-- [ ] Add deterministic token normalization + safe-integer validation
-- [ ] Add token coverage metadata (`eligible`, `valid`, `coverage`, state)
-- [ ] Analysis: per-event model/harness/repo join
-- [ ] Analysis: category roll-up with with/without/unknown cohorts, both known denominators,
+- [x] Add shared pure observation normalization / flow dedupe API
+- [x] Add deterministic observation identity and fallback-identity metadata
+- [x] Add condition evaluability + presence model; derive present / absent / unknown
+- [x] Add deterministic token normalization + safe-integer validation
+- [x] Add token coverage metadata (`eligible`, `valid`, `coverage`, state)
+- [x] Analysis: per-event model/harness/repo join
+- [x] Analysis: category roll-up with with/without/unknown cohorts, both known denominators,
       coverage, event floor, and observation-unit field
-- [ ] Analysis: relative model metrics using the approved unit and canonical usage records
-- [ ] Analysis: exact-vs-approximate model attribution coverage
-- [ ] Analysis: extend findings with condition context
-- [ ] Refactor existing portal/marker comparison logic to consume shared analysis semantics
-- [ ] Portal: Investigate condition lines + popup facts
-- [ ] Portal: condition report cards + popup, with cohort denominators, coverage, and overlap caveats
-- [ ] Portal: relative model metrics with token coverage
-- [ ] Portal: problem-only ledger with deterministic tie ordering
-- [ ] Mock: reconcile `portal/mockups/tokens-connectivity-vision.html` with supported data units and phases; replace its unsupported Phase 2 rules-content-change example
-- [ ] Tests: duplicate-flow token records do not double-count; unknown condition is not
+- [x] Analysis: relative model metrics using the approved unit and canonical usage records
+- [x] Analysis: exact-vs-approximate model attribution coverage
+- [x] Analysis: extend findings with condition context
+- [x] Refactor existing portal/marker comparison logic to consume shared analysis semantics
+- [x] Portal: Investigate condition lines + popup facts
+- [x] Portal: condition report cards + popup, with cohort denominators, coverage, and overlap caveats
+- [x] Portal: relative model metrics with token coverage
+- [x] Portal: problem-only ledger with deterministic tie ordering
+- [x] Mock: reconcile `portal/mockups/tokens-connectivity-vision.html` with supported data units and phases; replace its unsupported Phase 2 rules-content-change example
+- [x] Tests: duplicate-flow token records do not double-count; unknown condition is not
       baseline; safe-integer validation; partial/unavailable token coverage; category math;
       mixed-schema reads; mixed-model attribution state; raw event reordering does not change output
 
 ### Phase 2 — marker semantics + change rows
 
-- [ ] Version snapshot/marker extensions and support mixed-version reads; prove old records stay unknown where evidence is missing
-- [ ] Capture ambient context hash at SessionStart
-- [ ] Add ambient-change records with deterministic sequence / observed boundary
-- [ ] Markers: effective time, repo scope, watching-kinds, finding attachment
-- [ ] Analysis: marker verdict state machine through shared comparison layer
-- [ ] Analysis: condition + marker boundary comparison supported
-- [ ] Boundary tests: comparable sequence resolves same-timestamp ties; separate-store or backdated ties without ordering evidence stay ambiguous and are counted
-- [ ] Portal: Your changes, mark-change dialog, marker and ambient ledger rows
+- [x] Version snapshot/marker extensions and support mixed-version reads; prove old records stay unknown where evidence is missing
+- [x] Capture ambient context hash at SessionStart
+- [x] Add ambient-change records with deterministic sequence / observed boundary
+- [x] Markers: effective time, repo scope, watching-kinds, finding attachment
+- [x] Analysis: marker verdict state machine through shared comparison layer
+- [x] Analysis: condition + marker boundary comparison supported
+- [x] Boundary tests: comparable sequence resolves same-timestamp ties; separate-store or backdated ties without ordering evidence stay ambiguous and are counted
+- [x] Portal: Your changes, mark-change dialog, marker and ambient ledger rows
 
 ### Phase 3 groundwork only
 
-- [ ] Keep snapshot material backward-compatible so fingerprint data can be added by
+- [x] Keep snapshot material backward-compatible so fingerprint data can be added by
       `f0j4j8y2` without another report redesign
 
 ## Validation
@@ -581,8 +580,8 @@ coverage. These are implementation gates, not evidence that the feature already 
 
 ## Resolved / remaining questions
 
-- **Phase 1 token-metric scope (material, pending):** session metrics with supported-flow detail,
-  or expanded capture required before release. Recommendation and tradeoff are in section 5.
+- **Phase 1 token-metric scope (resolved):** session metrics; current persisted capture shapes
+  provide no supported directly attributable flow usage. See section 5 and the execution record.
 
 - **No-difference band and percent floor:** keep ±20% as a working visual band; only render
   percent deviation when the event/sample floor is satisfied. Confirm against real data.
@@ -594,3 +593,76 @@ coverage. These are implementation gates, not evidence that the feature already 
 - **Marker watching-kinds:** fixed vocabulary of spike, loop, read warning, over-testing.
 - **Accepted token payload shapes:** must be enumerated in the shared normalizer tests before
   Phase 1 is considered complete.
+
+
+## Execution record — 2026-09-16
+
+Implementation is complete in the isolated `codex/telemetry-tokens-conditions-report` branch.
+Base branch: `main`. Starting commit: `a95cc97c0128d392738ee09b87a06135e2b1dee1`.
+The configured worktree policy was reused. This document is synchronized in the primary and
+linked checkouts; its backlog location/lifecycle is unchanged. No commit, push, merge, or
+publication was performed.
+
+### Material decisions and delivery details
+
+1. **Token unit:** session-cumulative counters, chosen from the latest unambiguous observed
+   timestamp. Cache components contribute to input; provider total overrides remain explicit.
+   Missing/invalid/conflicting usage remains unavailable. No per-flow token estimate is invented.
+2. **Finding units:** spike, loop, and read-warning associations use one canonical session.
+   Existing detectors consume canonical flow representatives. Report-wide over-testing has no
+   supported session evidence and remains explicitly unavailable for boundary comparison.
+3. **Attribution and floors:** existing model evidence is approximate, never exact. Unknown or
+   conflicting models remain unknown. Percent deltas require 10 observations and 3 affected
+   observations in each cohort; the display band is ±20%; model metrics require 3 sessions.
+4. **Versioned evidence:** snapshot v2 includes evaluability and provider-aware ambient evidence
+   in identity; v1 identity and mixed reads remain supported. Marker v2 adds effective time,
+   canonical scope, watching kinds and finding attachment, preserving append/supersede history.
+5. **Ambient delivery boundary:** supported coarse evidence is configured package resource
+   types, explicitly named `configured-package-resource-types`. Snapshot-time hashes are read
+   into derived ledger records, partitioned by canonical repo and harness. Unknown evidence and
+   timestamp ties break transition chains. Skills-only/app-version changes produce no rows.
+   This does not claim to detect effective hook-body, permission-object, or same-ID file edits.
+6. **Ordering and extension:** spool source/order supplies display ties; separate-store marker
+   ties remain ambiguous unless a genuinely common sequence domain exists. Snapshot v2 carries
+   `revision_contract: 1`; the fingerprint follow-up must extend v2 with provider-aware revision
+   evidence and evaluability, never reinterpret missing historical revisions as absence.
+
+Unidentified captures remain available as fallback flows and are counted in data quality, but
+cannot enter session denominators. All conditions share the same pure normalization,
+evaluation and comparison helpers. Condition-plus-marker comparison is supported by the pure
+API. Category popups include raw rates and known/unknown coverage; model metrics show partial
+coverage; Investigate/session detail includes condition facts; Your changes provides recording
+and append-only corrections. The ledger initially shows 12 rows with an explicit show-all action.
+
+### Changed surfaces
+
+- Shared analysis: `scripts/cli/telemetry-observations.mjs`, `telemetry-conditions.mjs`,
+  `telemetry-boundaries.mjs`; integration in `telemetry-analyze.mjs`, `telemetry-compare.mjs`.
+- Capture/persistence: `telemetry-capture.mjs`, `telemetry-markers.mjs`,
+  `telemetry-schemas/{snapshot-schema,marker-schema,persistence}.mjs`.
+- I/O/cache/CLI: `telemetry.mjs`, including snapshot-only invalidation and
+  `roborepo telemetry report --conditions`; ordinary report output remains unchanged.
+- Portal: `portal/tokens2/{app.js,index.html,styles.css}` and the approved mockup.
+- Shared synthetic evidence: `telemetry-conditions-demo.mjs`, used by bundled mock and seed.
+- Verification: four new telemetry check suites, schema compatibility updates, three browser
+  cases, and user-guide documentation.
+
+### Verification and outcome
+
+- Full unit run: **110/110 suites passed**. The Docker clean-machine check reported its existing
+  skip because Docker is unavailable; no container validation is claimed.
+- Final focused telemetry run after review corrections: **22/22 suites passed**.
+- Portal browser run: **17/17 tests passed**, including actual light/dark themes, category popup
+  detail, session metric coverage, marker backdating, scope, watching kinds and edit supersession.
+- `bash scripts/doctor.sh --quiet`: **104 checks passed**.
+- `git diff --check`: passed.
+- Real isolated HTTP cache test: snapshot creation, content-only change and eviction refresh the
+  report and client version without a new capture.
+- Visual review: inspected rendered full-page light/dark screenshots; dense ledger defaults to
+  a bounded list with access to all rows.
+- Legacy report equality, duplicate mirrors, safe-integer limits, input reorder invariance,
+  mixed versions, same-name/unresolved repo handling, unknown coverage, boundary ties and
+  future revision unknown-state fixtures are covered.
+
+No implementation objectives are blocked. Exact file fingerprints remain the separate
+`f0j4j8y2` follow-up, as scoped from the outset. Changes are uncommitted for review.

@@ -37,9 +37,9 @@ Use this as the target ownership model. Each row should have one primary doc, wi
 | Semantic area | Primary doc | Supporting docs | Notes |
 | --- | --- | --- | --- |
 | First install | `docs/user/guides/first-time-setup.md` | `README.md`, `docs/user/guides/install-workflows.md`, `docs/user/guides/setup-and-daily-use.md` | First-time setup should stay short and point to install workflows for conflict details. |
-| Daily operations | `docs/user/guides/setup-and-daily-use.md` | `docs/user/reference/roborepo-cli.md`, `docs/user/reference/roborepo.md` | This should be workflow-oriented, not a full CLI reference. |
-| CLI command list | `docs/user/reference/roborepo-cli.md` | `docs/user/reference/roborepo.md`, `README.md` | `roborepo-cli.md` should be the compact user command table. |
-| CLI internals | `docs/user/reference/roborepo.md` | `docs/user/reference/roborepo-cli.md` | Keep implementation/module details here. Avoid duplicating the full user command table elsewhere. |
+| Daily operations | `docs/user/guides/setup-and-daily-use.md` | `docs/user/reference/roborepo-cli.md` | This should be workflow-oriented, not a full CLI reference. |
+| CLI command list | `docs/user/reference/roborepo-cli.md` | `README.md` | `roborepo-cli.md` should be the compact user command table. |
+| CLI internals | `docs/internal/cli-internals.md` | `docs/user/reference/roborepo-cli.md` | Keep implementation/module details here. Avoid duplicating the full user command table elsewhere. |
 | Install collision behavior | `docs/user/reference/config-collision-handling.md` | `docs/user/guides/install-workflows.md`, `docs/user/guides/first-time-setup.md` | This is the source of truth for keep/overwrite/abort, staged update paths, pre-install backups, root-config drift. |
 | Filesystem materialization | `docs/user/reference/architecture.md` | `docs/architecture/manifest-and-symlinks.md`, `docs/architecture/config-code-separation.md` | Needs cleanup because some examples still use older adopt/archive terminology. |
 | Harness parity concepts | `docs/internal/harnesses-explained.md` | `docs/internal/harness-anatomy.md` | Teaching doc owns the why (incl. the Claude-vs-Codex matrix, folded in from the former `cross-harness-behavior-assessment.md`). Anatomy owns exact commands. Per-element persistence lives in `config-collision-handling.md`. |
@@ -105,7 +105,7 @@ Replace the current list-only index with a map like this:
 | --- | --- | --- |
 | Install roborepo | `docs/user/guides/first-time-setup.md` | `docs/user/guides/install-workflows.md` |
 | Understand collision behavior | `docs/user/reference/config-collision-handling.md` | `docs/user/guides/install-workflows.md` |
-| Use the CLI | `docs/user/reference/roborepo-cli.md` | `docs/user/reference/roborepo.md` |
+| Use the CLI | `docs/user/reference/roborepo-cli.md` | `docs/internal/cli-internals.md` |
 | Change a harness element | `docs/internal/harness-anatomy.md` | `docs/internal/harnesses-explained.md` |
 | Understand Claude/Codex parity | `docs/internal/harnesses-explained.md` | `docs/internal/harness-anatomy.md` |
 | Change skills or commands | `docs/internal/skills-and-commands.md` | `docs/user/reference/roborepo-skills.md` |

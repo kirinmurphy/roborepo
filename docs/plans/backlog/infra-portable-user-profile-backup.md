@@ -553,7 +553,7 @@ in the package.
 - [ ] Add `profile.json` initialization and validation.
 - [ ] Inventory every current persisted path and field by ownership class.
 - [ ] Add a test that fails when a new persisted path lacks classification.
-- [ ] Update root-domain code comments and `docs/user/guides/infra/root-domains.md` together.
+- [ ] Update root-domain code comments and `docs/internal/root-domains.md` together, then move the guide back to `docs/user/guides/infra/` and restore the workspace commands in `docs/user/reference/roborepo-cli.md` and the README (withheld from user docs until this plan completes).
 - [ ] Add `roborepo profile status` and `roborepo profile validate`.
 
 Exit criteria:

@@ -23,7 +23,7 @@ exposes tools, runs the model, and reacts to events. This repo configures three 
 They do the same _kind_ of thing but disagree on file names, file formats, and which directory they
 scan. That disagreement is the entire reason this repo exists: we want to write a behavior **once**
 and have every harness pick it up. The repo is the source of truth; every harness home directory
-is downstream of it (mostly via symlinks — see [How It Works](../services/architecture.md) for the
+is downstream of it (mostly via symlinks — see [How It Works](../user/reference/architecture.md) for the
 filesystem mechanics). Adding a harness means adding a provider to the registry
 (`scripts/harnesses/registry.mjs`) that implements the same adapter contract described below —
 Gemini CLI is the first one added after Claude and Codex, and its addition is what confirms the
@@ -368,4 +368,4 @@ semantics or their mutability make a shared generator a worse fit than honest du
 
 For the lookup table of every element, its source location, and the exact command to change it, see
 [Harness Anatomy](harness-anatomy.md). For the filesystem and symlink mechanics underneath, see
-[How It Works](../services/architecture.md).
+[How It Works](../user/reference/architecture.md).
