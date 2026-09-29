@@ -2,7 +2,7 @@
 
 Common tasks once RoboRepo is installed ([First-Time Setup](first-time-setup.md)). Everything runs
 through `roborepo`: run it with no arguments for an interactive menu, or call a command directly.
-Full reference: [roborepo CLI Commands](../reference/roborepo-cli.md).
+Full reference: [RoboRepo CLI Commands](../reference/roborepo-cli.md).
 
 ## Browse and manage plan docs
 

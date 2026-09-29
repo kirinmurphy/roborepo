@@ -1,7 +1,7 @@
 # Claude Hooks
 
 Hooks are commands Claude Code runs at points in a session — when it starts, before a tool call,
-after a tool call. roborepo installs a few that always run, and packages add more when you enable
+after a tool call. RoboRepo installs a few that always run, and packages add more when you enable
 them. Turn a package's hooks off by disabling the package in `/config` or with
 `roborepo package disable <id>`.
 
@@ -9,7 +9,7 @@ them. Turn a package's hooks off by disabling the package in `/config` or with
 
 | Event | Hook | What it does | Installed by |
 | --- | --- | --- | --- |
-| SessionStart | Unmanaged skills notice | Counts skills in `~/.claude/skills` and `~/.codex/skills` that roborepo does not manage and suggests `roborepo skill adopt <name>` | always |
+| SessionStart | Unmanaged skills notice | Counts skills in `~/.claude/skills` and `~/.codex/skills` that RoboRepo does not manage and suggests `roborepo skill adopt <name>` | always |
 | SessionStart | jcodemunch status | Says whether `roborepo index code --watch` is running for this directory and reminds Claude to explore code with jcodemunch tools | `jcodemunch` |
 | SessionStart | jdocmunch index check | If `docs/` exists but is not indexed, reminds Claude to run `roborepo index docs docs/` | `jdocmunch` |
 | PreToolUse `Grep`, `Glob` | Search redirect | Blocks the call and tells Claude to use jcodemunch search tools instead | `jcodemunch` |
@@ -17,7 +17,7 @@ them. Turn a package's hooks off by disabling the package in `/config` or with
 | PreToolUse `Bash` | Output minimizer | Trims noisy build, lint, and typecheck output; denies `--watch`, `--verbose`, and `--debug`; auto-allows a short list of safe read-only commands | always |
 | PreToolUse `Bash` | Dense command log | Records commands of three or more lines to `<stateRoot>/capture/claude/dense-bash.jsonl` so you can find ones worth scripting. Never blocks | `capture-dense-bash` |
 | PreToolUse `Read`, `Write`, `Edit` | Repository scope | Reads across the repository and its worktrees are quiet; writes outside the checkout in use prompt. See [Config Control Panel](config-control-panel.md#changing-path-scopes) | always |
-| PreToolUse `Write`, `Edit` | Write guard | When Claude edits under `~/.claude` or `~/.codex`, adds a reminder about which files roborepo manages. `settings.local.json` is exempt | always |
+| PreToolUse `Write`, `Edit` | Write guard | When Claude edits under `~/.claude` or `~/.codex`, adds a reminder about which files RoboRepo manages. `settings.local.json` is exempt | always |
 | PostToolUse `Read` | Skill reference observer | Tells Claude which skill reference files it just read, for the skills-loaded line | `skill-visibility` |
 | SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop | Telemetry capture | Records token and tool usage locally | `telemetry`, once `roborepo telemetry enable` is run |
 

@@ -1,7 +1,7 @@
 # Codex Hooks
 
 Hooks are commands Codex runs at points in a session — when it starts, before a tool call, after a
-tool call. roborepo installs a few that always run, and packages add more when you enable them.
+tool call. RoboRepo installs a few that always run, and packages add more when you enable them.
 Turn a package's hooks off by disabling the package in `/config` or with
 `roborepo package disable <id>`.
 
@@ -12,7 +12,7 @@ Codex runs only hooks you have trusted. After install, the next Codex session as
 
 | Event | Hook | What it does | Installed by |
 | --- | --- | --- | --- |
-| SessionStart | Unmanaged skills notice | Counts skills in `~/.claude/skills` and `~/.codex/skills` that roborepo does not manage and suggests `roborepo skill adopt <name>` | always |
+| SessionStart | Unmanaged skills notice | Counts skills in `~/.claude/skills` and `~/.codex/skills` that RoboRepo does not manage and suggests `roborepo skill adopt <name>` | always |
 | SessionStart | Caveman mode | Turns on terse output; say "stop caveman" or "normal mode" to turn it off | `caveman` |
 | SessionStart | jcodemunch nudge | Reminds Codex to explore code with jcodemunch tools | `jcodemunch` |
 | SessionStart | jdocmunch index check | If `docs/` exists but is not indexed, reminds Codex to run `roborepo index docs docs/` | `jdocmunch` |
@@ -38,7 +38,7 @@ A command no rule or hook classifies falls through to Codex's `approval_policy`.
 
 `~/.codex/rules/` and `~/.codex/config.toml` are live files that Codex itself can change — for
 example, approving "always allow this command" in a session appends a rule. Once they differ from
-roborepo's version, `roborepo update` leaves them alone unless you choose `--on-conflict overwrite`.
+RoboRepo's version, `roborepo update` leaves them alone unless you choose `--on-conflict overwrite`.
 `roborepo config root inspect` reports when `config.toml` has drifted; nothing checks `rules/` for
 drift.
 

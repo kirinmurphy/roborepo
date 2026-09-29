@@ -159,7 +159,7 @@ flowchart LR
 ## Agent Configuration
 
 Manage shared agent behavior across supported harnesses. A package bundles skills, commands,
-rules, hooks, MCP servers, and permissions; roborepo renders each into the native format of
+rules, hooks, MCP servers, and permissions; RoboRepo renders each into the native format of
 Claude Code, Codex, and Gemini CLI.
 
 Common actions:
@@ -230,7 +230,7 @@ flowchart LR
 roborepo
 ```
 
-![The roborepo main menu, grouped into setup, Agent Config, Support, and Navigation](docs/images/cli-menu.png)
+![The RoboRepo main menu, grouped into setup, Agent Config, Support, and Navigation](docs/images/cli-menu.png)
 
 The README covers common entry points. See the reference for the full command surface.
 

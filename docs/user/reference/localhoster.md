@@ -63,7 +63,7 @@ position. Collection is deliberately split by what can be read correctly:
   stat-comparing the worktree against it, and the commit-graph questions require walking loose
   objects and packfiles.
 
-Every Git read is local and read-only: roborepo never runs repository hooks, never takes the
+Every Git read is local and read-only: RoboRepo never runs repository hooks, never takes the
 `.git/index` lock, never waits for credentials, and times out rather than stalling the scan.
 
 RoboRepo never fetches. Ahead/behind and base drift reflect remote-tracking refs as of your last
@@ -84,7 +84,7 @@ base would be worse than none.
 Docker/Compose enrichment and live process metrics run on macOS as part of the same scan that
 collects listeners and Git context: one `docker ps` call and one batched `ps` call per refresh.
 
-**Docker**: roborepo runs `docker ps --format '{{json .}}'`, one
+**Docker**: RoboRepo runs `docker ps --format '{{json .}}'`, one
 call for the whole scan rather than one per container. Each line is parsed independently, so a
 single malformed line is skipped rather than invalidating the scan. Compose project/service come
 from the `com.docker.compose.project` / `com.docker.compose.service` labels Compose already attaches
@@ -94,7 +94,7 @@ a Linux VM, so container PIDs never match host-side `lsof` PIDs. A container wit
 discovered listener, never appears. Docker not installed, the daemon not running, and permission
 failures are all reported as a scan warning with zero containers — never a thrown error.
 
-**Process metrics**: roborepo runs `ps
+**Process metrics**: RoboRepo runs `ps
 -o pid=,ppid=,pcpu=,rss=,etime=,comm= -p <pid1>,<pid2>,...`, one call for every PID discovered in the
 scan rather than one call per PID. A PID that exits between listener discovery and this `ps` call is
 simply absent from the result — never backfilled with a stale or fabricated reading. `cpuPercent`,

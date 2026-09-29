@@ -18,7 +18,7 @@ Capture takes two steps, both deliberate:
 is off by default because the spool grows with every session.
 
 **Telemetry-only install.** `roborepo telemetry install` sets up capture without the rest of
-roborepo: it wires only the capture hooks into `~/.claude/settings.json` and `~/.codex/hooks.json`
+RoboRepo: it wires only the capture hooks into `~/.claude/settings.json` and `~/.codex/hooks.json`
 and turns capture on. Use it to measure baseline token usage before adopting the full suite; running
 the normal install later upgrades it.
 

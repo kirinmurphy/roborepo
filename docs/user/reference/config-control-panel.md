@@ -11,7 +11,7 @@ hand-editing `~/.claude/settings.json`, `~/.codex/config.toml`, or symlinks.
 ## Concept Model
 
 The panel is built from a few nouns. Source of truth differs per noun — some live in
-the user's live harness config, some in repo manifests, some in roborepo state.
+the user's live harness config, some in repo manifests, some in RoboRepo state.
 
 | Noun | What it is | Source of truth |
 | --- | --- | --- |

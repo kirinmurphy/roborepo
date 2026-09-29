@@ -3,7 +3,7 @@
 Use this guide to install RoboRepo, run it for the first time, and choose which behaviors it
 manages.
 
-Works with Claude Code, Codex, and Gemini CLI — any one of them, or any combination. roborepo
+Works with Claude Code, Codex, and Gemini CLI — any one of them, or any combination. RoboRepo
 discovers whichever are installed and manages those; see
 [Supported Harnesses](harnesses/supported-harnesses.md) for what each one receives. Requires
 **Node.js 20+**. Supports macOS and Linux; Windows is available but less tested — see

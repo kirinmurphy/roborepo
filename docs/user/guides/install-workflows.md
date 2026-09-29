@@ -53,7 +53,7 @@ roborepo doctor --installed
 
 ## Collision Policy
 
-The collision policy decides what happens when a file roborepo manages already exists locally and
+The collision policy decides what happens when a file RoboRepo manages already exists locally and
 differs from the repo version. It applies to the checkout installer and to every `roborepo update`
 (or `roborepo config apply`). The first run asks which policy to use and saves your answer:
 
@@ -64,7 +64,7 @@ differs from the repo version. It applies to the checkout installer and to every
 | `abort` | You want to review conflicts by hand first. | Stop instead of changing the conflicting path. |
 
 Root config files (`settings.json`, `config.toml`) are merged rather than replaced, so your
-settings survive; if you edited one since roborepo last wrote it, `keep` leaves it untouched. See
+settings survive; if you edited one since RoboRepo last wrote it, `keep` leaves it untouched. See
 [Root Config Drift Detection](../reference/config-collision-handling.md#root-config-drift-detection).
 
 Pass `--on-conflict keep|overwrite|abort` to choose explicitly:
@@ -74,7 +74,7 @@ Pass `--on-conflict keep|overwrite|abort` to choose explicitly:
 roborepo update --on-conflict overwrite
 ```
 
-Without the flag, roborepo reuses your saved choice (`~/.roborepo/install-state.json`); a first
+Without the flag, RoboRepo reuses your saved choice (`~/.roborepo/install-state.json`); a first
 noninteractive run defaults to `keep`.
 
 ## Update

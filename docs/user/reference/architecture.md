@@ -2,7 +2,7 @@
 
 ## Relationship
 
-The three harnesses below are the ones registered today, not a fixed set. roborepo renders one
+The three harnesses below are the ones registered today, not a fixed set. RoboRepo renders one
 generated tree and one home directory per *discovered* provider, so this diagram grows a branch
 whenever a provider is added — see
 [Harness Provider Interface](../../internal/harness-provider-interface.md).
@@ -131,10 +131,10 @@ later update. The portable MCP intent remains in `manifests/inventory/mcp-server
 
 ### Drift-aware root config
 
-Root config rows get an additional drift check before collision policy applies. Roborepo records the
+Root config rows get an additional drift check before collision policy applies. RoboRepo records the
 hash of the last root config it wrote under `~/.roborepo/config-state/root-config.json`. If the live
 file still matches that hash, a changed repo baseline is a clean update and is merged in silently.
-If the live file changed after roborepo's last write, it is treated as user drift and goes through
+If the live file changed after RoboRepo's last write, it is treated as user drift and goes through
 `keep` (left untouched, candidate staged as `*_update_TIMESTAMP`), `overwrite` (backed up to
 `*_original_TIMESTAMP`, then merged), or `abort`.
 
@@ -150,7 +150,7 @@ backup, and uninstall behavior.
 
 Package-owned shared skills are sourced from `globals/packages/<package>/skills/<name>/` (each a
 folder with a `SKILL.md`). The required base support skill remains a system skill at
-`globals/system/skills/builtin-support/`. Roborepo materializes those skills into a
+`globals/system/skills/builtin-support/`. RoboRepo materializes those skills into a
 machine-local cache at `~/.roborepo/skills/<name>` and then symlinks each installed harness view to
 that cache entry:
 
@@ -169,12 +169,12 @@ checks that source dirs exist in the repo.
 
 `roborepo skill export-to-project` and `roborepo skill link-project` apply the same model to other
 repositories' `.claude/skills` and `.codex/skills` folders without touching global `~/.claude` or
-`~/.codex`. See [roborepo Skills Interface](roborepo-skills.md).
+`~/.codex`. See [RoboRepo Skills Interface](roborepo-skills.md).
 
 ## Runtime State
 
 The materialization map above covers what installation *puts* on disk. This covers what accumulates
-there afterwards: observability data roborepo writes while you work, all of it machine-local, none
+there afterwards: observability data RoboRepo writes while you work, all of it machine-local, none
 of it part of the portable profile.
 
 | Store | Path under `<stateRoot>` | Shape | Bound |

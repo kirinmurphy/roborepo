@@ -55,12 +55,12 @@ run `roborepo harness refresh`.
 | `roborepo update [--dry-run] [--verbose] [--on-conflict keep\|overwrite\|abort]` | Re-applies harness config on this machine: copied files, rendered rules, root config, command install, and shell wiring. Use after pulling repo changes or upgrading the package; `--verbose` includes unchanged items in the report. `--on-conflict` sets the [collision policy](../guides/install-workflows.md#collision-policy). |
 | `roborepo version` | Prints the package version and the directories RoboRepo runs from. |
 | `roborepo config status` | Shows enabled behaviors and packages. |
-| `roborepo config root inspect` | Read-only report of each harness root config (`~/.claude/settings.json`, `~/.codex/config.toml`): baseline vs. active file and its drift state — `in sync`, `drifted` (edited since roborepo's last write), `staged update pending`, or untracked. |
+| `roborepo config root inspect` | Read-only report of each harness root config (`~/.claude/settings.json`, `~/.codex/config.toml`): baseline vs. active file and its drift state — `in sync`, `drifted` (edited since RoboRepo's last write), `staged update pending`, or untracked. |
 | `roborepo doctor [--verbose]` | Runs harness health checks for config files, links, helper commands, dependencies, and generated outputs. |
 | `roborepo doctor --installed [--verbose]` | Verifies that installed harness paths resolve correctly; also fails when a local store is over its size cap. |
 | `roborepo maintenance repair [--dry-run] [--on-conflict ...]` | Repairs a moved or renamed checkout by relinking stale symlinks against the current path; it leaves copied config content alone. |
 | `roborepo maintenance repair local-config [--dry-run or --apply]` | Recovers safe local Claude/Codex settings from recent backups when `update` or `doctor --installed` reports local config repair candidates. |
-| `roborepo maintenance stores [list]` | Lists the local stores roborepo keeps on disk — telemetry spools, localhoster history, capture logs — with each one's size against its bound. |
+| `roborepo maintenance stores [list]` | Lists the local stores RoboRepo keeps on disk — telemetry spools, localhoster history, capture logs — with each one's size against its bound. |
 | `roborepo maintenance stores reset <id> [--all]` | Reclaims space in one store. Applies that store's own retention policy, or with `--all` clears it outright. Store ids come from `stores list`. |
 | `roborepo maintenance portal-pids [--reap]` | Lists `~/.roborepo/portal/server-<port>.pid` files and whether each one's process is still alive. `--reap` deletes only entries whose process is gone, never a running portal or one owned by another user. |
 
@@ -124,12 +124,12 @@ Telemetry is local and opt-in. See [Telemetry](telemetry.md) for what is capture
 | `roborepo telemetry export` | Prints the raw capture data as JSON. |
 | `roborepo telemetry backup` | Snapshots telemetry data to `~/.roborepo/telemetry-backups/`. |
 | `roborepo telemetry purge --all [--backup]` | Deletes all telemetry data; `--backup` snapshots it first. |
-| `roborepo telemetry install` | Wires only the capture hooks, for measuring usage before adopting the rest of roborepo. |
+| `roborepo telemetry install` | Wires only the capture hooks, for measuring usage before adopting the rest of RoboRepo. |
 
 ## Indexing
 
 Indexing commands are owned by packages, so enable the owning package first. If it is not enabled,
-roborepo prints which package to enable.
+RoboRepo prints which package to enable.
 
 | Command | Package | What it does |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ roborepo index code --watch
 | Command | What it does |
 | --- | --- |
 | `roborepo skill new` | Scaffolds a package-owned skill or slash command and updates package config, generated outputs, commands, and README. |
-| `roborepo skill adopt <name>` | Moves an unmanaged native skill into shared roborepo source and refreshes the managed harness views. |
+| `roborepo skill adopt <name>` | Moves an unmanaged native skill into shared RoboRepo source and refreshes the managed harness views. |
 | `roborepo skill export-to-project` | Copies shared skills into the current project and leaves a shareable zip bundle. |
 | `roborepo skill link-project` | Links a project's `.codex/skills` into existing `.claude/skills` folders. |
 | `roborepo skill sync-global` | Refreshes the shared skill cache and global harness links after adding or removing shared skills. |
@@ -157,7 +157,7 @@ roborepo index code --watch
 | `roborepo skill triggers [--check]` | Checks trigger and near-miss fixtures from `manifests/inventory/skill-trigger-tests.json`. |
 | `roborepo skill render-commands [--check]` | Renders generated slash commands from package `slash-command` resources, or verifies them. |
 
-See [roborepo Skills Interface](roborepo-skills.md) for the managed/native boundary and examples.
+See [RoboRepo Skills Interface](roborepo-skills.md) for the managed/native boundary and examples.
 
 ## MCP Setup
 
@@ -178,5 +178,5 @@ HTTP server. `--dry-run` prints the planned writes without changing anything.
 | --- | --- |
 | `roborepo run <cmd> [args...]` | Runs a command and prints a trimmed output tail so noisy checks stay readable. |
 
-> `roborepo dev …` exists only in a Git checkout of roborepo itself; the scripts it drives are not
+> `roborepo dev …` exists only in a Git checkout of RoboRepo itself; the scripts it drives are not
 > published to npm, so an installed copy reports that it requires a development checkout.
