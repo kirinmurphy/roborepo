@@ -5,8 +5,6 @@
 The Plans portal is a built-in RoboRepo portal page for local Markdown planning documents. It is
 paired with an optional `plan-docs` package that installs the agent-facing `/plan-docs` workflow.
 
-This reference describes what the page discovers, how it judges plans, and what it changes on disk.
-
 ## Concept Model
 
 | Noun | Meaning | Source of truth |

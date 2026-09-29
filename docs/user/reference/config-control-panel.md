@@ -66,8 +66,8 @@ The panel renders these sections:
 - **Chat-Time Output** — response shape (the shared formatting/closing-structure rules) plus the
   inline chat-note behaviors (convention capture, impact awareness, skill visibility), each a
   `rules` package merged into every managed harness. The three note behaviors `requires` response
-  shape, so enabling one auto-enables it. On by default; toggling adds/removes the behavior's rules
-  block.
+  shape, so enabling one auto-enables it. Each is off until you enable it; toggling adds or removes
+  the behavior's rules block.
 - **Permissions** — flat behavior and command buckets. Named behaviors and arbitrary commands can
   be set to `allow`, `ask`, `deny`, or reset to the manifest default. They render as one merged
   list split by authorship rather than by kind: entries the user customized appear first, each
@@ -170,10 +170,9 @@ For Claude, the repository zone is **wider for reads than for writes**, delibera
 | Its primary checkout and sibling worktrees | quiet | **prompt** |
 | Anywhere else | prompt | prompt |
 
-Comparing a branch against `main` from a worktree is routine and harmless, so reads span the whole
-repository family. Writing across checkouts is how one session clobbers another's in-flight work,
-and it is rare — isolation is the reason to create a worktree — so writes stay bounded to the
-checkout in use and prompt otherwise.
+Reading `main` from a worktree to compare against it is routine and harmless, so reads span the
+whole repository family. Writing across checkouts is rare and is how one session overwrites another's
+in-flight work, so writes stay inside the checkout in use and prompt anywhere else.
 
 Codex enforces only the write half of this table. If a repository's `docs/plans/plans-config.json`
 sets `"worktreeRoot": "~/.worktrees"`, Codex also gets write access to that repository's worktree

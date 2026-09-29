@@ -57,9 +57,8 @@ missing or broken.
 | `telemetry-transcripts` | Reading past session transcripts | ✅ | ✅ | — |
 | `session-launch` | Starting a session from roborepo | ✅ | ✅ | — |
 
-The blank cells are the honest shape of the product today. Gemini CLI receives every configuration
-capability but no telemetry, because it does not expose the session data telemetry needs. Only Codex
-reports rate-limit windows.
+Gemini CLI receives every configuration capability but no telemetry, because it does not expose the
+session data telemetry needs. Only Codex reports rate-limit windows.
 
 This matters when reading `roborepo doctor` output: a harness that lacks a capability produces no
 checks for it, and *no checks* looks the same as *all checks passing*. Compare a harness against the
@@ -69,7 +68,7 @@ capability table above, not against another harness's check count.
 
 roborepo discovers harnesses; you do not register them by hand.
 
-Discovery is deliberately narrow. For each known provider, roborepo checks only the locations that
+Discovery is narrow. For each known provider, roborepo checks only the locations that
 provider's own manifest declares — its executable name on `PATH`, its home directory, its config
 file. It never scans your filesystem broadly. The evidence it finds becomes a confidence level:
 
@@ -89,7 +88,7 @@ binary, say) is not enough to make roborepo believe the harness is installed; it
 `possible` instead. This matters because a leftover settings file would otherwise flip the Agents
 page to "installed" with no CLI present.
 
-Two consequences worth knowing:
+As a result:
 
 - **Installing a new agent CLI is enough.** Install Gemini CLI, run `roborepo update`, and it
   starts receiving rules, skills, and commands. No config edit.

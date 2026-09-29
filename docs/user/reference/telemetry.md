@@ -89,10 +89,12 @@ roborepo telemetry experiment status [<experiment-id>]
 
 `start` creates an experiment definition and its `experiment-start` marker together. `end` appends
 an `experiment-end` marker and links it. `status` reports lifecycle state, definition, cohort sizes,
-effect size, confidence, and whether the result is `ready` — never a provisional winner. Readiness
-means: the primary metric computed for both the before/after cohort around the experiment's start
-marker, both cohorts meet `eligibility.minimum_sessions_per_cohort` (default 10), and no serious
-data-quality issue was flagged (one session dominating a cohort, or excluded sessions).
+effect size, confidence, and whether the result is `ready` — never a provisional winner. A result
+is ready when:
+
+- the primary metric computed for both the before and after cohorts around the start marker;
+- both cohorts meet `eligibility.minimum_sessions_per_cohort` (default 10); and
+- no serious data-quality issue was flagged (one session dominating a cohort, or excluded sessions).
 
 ## Configuration snapshots
 
@@ -118,10 +120,9 @@ portal: `time`, `harnesses`, `models`, `repos`, `packages`/`skills` (exposure, r
 `config_snapshot_id`), `operations`, `phases`, `outcomes`, `task_categories`, `snapshot_ids`. The same
 filter object scopes every panel — no panel-local filter silently redefines the global cohort.
 
-**Marker-relative comparison** is the preferred way to answer
-"did this change something": given a `change` marker, sessions are split into before/after cohorts
-(sessions spanning the marker are excluded), equalized (equal session count or equal duration), and
-compared per metric. Every comparison reports cohort sizes, excluded-session reasons, effect size,
+**Marker-relative comparison** is the preferred way to answer "did this change something". Given a
+`change` marker, sessions are split into before and after cohorts, dropping sessions that span the
+marker. The cohorts are equalized (by session count or duration) and compared per metric. Every comparison reports cohort sizes, excluded-session reasons, effect size,
 and a confidence label:
 
 - **strong signal** — both cohorts ≥20 sessions, no serious data-quality issue;
@@ -131,14 +132,12 @@ and a confidence label:
 - **data-quality warning** — one session dominates a cohort (>40% of its captures), or sessions were
   excluded for spanning the marker.
 
-The older earlier-vs-later **midpoint regression** is
-retained as a labeled *exploratory fallback* for when no marker is selected — the portal and CLI both
-mark it `exploratory: true` and describe it as not tied to any specific change.
+When no marker is selected, an earlier-vs-later **midpoint regression** is shown instead, labeled
+*exploratory* in both the portal and CLI because it is not tied to any specific change.
 
-Every comparative finding follows the same **actionable finding contract**: observation, evidence
-(cohort sizes, effect size), interpretation (explicitly labeled `"labeled_as": "inference"`), next
-action, confidence, data-quality issues, and a ready-to-apply `analysis_filter_state` so the portal's
-"open analysis" action reproduces the exact cohort/metric. No finding ever claims a package, skill, or
+Every comparative finding has the same parts: observation, evidence (cohort sizes, effect size),
+interpretation (labeled as inference), next action, confidence, and data-quality issues. It also
+carries the exact cohort and metric, so the portal's "open analysis" action can reproduce it. No finding ever claims a package, skill, or
 rule *caused* a result — wording stays at "exposed to" / "correlates with."
 
 ## Package telemetry policies
@@ -152,12 +151,13 @@ declares policies yet; the mechanism is generic and ready for a package to adopt
 
 ## CLI report
 
-`roborepo telemetry report` (add `--deep` for an optional LLM synthesis of the deterministic facts,
-run through the headless `claude -p` with your existing Claude auth — only the computed summary is
-sent, never raw spool/transcript content) prints, in order: deterministic insights (each with confidence
-and a next action), data-quality warnings, read warnings, recent markers, experiment readiness, usage
-windows, testing efficiency, cost breakdowns, midpoint regression (labeled exploratory), loops,
-sessions, spikes, and raw contributor tables. The same `analyzeTelemetry()` function and metric
+`roborepo telemetry report` prints, in order: insights (each with confidence and a next action),
+data-quality warnings, read warnings, recent markers, experiment readiness, usage windows, testing
+efficiency, cost breakdowns, the exploratory midpoint regression, loops, sessions, spikes, and raw
+contributor tables.
+
+`--deep` adds an LLM summary of those findings, run through the headless `claude -p` with your
+existing Claude auth. Only the computed summary is sent, never raw capture or transcript content. The same `analyzeTelemetry()` function and metric
 registry back both this report and the portal, so CLI and portal numbers agree for the same cohort.
 
 ## Portal
@@ -190,8 +190,6 @@ removed while you are not using the tool.
 
 None of these expire by age. The spool is the durable record rather than a queue — nothing drains it
 after analysis — so an old capture is still the only copy of that session, and only size bounds it.
-
-Two behaviors are worth knowing:
 
 - **Trims overshoot.** A store at its cap drops to roughly 70% rather than to exactly the cap, so a
   trim happens rarely instead of on every subsequent write.

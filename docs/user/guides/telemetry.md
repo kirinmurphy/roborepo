@@ -2,13 +2,12 @@
 
 ## Purpose
 
-Telemetry gives you a local, opt-in view of what your Claude/Codex sessions cost — tokens, tool
-calls, time — and lets you mark a change you made and see whether sessions after it differ from
-sessions before it. Everything stays on your machine; nothing is uploaded.
+Telemetry shows what your Claude and Codex sessions cost — tokens, tool calls, and time. Mark a change
+you made, and it compares sessions before and after it. It is local and opt-in; nothing leaves your
+machine.
 
-For the full technical reference (schemas, API routes, privacy details), see
-[Telemetry Service Reference](../reference/telemetry.md). This guide is the "what do I
-click" version, meant to be read inline from the `/tokens` page itself.
+This guide walks through the portal page. For schemas, privacy, and retention details, see the
+[Telemetry Service Reference](../reference/telemetry.md).
 
 ## Open The Page
 
@@ -59,10 +58,9 @@ targeted-to-full ratio and full-suite reruns that reproduced an unchanged failur
 
 ## Session Detail
 
-Click any session chip or flagged row to open a drill-down popup: what the session was (opening
-prompt, repo, agent), what telemetry flagged in it — the same deterministic findings the
-Investigate sections show, with the recommended fix — and a ready-to-paste analysis prompt for your
-coding agent. When the transcript is still on disk, the heaviest turns are listed under "Heaviest
+Click any session chip or flagged row to open a drill-down popup. It shows what the session was
+(opening prompt, repo, agent), what telemetry flagged in it with the recommended fix, and a
+ready-to-paste analysis prompt for your coding agent. When the transcript is still on disk, the heaviest turns are listed under "Heaviest
 turns in this chat."
 
 ## Markers

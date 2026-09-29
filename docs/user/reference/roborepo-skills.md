@@ -88,9 +88,8 @@ codex plugin --help
 codex plugin marketplace --help
 ```
 
-The default output is intentionally short and stable. `--full` queries the native CLIs live and
-prints fallback examples for any unavailable section. The docs intentionally avoid freezing the full
-native command catalog because Claude and Codex own those interfaces.
+The default output is short and stable. `--full` queries the native CLIs live and prints fallback
+examples for any unavailable section.
 
 Use native commands for harness-specific marketplace state and plugin lifecycle. If a native skill
 should become shared and version-controlled, run:

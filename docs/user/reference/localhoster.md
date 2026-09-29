@@ -37,14 +37,13 @@ listener sets cannot stall the portal.
 The portal process is represented as built-in identity `builtin:portal` and is never probed
 recursively.
 
-A project identity with exactly one distinct listener "shape" (same page title and relative
-working directory) auto-promotes to Active apps at high/medium identity confidence, even if that
-shape has multiple listeners — those extra listeners are treated as redundant processes serving
-the same app (e.g. two different static-file-server tools pointed at the same directory) rather
-than separate apps, and the card shows a notice naming the extra ports. A project identity with
-two or more genuinely different shapes (different titles) still cannot be auto-assigned, since
-there is no reliable way to guess which one is "the" app; those stay in Unrecognized listeners until
-manually associated.
+A listener "shape" is its page title plus its working directory within the project. When a project
+has exactly one shape, it moves to Active apps automatically (at high or medium identity
+confidence), even if several listeners share that shape. The extra listeners are treated as
+redundant processes serving the same app — two static-file servers pointed at one directory, say —
+and the card names their ports. A project with two or more different shapes (different titles)
+cannot be assigned automatically, because there is no reliable way to pick "the" app; its listeners
+stay in Unrecognized listeners until you associate them.
 
 Localhoster can also suggest routes from an app's manifest, sitemap, robots, and OpenAPI files
 without saving them as quick links. See [Metadata suggestions](#metadata-suggestions).
@@ -77,23 +76,21 @@ meaning "at least this much."
 answer. The portal renders nothing in that case rather than implying a clean tree, because a wrongly
 reported "clean" is a claim a user would act on. `baseBranch`, `baseBehind`, and `baseMergeBaseAt`
 are likewise `null` when the base branch cannot be resolved, when the branch has no upstream, or on
-the base branch itself — no drift badge renders in any of those cases, since a drift figure measured
-against a guessed base would be worse than none.
+the base branch itself. No drift badge renders in those cases: a figure measured against a guessed
+base would be worse than none.
 
 ## Docker and process metrics
 
 Docker/Compose enrichment and live process metrics run on macOS as part of the same scan that
-collects listeners and Git context — one `docker ps` call and one batched `ps` call per refresh, not
-a separate cadence or on-demand trigger.
+collects listeners and Git context: one `docker ps` call and one batched `ps` call per refresh.
 
 **Docker**: roborepo runs `docker ps --format '{{json .}}'`, one
 call for the whole scan rather than one per container. Each line is parsed independently, so a
 single malformed line is skipped rather than invalidating the scan. Compose project/service come
 from the `com.docker.compose.project` / `com.docker.compose.service` labels Compose already attaches
-to every container it creates. A container is merged onto a discovered instance by matching its
-published host port against the instance's bound port — the only reliable correlation available,
-since Docker Desktop on macOS runs containers inside a Linux VM and container PIDs are never
-comparable to host-side `lsof` PIDs. A container with no published ports, or whose port matches no
+to every container it creates. A container is matched to a discovered instance by its
+published host port. That is the only reliable link: Docker Desktop on macOS runs containers inside
+a Linux VM, so container PIDs never match host-side `lsof` PIDs. A container with no published ports, or whose port matches no
 discovered listener, never appears. Docker not installed, the daemon not running, and permission
 failures are all reported as a scan warning with zero containers — never a thrown error.
 
@@ -117,7 +114,7 @@ Every probed instance is normalized into one of six states:
 | `unknown` | Not probed, or answering in a way we have no expectation for |
 | `inactive` | No listener |
 
-Two rules keep the dashboard honest:
+Two rules keep the dashboard from raising false alarms:
 
 **An unconfigured 4xx is `unknown`, not a fault.** Many listeners on a dev machine are gRPC
 endpoints, IPC servers, or daemons that legitimately answer 403 or 404 to a browser `GET`. Flagging
@@ -224,22 +221,21 @@ Sources inspected, each same-origin and loopback-only:
   non-conventional path is not currently discovered.
 - **`/robots.txt`** — `Sitemap:` declarations, each fetched and parsed for `<loc>` entries.
 - **`/sitemap.xml`** — checked directly as a fallback even when `robots.txt` declares none.
-- **An OpenAPI/Swagger document, in JSON** — every key under the document's `paths` object. No
-  single conventional path exists the way there is for `manifest.json`/`sitemap.xml`, so a short
-  list of common framework paths is tried in order — `/openapi.json`, `/swagger.json`,
-  `/v3/api-docs`, `/v2/api-docs`, `/api-docs` — and the first response that actually parses as a
+- **An OpenAPI/Swagger document, in JSON** — every key under the document's `paths` object. There
+  is no single conventional path, so common framework paths are tried in order: `/openapi.json`,
+  `/swagger.json`, `/v3/api-docs`, `/v2/api-docs`, `/api-docs`. The first response that parses as a
   valid document (has a `paths` object) wins. Only JSON bodies are parsed; a YAML-only document is
   not discovered. A 200 response that isn't a real document — e.g. a dev server's catch-all route
   serving its HTML shell for any path — is skipped, not treated as a hit.
 
 
-Every discovered path is validated the same way a hand-typed quick link is (loopback host, no
-credentials, no protocol-relative URLs), and cross-source duplicates keep only the
-highest-confidence source label, in this order: OpenAPI, sitemap, manifest, robots. Paths that look
-authenticated or administrative (`/admin`, `/login`, `/dashboard`, `/account`, and similar segments)
-are dropped unless the same path was explicitly present in OpenAPI or sitemap evidence — an OpenAPI
-document or sitemap entry is a deliberate publisher declaration, not a guess, so it overrides the
-heuristic.
+Every discovered path is validated like a hand-typed quick link: loopback host, no credentials, no
+protocol-relative URLs. When sources overlap, a path keeps the highest-confidence label, in this
+order: OpenAPI, sitemap, manifest, robots.
+
+Paths that look authenticated or administrative (`/admin`, `/login`, `/dashboard`, `/account`, and
+similar) are dropped unless an OpenAPI document or sitemap lists them explicitly. Those sources are
+the app declaring its own routes, so they override the heuristic.
 
 Discovery never throws: a source that is absent, unreachable, or malformed simply contributes no
 suggestions, so one broken source never blocks suggestions from the others.

@@ -42,10 +42,9 @@ Do you want to run **/integration-check** on [CURRENT BRANCH NAME]?
 | 12 | Report | Rank findings by severity, each with a location and a fix. Fix nothing. | — |
 | 13 | Save baseline | Record findings so a later re-run can say what's fixed, still open, or newly broken. | — |
 
-**On the timing column.** The test suite may run in the background, but steps 9–11 do not start
-until it reports. Those three are the expensive, judgment-heavy part of the workflow; if the suite
-comes back red the code is about to change, and any analysis done in the meantime was spent on a
-version that will not survive. Work before step 8 can overlap freely.
+**On the timing column.** The test suite may run in the background, but steps 9–11 wait for its
+result. They are the expensive, judgment-heavy steps, and a red suite means the code is about to
+change, so any review done in the meantime would be wasted. Work before step 8 can overlap freely.
 
 ## Shape Of The Workflow
 

@@ -69,20 +69,16 @@ still matches roborepo's last write, or when roborepo never recorded a write and
 show it is roborepo's. A drifted file — one you edited after roborepo's last write — is left in place
 and its path is reported, never deleted.
 
-**Seeing drift.** `roborepo config root inspect` and the drift chip on the `/config` page report the
-same state for each harness: `not-installed`, `unwritten`, `in-sync`, `drifted`, or `staged-pending`
-(a `*_update_TIMESTAMP` candidate is waiting beside the file; this outranks plain drift because it is
-the state you can act on).
+**Seeing drift.** `roborepo config root inspect` and the drift chip on the `/config` page report one
+state per harness: `not-installed`, `unwritten`, `in-sync`, `drifted`, or `staged-pending`.
+`staged-pending` means a `*_update_TIMESTAMP` candidate is waiting beside the file; it takes
+precedence over `drifted` because it is the state you can act on.
 
 ## Codex Native Profiles (permanent personal config)
 
-Drift detection tells a user honestly when their root config diverged from roborepo's baseline, but
-it does not give them a place to keep personal config that *survives* every `roborepo update`
-untouched. Roborepo deliberately does not build a userland overlay for this: an overlay cannot keep
-its promise once the user hand-edits the real file or a native harness flow writes to it.
-
-For **Codex** users, the harness already provides exactly this natively — use it instead of fighting
-drift:
+Drift detection tells you when your root config has diverged from roborepo's baseline, but it gives
+you no place for personal settings that survive every `roborepo update` untouched. **Codex** has a
+native answer — profiles:
 
 - Put personal settings in a named profile file at `~/.codex/<name>.config.toml`.
 - Select it with `--profile <name>` on the CLI, or set `CODEX_PROFILE=<name>` in the environment.
@@ -90,14 +86,13 @@ drift:
   (`~/.codex/config.toml`). Roborepo never writes profile files, so `roborepo update` leaves them
   untouched — no drift, no collision, no staged candidate.
 
-This is the recommended path for a Codex user who wants a permanent personal config slice: keep
-`~/.codex/config.toml` as roborepo's managed baseline (let updates flow into it cleanly) and keep
-personal overrides in a profile that roborepo never touches.
+So keep `~/.codex/config.toml` as roborepo's managed baseline, and put your personal overrides in a
+profile.
 
 **Claude** has no equivalent native profile mechanism at the user-config level (fixed scope tiers:
 managed > CLI args > project local > project > user). There is no roborepo-provided substitute;
-Claude users manage personal root-config changes in `~/.claude/settings.json` directly and rely on
-drift detection to be told, honestly, when an update would collide.
+Claude users keep personal changes in `~/.claude/settings.json` directly, and drift detection shows
+when an update would collide with them.
 
 ## Merge Prompt Behavior
 
