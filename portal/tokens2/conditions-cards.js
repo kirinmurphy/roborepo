@@ -1,6 +1,6 @@
 import { portalWireBackdropClose } from "/portal/shared/api.js";
 import { conditionTemplate, setText } from "./conditions-dom.js";
-import { DIMENSION_NAMES, comparisonPresentation, changePresentation, conditionName, percent } from "./conditions-format.js";
+import { DIMENSION_NAMES, EVENT_NAMES, comparisonPresentation, changePresentation, conditionName, percent } from "./conditions-format.js";
 
 const MAX_PREVIEW_OUTCOMES = 3;
 
@@ -44,15 +44,20 @@ function categoryCard(dimension, rows, report, inspect) {
     const list = card.querySelector(`[data-${state}]`);
     const matches = presented.filter(({ row, view }) => view.state === state && (state !== "thin" || row.with_affected || row.without_affected))
       .sort((a, b) => Math.abs(b.row.relative_delta ?? 0) - Math.abs(a.row.relative_delta ?? 0));
-    for (const { row, view } of matches.slice(0, MAX_PREVIEW_OUTCOMES)) list.appendChild(outcomeItem(row, view, inspect));
-    if (!matches.length && state !== "thin") list.textContent = "Nothing stands out.";
-    if (state === "thin") {
-      list.parentElement.hidden = !matches.length;
-      setText(card, "[data-thin-count]", `· ${matches.length} comparison${matches.length === 1 ? "" : "s"} — show raw rates`);
+    // One row per condition: its name, then every outcome for it stacked in the second column.
+    const byCondition = new Map();
+    for (const match of matches) {
+      const key = conditionName(match.row);
+      if (!byCondition.has(key)) byCondition.set(key, []);
+      byCondition.get(key).push(match);
     }
-    if (matches.length > MAX_PREVIEW_OUTCOMES) {
+    const conditions = [...byCondition.entries()];
+    for (const [name, outcomes] of conditions.slice(0, MAX_PREVIEW_OUTCOMES)) list.appendChild(conditionItem(name, outcomes, inspect));
+    if (!matches.length && state !== "thin") list.textContent = "Nothing stands out.";
+    if (state === "thin") list.parentElement.hidden = !matches.length;
+    if (conditions.length > MAX_PREVIEW_OUTCOMES) {
       const more = document.createElement("li");
-      more.textContent = `${matches.length - MAX_PREVIEW_OUTCOMES} more in Full outcomes`;
+      more.textContent = `${conditions.length - MAX_PREVIEW_OUTCOMES} more in Full outcomes`;
       list.appendChild(more);
     }
   }
@@ -62,22 +67,33 @@ function categoryCard(dimension, rows, report, inspect) {
   empty.hidden = strong || !card.querySelector("[data-thin]").parentElement.hidden;
   empty.textContent = presented.some(({ view }) => view.state === "unavailable") ? "A comparison group is missing. Collect sessions with and without this condition."
     : presented.some(({ view }) => view.state === "thin") ? "Too little evidence to judge a difference. Raw rates are in Full outcomes."
-      : "No clear difference. Focus on the conditions with a visible signal.";
-  setText(card, "[data-next]", strong ? "Inspect matching sessions; compare similar tasks before changing your setup." : "Keep collecting evidence before changing your setup.");
+      : "No clear difference.";
   return card;
 }
 
-function outcomeItem(row, view, inspect) {
+function conditionItem(name, outcomes, inspect) {
   const item = conditionTemplate("condition-outcome-item-template");
-  setText(item, "strong", conditionName(row));
-  item.querySelector("strong").title = row.value;
-  setText(item, ".condition-outcome-pill", view.label);
-  setText(item, "small", `${view.state === "thin" ? "Below percentage threshold" : view.raw} · ${row.unknown_condition} unknown`);
-  const button = item.querySelector("button");
+  setText(item, "strong", name);
+  item.querySelector("strong").title = outcomes[0].row.value;
+  const column = item.querySelector("[data-outcomes]");
+  for (const { row, view } of outcomes) column.appendChild(outcomeLine(row, view, inspect));
+  return item;
+}
+
+function outcomeLine(row, view, inspect) {
+  const line = conditionTemplate("condition-outcome-line-template");
+  // Thin evidence has no percentage, so the pill names the problem only; the counts live in the
+  // info icon with the rest of the detail.
+  setText(line, ".condition-outcome-pill", view.state === "thin" ? EVENT_NAMES[row.event_kind] ?? row.event_kind : view.label);
+  const info = `${view.raw} · ${row.unknown_condition} unknown`;
+  const icon = line.querySelector("portal-info-icon");
+  icon.dataset.tip = info;
+  icon.setAttribute("aria-label", info);
+  const button = line.querySelector("button");
   button.hidden = !row.with_affected;
   button.setAttribute("aria-label", `Inspect ${row.event_kind} sessions with ${conditionName(row)}`);
   button.onclick = () => inspect(row);
-  return item;
+  return line;
 }
 
 function markedChanges(changes) {

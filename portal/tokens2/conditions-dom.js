@@ -10,3 +10,8 @@ export function shortDate(value) {
   const date = new Date(value);
   return value && Number.isFinite(date.getTime()) ? date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Time unknown";
 }
+
+export function numericDate(value) {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime()) ? `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}` : "--/--";
+}

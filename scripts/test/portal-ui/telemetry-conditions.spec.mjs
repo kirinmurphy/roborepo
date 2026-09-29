@@ -32,11 +32,7 @@ for (const theme of ["light", "dark"]) {
     await expect(page.locator("[data-condition-details]").first()).toContainText("without");
     await page.locator("[data-condition-close]").first().click();
     await expect(page.locator("#condition-ledger-section")).toBeVisible();
-    await expect(page.getByText("Model token usage per session", { exact: true })).toBeVisible();
     await expect(page.locator("#condition-mark-change")).toContainText("Mark a change");
-    await expect(page.locator("#condition-model-metrics")).toContainText("eligible sessions");
-    await expect(page.locator("#condition-model-metrics")).toContainText("approximate");
-    await expect(page.locator("#condition-model-metrics")).not.toContainText("tokens / flow");
     await page.screenshot({ path: `/tmp/telemetry-conditions-${theme}.png`, fullPage: true });
     await page.setViewportSize({ width: 720, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(720);
@@ -82,7 +78,7 @@ test("mark change records backdated scope and keeps editing history", async ({ p
 });
 
 
-test("condition signals lead to compact, scrollable session evidence", async ({ page }) => {
+test("condition signals lead to compact session evidence", async ({ page }) => {
   await page.goto("/tokens");
   const conditions = page.locator("#condition-cards");
   await expect(conditions).toContainText("fewer read warnings");
@@ -90,15 +86,21 @@ test("condition signals lead to compact, scrollable session evidence", async ({ 
   await expect(conditions).toContainText("More evidence needed");
   await expect(conditions).toContainText("loops: collecting");
   await expect(conditions).toContainText("claude-opus-4-8");
+  await expect(conditions).not.toContainText("Fewer with condition");
+  await expect(conditions).toContainText("Cheaper");
+  await expect(conditions).toContainText("More expensive");
   await page.getByRole("button", { name: "Inspect read-warning sessions with claude-opus-4-8", exact: true }).click();
+  const dialog = page.locator("#condition-sessions-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("claude-opus-4-8");
+  await expect(dialog).not.toContainText("gpt-5-codex");
+  await expect(dialog.getByRole("button", { name: "Session details", exact: true }).first()).toBeVisible();
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  // The full list is one scroll layer (the Investigate body), not a nested scroller.
+  await page.getByText("Recent problem sessions", { exact: true }).click();
   const list = page.getByRole("region", { name: "Problem sessions" });
-  await expect(list).toBeVisible();
-  await expect(page.getByRole("button", { name: "Clear condition filter" })).toBeVisible();
-  await expect(list).not.toContainText("gpt-5-codex");
-  const box = await list.boundingBox();
-  expect(box.height).toBeLessThanOrEqual(440);
-  expect(await list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-  await page.getByRole("button", { name: "Clear condition filter" }).click();
+  expect(await list.evaluate((element) => getComputedStyle(element).overflowY)).toBe("visible");
   const allSessions = await list.getByRole("button", { name: "Session details", exact: true }).count();
   expect(allSessions).toBeGreaterThan(8);
   await expect(list).toContainText("+4 findings");

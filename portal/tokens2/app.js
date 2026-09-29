@@ -279,7 +279,7 @@ function renderVerdict(data) {
   if (!wasteParts.length) {
     const empty = document.createElement("div");
     empty.className = "waste-card";
-    empty.innerHTML = `<span class="dl-text">No identifiable waste in this window — every category the pipeline tracks (spikes, loops, redundant reads, redundant test runs) came back clean.</span>`;
+    empty.innerHTML = `<span class="dl-text">No identifiable waste in this window.</span>`;
     grid.appendChild(empty);
     return;
   }
@@ -299,6 +299,20 @@ let stickyHeaderOffset = 0;
 function measureStickyHeader() {
   const header = document.querySelector(".portal-header");
   stickyHeaderOffset = header ? header.getBoundingClientRect().height + 16 : 16;
+  // Section heads stick just under the portal header.
+  document.documentElement.style.setProperty("--portal-header-h", (header ? header.getBoundingClientRect().height : 0) + "px");
+}
+
+// "Show/Hide suggested fixes": item hints are hidden by default (too dense); the toggle lives in
+// the Investigate header. State is a class on the container, so it survives per-poll re-renders.
+function wireHintToggle() {
+  const toggle = document.getElementById("hint-toggle");
+  const host = document.getElementById("invest-sections");
+  toggle.addEventListener("click", () => {
+    const show = host.classList.toggle("show-hints");
+    toggle.setAttribute("aria-pressed", show ? "true" : "false");
+    toggle.textContent = show ? "Hide suggested fixes" : "Show suggested fixes";
+  });
 }
 
 // Scroll to and auto-expand an Investigate section. Collapsing (or a click on an already-open
@@ -444,7 +458,7 @@ async function loadSessionIntoModal(sessionId, harness, finding, requestId) {
   actions.appendChild(copyBtn);
   const why = document.createElement("p");
   why.className = "sess-why";
-  why.textContent = "Paste this into a fresh chat: it tells your agent which session to open, what telemetry flagged, and what to conclude — so it can investigate the transcript and fix the pattern.";
+  why.textContent = "Paste into a fresh chat so your agent can investigate this session.";
   actions.appendChild(why);
   frag.appendChild(actions);
 
@@ -559,7 +573,7 @@ function renderTimelineStrip(data) {
     col.appendChild(dayLabel);
     strip.appendChild(col);
   }
-  legend.textContent = "each mark is a flagged event — red: spike turn, orange: runaway loop. Days with no flags show nothing.";
+  legend.textContent = "red: spike turn · orange: runaway loop";
 }
 
 // Waste tokens attributable to the trailing N days, computed per-category from event
@@ -637,21 +651,17 @@ function wasteCard(label, waste, total, parts, danger) {
   const rest = violators.slice(3);
   // "+N more": click-persistent dropdown (visually a tooltip) listing ALL violators as clickable
   // jump links. Open/close handled by the delegated listeners in wireWasteSourceLinks.
-  const violatorHtml = (v) => {
-    const g = wasteGrade(v.pct, danger);
-    const key = secKeyByLabel[v.label] ? ` data-sec-key="${secKeyByLabel[v.label]}"` : "";
-    return `<span class="waste-source waste-source-link"${key} tabindex="0"><span class="waste-pct-inline ${g}">${v.pct < 1 ? "<1" : Math.round(v.pct)}%</span> ${esc(v.label)}</span>`;
-  };
   const moreHtml = rest.length
     ? `<span class="waste-more-wrap">
          <button type="button" class="waste-more" aria-expanded="false" aria-haspopup="true">+${rest.length} more</button>
-         <span class="waste-pop" role="menu">${violators.map((v) => `<span class="waste-pop-row">${violatorHtml(v)}</span>`).join("")}</span>
+         <span class="waste-pop" role="menu">${violators.map((v) => `<span class="waste-pop-row">${sourceHtml(v)}</span>`).join("")}</span>
        </span>`
     : "";
 
+  // Column 1: range + big graded % + tokens. Column 2: the waste categories, one per row.
   div.innerHTML = `<span class="waste-range">${esc(label)}</span>
     <span class="waste-big ${grade}"><span class="waste-pct">${Math.round(share * 10) / 10}%</span><span class="waste-sub">${tokShort(waste)} of ${tokShort(total)} tokens</span></span>
-    <span class="waste-sources">${shown.map(sourceHtml).join(`<span class="waste-sep">, </span>`)}${moreHtml}</span>`;
+    <span class="waste-sources">${shown.map((v) => `<span class="waste-source-row">${sourceHtml(v)}</span>`).join("")}${moreHtml}</span>`;
   return div;
 }
 
@@ -683,27 +693,20 @@ function findingCard(f) {
   const confClass = f.confidence === "strong signal" ? "strong" : "";
   const card = document.createElement("div");
   card.className = "finding";
-  // The next step becomes a jump link when its evidence section exists (item 3: dead "→ next
-  // step" text → clickable path to the evidence). The delegated waste-source listener handles
-  // .waste-source-link clicks, so the link reuses that exact jump contract — same class, same
-  // scroll-and-expand behavior, no second scroll mechanism.
+  // The suggested next step is repeated in the evidence section, so the card keeps only a
+  // bookmark link to it. It reuses .waste-source-link's jump-click contract (scroll + expand).
   const secKey = FINDING_SECTION[f.kind] || null;
-  const nextActionHtml = !f.next_action
-    ? ""
-    : secKey
-      ? `<span class="next waste-source-link next-plain" data-sec-key="${esc(secKey)}" tabindex="0" role="link" aria-label="jump to the evidence section">→ ${esc(f.next_action)} <span class="next-jump">see evidence ↓</span></span>`
-      : `<span class="next">→ ${esc(f.next_action)}</span>`;
+  const jumpHtml = secKey
+    ? ` <span class="finding-jump waste-source-link" data-sec-key="${esc(secKey)}" tabindex="0" role="link" aria-label="jump to the evidence section">see evidence ↓</span>`
+    : "";
   card.innerHTML = `<div class="finding-top">
       <div class="severity ${sevClass}"></div>
       <div class="finding-body">
         <h3 class="finding-title">${esc(f.headline)}
           ${f.confidence ? `<span class="confidence ${confClass}">${esc(f.confidence)}</span>` : ""}
         </h3>
-        <p class="finding-evidence">${esc(f.detail || "")}</p>
+        <p class="finding-evidence">${esc(f.detail || "")}${jumpHtml}</p>
       </div>
-    </div>
-    <div class="finding-action">
-      ${nextActionHtml}
     </div>`;
   return card;
 }
@@ -718,9 +721,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "spikes",
       title: "What made tokens jump",
-      framing: "each spike tagged with the behavior that drove it — and what to change",
+      framing: "spikes grouped by the behavior behind them",
       badge: `${data.spike_causes.length} spike${data.spike_causes.length > 1 ? "s" : ""}`,
       badgeClass: "alert",
+      badgeTip: BADGE_TIPS.alert,
       bodyEl: spikeCausesBody(data.spike_causes),
     }));
   }
@@ -730,9 +734,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "spike-prone",
       title: "Which tools are spike-prone",
-      framing: "lift = how much more a tool group drives spikes vs its normal share. Above 1 = spike-heavy",
+      framing: "lift > 1 = the group shows up in spikes more than in normal turns",
       badge: `${data.spike_anatomy.groups.length} group${data.spike_anatomy.groups.length > 1 ? "s" : ""}`,
       badgeClass: "warn",
+      badgeTip: BADGE_TIPS.warn,
       bodyEl: spikeAnatomyBody(data.spike_anatomy),
     }));
   }
@@ -742,9 +747,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "loops",
       title: "Tools that got stuck",
-      framing: "same tool fired many times consecutively in one session — likely a runaway retry loop",
+      framing: "same tool fired repeatedly in a row",
       badge: `${data.loops.length} loop${data.loops.length > 1 ? "s" : ""}`,
       badgeClass: "alert",
+      badgeTip: BADGE_TIPS.alert,
       bodyEl: loopsBody(data.loops, data),
     }));
   }
@@ -756,9 +762,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "reads",
       title: "Context bloat from reads",
-      framing: "large or repeated document reads that inflated context unnecessarily",
+      framing: "large or repeated document reads",
       badge: `${data.read_warnings.length} warning${data.read_warnings.length > 1 ? "s" : ""}`,
       badgeClass: "warn",
+      badgeTip: BADGE_TIPS.warn,
       bodyEl: readWarningsBody(data.read_warnings, data),
     }));
   }
@@ -774,9 +781,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "group-cost",
       title: "Which tool groups cost the most?",
-      framing: "share of all tool tokens, by functional group — warns when one group takes ≥40%, because that's where scoping saves the most",
+      framing: "share of tool tokens by group; flagged when one group takes ≥40%",
       badge: dominant ? `${top.group} (${topShare}%)` : `${data.group_cost.length} group${data.group_cost.length > 1 ? "s" : ""}, none dominant`,
-      badgeClass: dominant ? "warn" : "",
+      badgeClass: dominant ? "warn" : "ok",
+      badgeTip: dominant ? BADGE_TIPS.warn : BADGE_TIPS.ok,
       bodyEl: costComparisonBody(data.group_cost, data.tool_cost),
     }));
   }
@@ -795,9 +803,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "regression",
       title: "Did anything get more expensive?",
-      framing: "first half vs last half of your data, as each group's share of tool tokens — a share gain means it grew relative to everything else",
+      framing: "each group's share of tool tokens, first half vs last half",
       badge: hasRegression ? `${top.group} → ${bShare}% → ${aShare}%` : "none found",
-      badgeClass: hasRegression ? "warn" : "",
+      badgeClass: hasRegression ? "warn" : "ok",
+      badgeTip: hasRegression ? BADGE_TIPS.warn : BADGE_TIPS.ok,
       bodyEl: regressionBody(data.regression),
     }));
   }
@@ -814,9 +823,10 @@ function renderInvestigationSections(data) {
       container.appendChild(investSection({
         key: "testing",
         title: "Are you over-testing?",
-        framing: `how much of your captured token traffic goes to test runs, full-suite reruns, and targeted-to-full balance`,
+        framing: "share of tokens spent on test runs and full-suite reruns",
         badge: overTesting ? `yes — ${tokenShare}%` : `no — ${tokenShare}%`,
-        badgeClass: overTesting ? "warn" : "",
+        badgeClass: overTesting ? "warn" : "ok",
+        badgeTip: overTesting ? BADGE_TIPS.warn : BADGE_TIPS.ok,
         bodyEl: testingEfficiencyBody(te),
         docAnchor: "testing-efficiency",
       }));
@@ -828,7 +838,17 @@ function renderInvestigationSections(data) {
   // (marker_comparison, MOCK_MARKER) stay — the /tokens_v1 page and CLI still read them.
 }
 
-function investSection({ key, title, framing, badge, badgeClass, bodyEl, docAnchor }) {
+// Badge color rule (one rule for every Investigate section):
+//   red    — measured incidents: turns or loops that already cost extra tokens
+//   yellow — a pattern worth a look (share, lift, read or testing thresholds crossed)
+//   green  — checked, nothing flagged
+const BADGE_TIPS = {
+  alert: "Red: incidents that already cost extra tokens.",
+  warn: "Yellow: a pattern worth a look, not a confirmed loss.",
+  ok: "Green: checked, nothing flagged.",
+};
+
+function investSection({ key, title, framing, badge, badgeClass, badgeTip, bodyEl, docAnchor }) {
   const details = document.createElement("details");
   details.className = "invest-section";
   if (key) details.dataset.secKey = key;
@@ -843,7 +863,7 @@ function investSection({ key, title, framing, badge, badgeClass, bodyEl, docAnch
       <span class="invest-title">${esc(title)} ${iconHtml}</span>
       <span class="invest-framing">${esc(framing)}</span>
     </span>
-    <span class="invest-badge ${badgeClass}">${esc(badge)}</span>
+    <span class="invest-badge ${badgeClass}"${badgeTip ? ` title="${esc(badgeTip)}"` : ""}>${esc(badge)}</span>
   </summary>
   <div class="invest-body"></div>`;
   const body = details.querySelector(".invest-body");
@@ -857,7 +877,7 @@ function spikeCausesBody(rows) {
     frag.appendChild(itemRow({
       dotColor: "var(--danger)",
       head: `${causeLabel(c.cause)} (${c.spikes} spike${c.spikes > 1 ? "s" : ""})`,
-      detail: `Worst: <span class="num">+${tokShort(c.worst_delta)}</span> delta in <code>${esc(c.worst_repo || "unknown")}</code>. Average delta: <span class="num">${tokShort(c.avg_delta)}</span> per spike.`,
+      detail: `Worst <span class="num">+${tokShort(c.worst_delta)}</span> in <code>${esc(c.worst_repo || "unknown")}</code> · avg <span class="num">${tokShort(c.avg_delta)}</span> per spike`,
       hint: c.hint,
     }));
   }
@@ -871,7 +891,7 @@ function spikeAnatomyBody(a) {
     frag.appendChild(itemRow({
       dotColor: liftColor,
       head: `${esc(g.group)} — lift ${g.lift == null ? "only in spikes" : g.lift + "×"}`,
-      detail: `Appears in <span class="num">${pct(g.spike_share)}%</span> of spike turns but only <span class="num">${pct(g.normal_share)}%</span> of normal turns. Average <span class="num">${tokShort(g.avg_tokens)}</span> tokens/call in spikes.`,
+      detail: `<span class="num">${pct(g.spike_share)}%</span> of spike turns vs <span class="num">${pct(g.normal_share)}%</span> of normal turns · avg <span class="num">${tokShort(g.avg_tokens)}</span> tokens/call`,
       hint: g.lift >= 1 ? `Scope ${esc(g.group)} calls more narrowly (smaller query, fewer refs) before they land in context.` : "Below baseline — not a spike driver.",
     }));
   }
@@ -948,79 +968,46 @@ function docLookupHint(warning, type) {
 }
 
 function costComparisonBody(groupCost, toolCost) {
-  // Horizontal bar chart: y = tool group, x = SHARE of all tool tokens. Share is the primary
-  // framing (universally understood, same unit as the waste cards); avg tokens/call stays in the
-  // metadata rows. Heaviest/cheapest per-call highlighted by data, not hardcoded group names.
+  // Bar chart (shared <portal-bar-chart>): one bar per group, sized by share of all tool tokens.
+  // Heaviest/cheapest per-call groups are highlighted by data, not hardcoded names. Underneath, a
+  // real table gives every group (and its top tools) the same columns so numbers line up.
   const sorted = [...groupCost].sort((a, b) => (b.total_tokens || 0) - (a.total_tokens || 0)).slice(0, 8);
   const perCallRanked = [...groupCost].sort((a, b) => b.avg_tokens - a.avg_tokens);
   const heaviest = perCallRanked[0]?.group;
   const cheapest = perCallRanked[perCallRanked.length - 1]?.group;
+  const tagOf = (g) => (sorted.length > 1 && g === heaviest ? "heaviest" : sorted.length > 1 && g === cheapest ? "cheapest" : "");
 
-  const rowH = 44, padL = 150, padR = 70, gap = 10;
-  const W = 984;
-  const H = sorted.length * rowH + 10;
-  const maxVal = Math.max(...sorted.map((g) => g.share_of_tokens || 0), 0.0001);
-  const chartW = W - padL - padR;
+  const chart = document.createElement("portal-bar-chart");
+  chart.rows = sorted.map((g) => ({
+    label: g.group,
+    value: g.share_of_tokens || 0,
+    text: Math.round((g.share_of_tokens || 0) * 100) + "%",
+    tone: tagOf(g.group) === "heaviest" ? "warn" : tagOf(g.group) === "cheapest" ? "ok" : "",
+  }));
 
-  let rows = "";
-  for (let i = 0; i < sorted.length; i++) {
-    const g = sorted[i];
-    const y = i * rowH;
-    const w = Math.max(((g.share_of_tokens || 0) / maxVal) * chartW, 2);
-    const isHeavy = g.group === heaviest && sorted.length > 1;
-    const isCheap = g.group === cheapest && sorted.length > 1;
-    const fill = isHeavy ? "var(--warn)" : isCheap ? "var(--ok)" : "var(--accent)";
-    const shareLabel = Math.round((g.share_of_tokens || 0) * 100) + "%";
-    rows += `<text x="${padL - 10}" y="${y + rowH / 2 - 2}" fill="var(--ink)" font-size="12" font-weight="600" font-family="var(--sans)" text-anchor="end">${esc(g.group)}</text>
-      <rect x="${padL}" y="${y + 4}" width="${w.toFixed(0)}" height="${rowH - 16}" fill="${fill}" rx="3"/>
-      <text x="${(padL + w + 8).toFixed(0)}" y="${y + rowH / 2 - 2}" fill="var(--dim)" font-size="11" font-family="var(--sans)">${shareLabel}</text>`;
-  }
-  // X-axis ticks in %.
-  const tickCount = 4;
-  let ticks = "";
-  for (let i = 0; i <= tickCount; i++) {
-    const v = (maxVal / tickCount) * i;
-    const x = padL + (v / maxVal) * chartW;
-    ticks += `<line x1="${x.toFixed(0)}" y1="0" x2="${x.toFixed(0)}" y2="${H - 6}" stroke="var(--line)" stroke-width="0.5" opacity="0.3"/>
-      <text x="${x.toFixed(0)}" y="${H + 2}" fill="var(--dim)" font-size="10" font-family="var(--sans)" text-anchor="middle">${Math.round(v * 100)}%</text>`;
-  }
-
-  const frag = document.createDocumentFragment();
-  const chart = document.createElement("div");
-  chart.innerHTML = `<svg class="chart-svg" viewBox="0 0 ${W} ${H + 16}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Average tokens per call by tool group">
-    <g transform="translate(0,0)">${rows}</g>
-    ${ticks}
-  </svg>`;
-
-  // Metadata rows under the chart: dedicated tag column first, then group + details,
-  // so the tags never offset the column alignment.
-  const meta = document.createElement("div");
-  meta.className = "cost-meta";
+  // Per-tool rows show WHICH tool inside a heavy group to scope: top 3 by avg tokens per call.
+  let body = "";
   for (const g of sorted) {
-    const row = document.createElement("div");
-    row.className = "cost-meta-row";
-    const isHeavy = g.group === heaviest && sorted.length > 1;
-    const isCheap = g.group === cheapest && sorted.length > 1;
-    row.innerHTML = `<span class="cost-meta-tag">${isHeavy ? '<span class="tag heaviest">heaviest</span>' : isCheap ? '<span class="tag cheapest">cheapest</span>' : ""}</span>
-      <span class="cost-meta-group">${esc(g.group)}</span>
-      <span class="cost-meta-detail">${fmt(g.calls)} calls · ${tokShort(g.total_tokens)} total · ${g.calls_per_session || "—"} calls/session</span>`;
-    meta.appendChild(row);
-    // Per-tool detail inside the group: WHICH tool inside a heavy group to scope (the decision
-    // the section enables — "jcodemunch is 43% of tool tokens" becomes "the Read-within-group
-    // averaging 8k/call is what to narrow"). Top 3 tools by avg tokens per call; max shown so
-    // a single huge call isn't hidden by a low average.
+    const tag = tagOf(g.group);
+    body += `<tr class="cost-group-row">
+      <th scope="row">${esc(g.group)}${tag ? ` <span class="tag ${tag}">${tag}</span>` : ""}</th>
+      <td>${fmt(g.calls)}</td><td>${tokShort(g.total_tokens)}</td><td>${tokShort(g.avg_tokens)}</td><td></td>
+    </tr>`;
     const tools = (toolCost || []).filter((t) => t.group === g.group).sort((a, b) => b.avg_tokens - a.avg_tokens).slice(0, 3);
     for (const t of tools) {
-      const toolRow = document.createElement("div");
-      toolRow.className = "cost-tool-row";
-      toolRow.innerHTML = `<span class="cost-meta-tag"></span>
-        <span class="cost-meta-group cost-tool-name">${esc(t.tool)}</span>
-        <span class="cost-meta-detail">${fmt(t.calls)} calls · avg ${tokShort(t.avg_tokens)} · up to ${tokShort(t.max_tokens)} in one call</span>`;
-      meta.appendChild(toolRow);
+      body += `<tr class="cost-tool-row">
+        <th scope="row">${esc(t.tool)}</th>
+        <td>${fmt(t.calls)}</td><td>${tokShort(t.total_tokens)}</td><td>${tokShort(t.avg_tokens)}</td><td>${tokShort(t.max_tokens)}</td>
+      </tr>`;
     }
   }
+  const table = document.createElement("table");
+  table.className = "cost-table";
+  table.innerHTML = `<thead><tr><th scope="col">Group / tool</th><th scope="col">Calls</th><th scope="col">Total</th><th scope="col">Avg / call</th><th scope="col">Max / call</th></tr></thead><tbody>${body}</tbody>`;
+
+  const frag = document.createDocumentFragment();
   frag.appendChild(chart);
-  frag.appendChild(meta);
+  frag.appendChild(table);
   return frag;
 }
 
@@ -1046,12 +1033,15 @@ function regressionBody(r) {
     const row = document.createElement("div");
     row.className = "reg-row";
     const gain = (g.after_share ?? 0) - (g.before_share ?? 0);
-    const deltaClass = gain > 0 ? "up" : gain < 0 ? "down" : "";
+    const dir = (d) => (d > 0 ? "up" : d < 0 ? "down" : "");
+    // First half is the baseline (neutral); last half and this week are judged against it.
+    const deltaClass = dir(gain);
+    const weekClass = g.week_share == null ? "" : dir((g.week_share ?? 0) - (g.before_share ?? 0));
     row.innerHTML = `<span class="reg-group">${esc(g.group)}</span>
       <span class="reg-col">${pct(g.before_share ?? 0)}%</span>
       <span class="reg-arrow">→</span>
       <span class="reg-col reg-after ${deltaClass}">${pct(g.after_share ?? 0)}%</span>
-      <span class="reg-col">${pct(g.week_share ?? 0)}%</span>
+      <span class="reg-col ${weekClass}">${pct(g.week_share ?? 0)}%</span>
       <span class="reg-detail">${tokShort(g.before_avg_tokens)} → ${tokShort(g.after_avg_tokens)}</span>`;
     table.appendChild(row);
   }
@@ -1060,7 +1050,7 @@ function regressionBody(r) {
     const note = document.createElement("p");
     note.className = "item-detail";
     note.style.margin = "8px 0 0";
-    note.innerHTML = `<strong>Exploratory:</strong> midpoint split, not tied to a specific change. The marker-relative comparison in a future iteration will give a precise before/after once a change is marked.`;
+    note.innerHTML = `<strong>Exploratory:</strong> midpoint split, not tied to a change. For a precise before/after, mark a change in <a href="#condition-changes-section">Your changes</a>.`;
     frag.appendChild(note);
   }
   return frag;
@@ -1339,6 +1329,7 @@ function sessionLink(sessionId, data, fallbackLabel) {
 wireWasteSourceLinks();
 wireSessionChips();
 wireDocGuideIcons();
+wireHintToggle();
 
 // ── Doc-guide info icons ──
 // Same one-delegate pattern as the v1 dashboard: any <portal-info-icon data-doc-anchor> opens
