@@ -12,14 +12,15 @@
 //   --page <path>    Page path to capture (default /tokens).
 //   --out <dir>      Output directory for PNGs (default /tmp/rr-shots).
 //
-// Encapsulates the gotchas documented in references/portal-capture-recipe.md:
-//   - `--detach` rewrites the ready-file path, so we parse the printed port instead.
+// Gotchas it encapsulates:
 //   - The capture half needs the REAL $HOME (Playwright browser cache) while the server
 //     keeps its hermetic HOME — handled by spawning the server with a modified env only.
+//   - The server runs as a foreground child (lib/portal-cleanup.mjs), so it stops with this
+//     script on every exit path, including SIGKILL. A `--detach` server outlived the script: its
+//     PID file is keyed by the port it bound, which a bare `web stop` never finds.
 //   - Theme switching is data-attribute + localStorage (`portal-theme`), not media emulation.
-//   - `roborepo web stop` cleans any stale server before boot.
 
-import { spawn, execSync } from "node:child_process";
+import { startHermeticPortal } from "../lib/portal-cleanup.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -56,36 +57,20 @@ if (seedTokens2) {
   console.log(`seeded /tokens mock spool → ${spoolDir}/claude.jsonl`);
 }
 
-const readyFile = path.join(tmp, "portal.ready");
-const bootLog = path.join(tmp, "boot.log");
-const serverEnv = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: stateDir, PORTAL_READY_FILE: readyFile };
-const server = spawn("node", [path.join(repoRoot, "scripts/cli/main.mjs"), "web", "--no-open", "--port", "0", "--allow-zero-port", "--detach"], {
-  cwd: repoRoot,
-  env: serverEnv,
-  stdio: ["ignore", "pipe", "pipe"],
-});
-server.stdout.on("data", (d) => fs.appendFileSync(bootLog, d));
-server.stderr.on("data", (d) => fs.appendFileSync(bootLog, d));
-
-function stopServer() {
-  try { execSync("node scripts/cli/main.mjs web stop", { cwd: repoRoot, stdio: "ignore" }); } catch { /* already gone */ }
+const serverEnv = { ...process.env, HOME: tmp, ROBOREPO_STATE_DIR: stateDir };
+process.on("exit", () => {
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* best effort */ }
-}
-process.on("exit", stopServer);
-process.on("SIGINT", () => process.exit(1));
+});
 
-// ── Wait for the server to print its port (proven path: parse the boot log) ──
-let port = null;
-for (let i = 0; i < 60 && !port; i++) {
-  await new Promise((r) => setTimeout(r, 500));
-  try {
-    const log = fs.readFileSync(bootLog, "utf8");
-    port = Number(log.match(/http:\/\/127\.0\.0\.1:(\d+)/)?.[1]) || null;
-  } catch { /* not written yet */ }
-}
-if (!port) {
-  console.error("server never became ready — boot log:");
-  try { console.error(fs.readFileSync(bootLog, "utf8").slice(-2000)); } catch { /* no log */ }
+let port;
+try {
+  ({ port } = await startHermeticPortal({
+    env: serverEnv,
+    readyFile: path.join(tmp, "portal.ready"),
+    logFile: path.join(tmp, "boot.log"),
+  }));
+} catch (err) {
+  console.error(err.message);
   process.exit(1);
 }
 console.log(`portal ready on http://127.0.0.1:${port}`);

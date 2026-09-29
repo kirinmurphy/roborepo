@@ -13,6 +13,7 @@ pass=0
 fail=0
 quiet=0
 cfg_srv=""
+cfg_guard=""
 
 # --quiet|-q : suppress per-test "ok:" lines; still print every FAIL + the summary.
 for arg in "$@"; do
@@ -34,6 +35,9 @@ cleanup() {
   local status=$?
   if [[ -n "${cfg_srv:-}" ]]; then
     kill "${cfg_srv}" 2>/dev/null || true
+  fi
+  if [[ -n "${cfg_guard:-}" ]]; then
+    kill "${cfg_guard}" 2>/dev/null || true
   fi
   chmod -R u+rwx "${work}" 2>/dev/null || true
   rm -rf "${work}" 2>/dev/null || true
@@ -776,6 +780,11 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" PORTAL_READY_FILE="${cfg_ready}" \
     node "${cli}" web --no-open --port 0 --allow-zero-port >"${cfg_home}/portal.log" 2>&1 &
   cfg_srv=$!
+  # The EXIT trap stops the server on every exit it gets to run on, but a SIGKILLed suite (the usual
+  # timeout enforcement in CI and agent harnesses) runs no trap and would orphan it. The watchdog
+  # survives the suite and stops the server once this shell is gone.
+  "${repo_root}/scripts/test/lib/kill-when-orphaned.sh" "$$" "${cfg_srv}" </dev/null >/dev/null 2>&1 &
+  cfg_guard=$!
   cfg_port=""
   for _ in $(seq 1 50); do
     if [[ -f "${cfg_ready}" ]]; then
@@ -797,15 +806,59 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
     bash -c "node -e \"const j=require('${cfg_home}/config-snapshot.json');const secs=j.behaviorView.filter(s=>s.categoryId);const perms=j.behaviorView.find(s=>s.kind==='permissions');const stores=j.behaviorView.find(s=>s.kind==='stores');process.exit(secs.length&&secs.every(s=>s.contextCost&&Number.isFinite(s.contextCost.activeStartupTokens))&&perms.contextCost.label==='not-prompt-context'&&stores.contextCost.label==='not-prompt-context'?0:1)\""
   assert "config: portal status identifies current app" \
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/portal/status' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.appRoot==='${repo_root}'&&String(j.portalDir).endsWith('/portal')&&Number.isInteger(j.pid)&&j.pages.some(p=>p.id==='localhoster'&&p.path==='/localhoster')?0:1)})\""
-  assert "config: web reuses an existing current portal" \
-    bash -c "${cfg_env} node '${cli}' web --no-open --port '${cfg_port}' >'${cfg_home}/portal-reuse.log' 2>&1 && grep -q 'already running' '${cfg_home}/portal-reuse.log'"
+  # The next two assertions run `web` against cfg_srv and expect it to reuse or adopt that portal and
+  # exit at once. When reuse breaks — or cfg_srv is already gone because a killed suite's watchdog
+  # stopped it — `web` starts its own server instead: in the foreground, where it would block the
+  # suite forever and outlive it. run_web_expecting_exit bounds that and guards it like cfg_srv.
+  run_web_expecting_exit() {
+    local log="$1"; shift
+    env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" \
+      ROBOREPO_WORKSPACE_ROOT="${cfg_workspace}" SKIP_MCP=1 \
+      node "${cli}" web "$@" >"${log}" 2>&1 &
+    local web_pid=$!
+    "${repo_root}/scripts/test/lib/kill-when-orphaned.sh" "$$" "${web_pid}" </dev/null >/dev/null 2>&1 &
+    local guard_pid=$!
+    local ticks=0 timed_out=0 status=0
+    while kill -0 "${web_pid}" 2>/dev/null; do
+      if (( ticks >= 600 )); then
+        timed_out=1
+        echo "test: web $* did not exit within 60s; stopping it" >>"${log}"
+        kill "${web_pid}" 2>/dev/null || true
+        break
+      fi
+      sleep 0.1
+      ticks=$((ticks + 1))
+    done
+    wait "${web_pid}" 2>/dev/null || status=$?
+    kill "${guard_pid}" 2>/dev/null || true
+    (( timed_out )) && return 124
+    return "${status}"
+  }
+  served_portal_pid() {
+    curl -s "http://127.0.0.1:${cfg_port}/api/portal/status" \
+      | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(String(JSON.parse(s).pid))}catch{}})"
+  }
+  reuse_check() {
+    run_web_expecting_exit "${cfg_home}/portal-reuse.log" --no-open --port "${cfg_port}" \
+      && grep -q 'already running' "${cfg_home}/portal-reuse.log"
+  }
+  adopt_check() {
+    run_web_expecting_exit "${cfg_home}/portal-detach.log" --detach --no-open --port "${cfg_port}" || return 1
+    local served
+    served="$(served_portal_pid)"
+    [[ "${served}" == "${cfg_srv}" ]] && return 0
+    # Adoption failed and a replacement detached server now holds the port. Stop it so the failed
+    # assertion does not also leave a server running.
+    [[ -n "${served}" ]] && kill "${served}" 2>/dev/null
+    return 1
+  }
+  assert "config: web reuses an existing current portal" reuse_check
   # `web --detach` must ADOPT a healthy portal, not replace it. startDetachedPortal used to call
   # killExistingServer BEFORE its reuse check, which made that branch dead code: every detached
   # start SIGTERMed a working server and respawned it (~30s, and it left you with none if the
   # respawn failed). Asserting the PID is unchanged is what catches a regression to kill-first —
   # a plain "does it serve afterwards" check passes either way, which is why the bug went unseen.
-  assert "config: web --detach adopts a healthy portal instead of restarting it" \
-    bash -c "${cfg_env} node '${cli}' web --detach --no-open --port '${cfg_port}' >'${cfg_home}/portal-detach.log' 2>&1 && test \"\$(curl -s 'http://127.0.0.1:${cfg_port}/api/portal/status' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{process.stdout.write(String(JSON.parse(s).pid))})\")\" = '${cfg_srv}'"
+  assert "config: web --detach adopts a healthy portal instead of restarting it" adopt_check
   cfg_token="$(curl -s "http://127.0.0.1:${cfg_port}/config" | sed -n 's/.*name="cli-portal-token" content="\([^"]*\)".*/\1/p' | head -1)"
   assert "config: portal exposes mutation token only in served HTML" \
     bash -c "test -n '${cfg_token}'"

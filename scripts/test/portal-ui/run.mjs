@@ -17,6 +17,7 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import { guardPortal } from "../lib/portal-cleanup.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..", "..");
@@ -46,6 +47,10 @@ const server = spawn(
     stdio: ["ignore", "inherit", "inherit"],
   },
 );
+
+// The normal paths below stop the server, but a runner killed while blocked in spawnSync (or by
+// SIGKILL) runs none of them; the watchdog stops the server once this process is gone.
+guardPortal(server.pid);
 
 let exited = false;
 server.once("exit", (code) => {
