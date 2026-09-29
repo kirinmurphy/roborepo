@@ -340,7 +340,7 @@ check_harness_registry() {
   fi
 }
 
-# Bounded local stores (telemetry spools, localhoster history, capture logs) must stay under their
+# Bounded local stores (telemetry spools, developer-runtime history, capture logs) must stay under their
 # byte caps. Each store trims itself on write, so an over-cap store means its write path has not run
 # since the data accumulated — visible here rather than only when the disk fills.
 check_store_bounds() {

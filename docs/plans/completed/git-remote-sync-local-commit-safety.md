@@ -15,7 +15,7 @@ reviewed_commit: fcdd2b8
 
 Refocus `roborepo git remote-sync-check` as a local-commit safety check: refresh the configured remotes, then report local tracked branches that still contain commits not present on their upstream branch.
 
-The branch/upstream/ahead/behind calculation should move into `modules/repositories/` as shared repository-domain logic. The CLI will consume all tracked branches from that service. Localhoster will consume the same service for its current-branch ahead/behind data while preserving its existing portal presentation and its existing no-network refresh behavior.
+The branch/upstream/ahead/behind calculation should move into `modules/repositories/` as shared repository-domain logic. The CLI will consume all tracked branches from that service. Developer-runtime will consume the same service for its current-branch ahead/behind data while preserving its existing portal presentation and its existing no-network refresh behavior.
 
 The CLI's interactive path should remain compact and repository-first. Selecting a repository exposes four actions: show unpushed commits, open a shell in the repository, copy a checkout command, or push a selected branch to its configured upstream after explicit confirmation.
 
@@ -47,14 +47,14 @@ A GitHub API call is not required. Git already stores local branches, configured
 - Add a repository-first interactive workflow without printing long shell commands under every result.
 - Require explicit confirmation before every push.
 - Never force-push from this workflow.
-- Put branch/upstream/ahead/behind collection in `modules/repositories/` so the CLI and Localhoster share one implementation.
-- Preserve Localhoster's existing current-branch Git presentation, ahead/behind values, and remote-freshness presentation.
-- Keep Localhoster scans offline: a Localhoster refresh must never fetch or push.
+- Put branch/upstream/ahead/behind collection in `modules/repositories/` so the CLI and Developer-runtime share one implementation.
+- Preserve Developer-runtime's existing current-branch Git presentation, ahead/behind values, and remote-freshness presentation.
+- Keep Developer-runtime scans offline: a Developer-runtime refresh must never fetch or push.
 - Keep Git inspection provider-neutral; configured Git remotes may point to GitHub or another Git host.
 
 ## Non-goals
 
-- Redesigning the Localhoster portal Git/GitHub row, tooltip, badges, or interaction.
+- Redesigning the Developer-runtime portal Git/GitHub row, tooltip, badges, or interaction.
 - Reporting branches that are only behind their upstream.
 - Reporting whether branches are merged into `main`, `master`, or another default branch.
 - Recommending branch deletion or merge cleanup.
@@ -73,12 +73,12 @@ A GitHub API call is not required. Git already stores local branches, configured
 | `remoteSyncCheck()` | Defaults to compact output but derives inclusion from broad Git hygiene todos: missing remotes/upstreams, behind branches, unmerged branches, local-only branches, and ahead branches. |
 | Fetch behavior | `--fetch` is optional and currently runs `git fetch --all --prune`; without it the report can compare against stale remote-tracking refs. |
 | `modules/repositories/git-exec.mjs` | Provides hardened async/sync read-only Git execution with timeouts, buffer limits, no optional locks, no prompts, and an explicit subcommand allow-list. It intentionally rejects `fetch` and `push`. |
-| `modules/localhoster/git.mjs` | Reads current checkout/ref data locally, derives the current branch's upstream, calculates current-branch ahead/behind through the hardened executor, and records `fetchedAt` from `FETCH_HEAD`. It never contacts a remote. |
-| `modules/localhoster/git-refs.mjs` | Owns pure parsing for Localhoster's HEAD, packed refs, upstream config, ahead/behind output, and short SHA values. |
-| Localhoster portal | Already presents current-branch Git state including ahead/behind and remote freshness. No visual change is required for this feature. |
+| `modules/developer-runtime/git.mjs` | Reads current checkout/ref data locally, derives the current branch's upstream, calculates current-branch ahead/behind through the hardened executor, and records `fetchedAt` from `FETCH_HEAD`. It never contacts a remote. |
+| `modules/developer-runtime/git-refs.mjs` | Owns pure parsing for Developer-runtime's HEAD, packed refs, upstream config, ahead/behind output, and short SHA values. |
+| Developer-runtime portal | Already presents current-branch Git state including ahead/behind and remote freshness. No visual change is required for this feature. |
 | CLI manifest | `manifests/platform/cli/command-definitions/git/remote-sync-check.command.json` injects `--compact` for interactive invocation and uses the generic captured-output/Enter-to-return flow. |
 
-The current test coverage reflects the broad todo-based remote-sync behavior. `scripts/test/git-inventory-check.mjs` uses an invalid remote to exercise missing-upstream output rather than real fetch/ahead/push behavior. Localhoster's read-only behavior is characterized separately in `scripts/test/localhoster-git-check.mjs`.
+The current test coverage reflects the broad todo-based remote-sync behavior. `scripts/test/git-inventory-check.mjs` uses an invalid remote to exercise missing-upstream output rather than real fetch/ahead/push behavior. Developer-runtime's read-only behavior is characterized separately in `scripts/test/developer-runtime-git-check.mjs`.
 
 `docs/plans/backlog/git-exec-consolidation.md` is related but does not own this feature. That plan migrates older read-only Git helpers. This plan introduces shared branch-sync facts plus narrowly scoped network operations required by the remote-sync workflow.
 
@@ -89,10 +89,10 @@ The current test coverage reflects the broad todo-based remote-sync behavior. `s
 ```mermaid
 flowchart TD
   A["modules/repositories/branch-sync.mjs"] -->|"provides branch sync facts"| B["remote-sync CLI"]
-  A -->|"provides current branch sync facts"| C["Localhoster Git context"]
+  A -->|"provides current branch sync facts"| C["Developer-runtime Git context"]
   D["modules/repositories/git-exec.mjs"] -->|"runs read-only Git"| A
   E["modules/repositories/git-remote-operations.mjs"] -->|"refreshes remotes and pushes explicit refs"| B
-  C -->|"renders existing fields"| F["Localhoster portal"]
+  C -->|"renders existing fields"| F["Developer-runtime portal"]
 ```
 
 The shared repository layer owns facts and narrowly scoped Git operations. Consumer-specific presentation stays with each consumer.
@@ -104,7 +104,7 @@ The shared repository layer owns facts and narrowly scoped Git operations. Consu
 | `modules/repositories/git-remote-operations.mjs` | Expose explicit network/mutation functions such as remote refresh and push-to-configured-upstream; do not expose a general arbitrary Git command surface. |
 | `scripts/maintenance/git-remote-sync.mjs` | Scan repositories, refresh them, build the safety projection, and render direct output modes. |
 | `scripts/cli/git-remote-sync-menu.mjs` | Own repository/action/branch menus, confirmation, shell launch, clipboard behavior, and action-result pauses. |
-| `modules/localhoster/git.mjs` | Continue to own current checkout, dirty state, drift, timestamps, and Localhoster-specific Git context while consuming shared branch-sync facts for current-branch upstream/ahead/behind. |
+| `modules/developer-runtime/git.mjs` | Continue to own current checkout, dirty state, drift, timestamps, and Developer-runtime-specific Git context while consuming shared branch-sync facts for current-branch upstream/ahead/behind. |
 | `scripts/maintenance/git-inventory.mjs` | Keep the broader inventory behavior. Reuse shared branch-sync facts where doing so removes duplicate ahead/behind logic without changing inventory output. |
 
 ### Branch-sync data contract
@@ -134,9 +134,9 @@ The collector should enumerate local branches in one `git for-each-ref` invocati
 
 Branches that track another local branch (`remote = .`) are not remote-backed for this feature and must not enter the remote-safety projection.
 
-### Localhoster compatibility
+### Developer-runtime compatibility
 
-Localhoster remains an offline consumer:
+Developer-runtime remains an offline consumer:
 
 1. Resolve the current branch as it does today.
 2. Collect shared branch-sync facts from local refs only.
@@ -145,13 +145,13 @@ Localhoster remains an offline consumer:
 5. Keep existing dirty-state, commit, base-drift, `upstreamTipAt`, worktree, and `fetchedAt` behavior.
 6. Render the existing portal UI unchanged.
 
-This should replace Localhoster's duplicate current-branch upstream/ahead/behind calculation rather than add a second branch-sync call beside it.
+This should replace Developer-runtime's duplicate current-branch upstream/ahead/behind calculation rather than add a second branch-sync call beside it.
 
-Localhoster's per-scan cache remains the deduplication boundary: several running apps from one repository should still pay for one repository Git collection per Localhoster refresh.
+Developer-runtime's per-scan cache remains the deduplication boundary: several running apps from one repository should still pay for one repository Git collection per Developer-runtime refresh.
 
 ### CLI freshness contract
 
-The CLI is intentionally different from Localhoster: `remote-sync-check` must refresh remote state before claiming that a branch is ahead or clean.
+The CLI is intentionally different from Developer-runtime: `remote-sync-check` must refresh remote state before claiming that a branch is ahead or clean.
 
 ```mermaid
 sequenceDiagram
@@ -173,7 +173,7 @@ Remote refresh should:
 - fetch each distinct remote referenced by tracked branches;
 - prune stale remote-tracking refs so a deleted upstream is not treated as current;
 - disable automatic maintenance and recursive submodule fetching for this safety scan;
-- allow `FETCH_HEAD` to update because Localhoster's existing freshness signal reads its modification time;
+- allow `FETCH_HEAD` to update because Developer-runtime's existing freshness signal reads its modification time;
 - use an operation-appropriate network timeout rather than the 1.5-second read-only timeout;
 - avoid an interactive credential prompt during a multi-repository scan; authentication failure becomes an explicit refresh failure;
 - continue scanning other repositories when one repository cannot refresh.
@@ -208,7 +208,7 @@ Local branches with commits ahead of remote
 
 1) ./roborepo
    - main — 2 ahead
-   - integration/localhoster-docker-process-providers — 3 ahead
+   - integration/developer-runtime-docker-process-providers — 3 ahead
 
 2) ./visa_planner
    - workflow-viewer — 1 ahead
@@ -285,7 +285,7 @@ Repository detail target shape:
 ./roborepo
 
   main — 2 ahead
-  integration/localhoster-docker-process-providers — 3 ahead
+  integration/developer-runtime-docker-process-providers — 3 ahead
 
 Actions
 > Show unpushed commits
@@ -345,9 +345,9 @@ Because inherited-stdio commands are responsible for their own terminal interact
 - [x] Export the shared branch-sync API through `modules/repositories/index.mjs`.
 - [x] Return branch facts and explicit unknown/gone/no-remote states; do not return user-facing strings.
 - [x] Reuse existing `resolveGitDir`/worktree handling and the per-scan cache conventions rather than introducing a second repository-identity model.
-- [x] Migrate Localhoster's current-branch upstream/ahead/behind lookup to the shared collector.
-- [x] Remove the now-redundant current-branch ahead/behind subprocess path from `modules/localhoster/git.mjs` while preserving its other Git context fields.
-- [x] Preserve Localhoster portal output with regression tests; no template or styling change is expected.
+- [x] Migrate Developer-runtime's current-branch upstream/ahead/behind lookup to the shared collector.
+- [x] Remove the now-redundant current-branch ahead/behind subprocess path from `modules/developer-runtime/git.mjs` while preserving its other Git context fields.
+- [x] Preserve Developer-runtime portal output with regression tests; no template or styling change is expected.
 
 ### Phase 3 — Add narrow remote operations
 
@@ -395,7 +395,7 @@ Because inherited-stdio commands are responsible for their own terminal interact
 - [x] Prove a fetch/authentication failure is surfaced as unverified rather than clean and exits non-zero.
 - [x] Extend `scripts/test/cli-command-catalog-check.mjs` for the new manifest module, `--menu`, and inherited-stdio metadata.
 - [x] Extend `scripts/test/cli-surface-integration-check.mjs` using its existing PTY/`expect` pattern for repository-first navigation, action selection, push cancellation, confirmed push, inherited-stdio result notice, and return-to-menu behavior.
-- [x] Run the Localhoster Git characterization suite to prove no portal-facing Git behavior changed.
+- [x] Run the Developer-runtime Git characterization suite to prove no portal-facing Git behavior changed.
 
 ## Validation
 
@@ -404,11 +404,11 @@ Use the smallest checks while implementing each layer, then run the full suite b
 ```text
 node --check modules/repositories/branch-sync.mjs
 node --check modules/repositories/git-remote-operations.mjs
-node --check modules/localhoster/git.mjs
+node --check modules/developer-runtime/git.mjs
 node --check scripts/maintenance/git-remote-sync.mjs
 node scripts/cli/main.mjs git remote-sync-check --help
 npm run test:repositories
-npm run test:localhoster-git
+npm run test:developer-runtime-git
 node scripts/test/git-inventory-check.mjs
 node scripts/test/cli-command-catalog-check.mjs
 node scripts/test/cli-surface-integration-check.mjs
@@ -428,8 +428,8 @@ Acceptance criteria:
 - Interactive inherited-stdio mode returns a precise parent-menu notice through `ROBOREPO_INTERACTIVE_RESULT_FILE` without reintroducing captured-output pauses.
 - Push requires an explicit default-No confirmation and does not require checkout.
 - A successful push is followed by refresh/re-scan and removes the branch when it reaches zero ahead.
-- Localhoster continues to perform no network Git operations during its normal refresh cycle.
-- Localhoster's current branch, ahead/behind, freshness, dirty-state, and drift presentation remain unchanged.
+- Developer-runtime continues to perform no network Git operations during its normal refresh cycle.
+- Developer-runtime's current branch, ahead/behind, freshness, dirty-state, and drift presentation remain unchanged.
 - `git inventory` retains its broader diagnostics.
 
 ## Implementation Notes
@@ -443,7 +443,7 @@ Session 2026-08-08:
 - Added `for-each-ref` to the read-only Git allow-list; `fetch` and `push` remain rejected by `defaultRunGit`.
 - Added explicit remote refresh and push helpers in `modules/repositories/git-remote-operations.mjs`.
 - Moved active `remote-sync-check` execution to `scripts/maintenance/git-remote-sync.mjs`; the old inventory command remains broader and unchanged.
-- Updated Localhoster Git context to consume shared current-branch sync facts while preserving its offline scan behavior.
+- Updated Developer-runtime Git context to consume shared current-branch sync facts while preserving its offline scan behavior.
 - Updated CLI manifest for command-owned interactive stdio with `--menu`; menu handling currently lives in the dedicated maintenance command module instead of a separate `scripts/cli/git-remote-sync-menu.mjs` wrapper, because all menu actions need direct access to the command's refresh/projection helpers and no generic CLI primitive was missing.
 - Added real local bare-remote characterization for shared branch facts and remote operations.
 - Updated `git-inventory-check` so direct remote-sync coverage uses local remotes, verifies mandatory fetch freshness, omits behind-only branches, reports ahead branches, and treats refresh failure as unverified/non-zero.
@@ -453,12 +453,12 @@ Verification:
 
 - `node --check modules/repositories/branch-sync.mjs` passed.
 - `node --check modules/repositories/git-remote-operations.mjs` passed.
-- `node --check modules/localhoster/git.mjs` passed.
+- `node --check modules/developer-runtime/git.mjs` passed.
 - `node --check scripts/maintenance/git-remote-sync.mjs` passed.
 - `node scripts/cli/main.mjs git remote-sync-check --help` passed.
 - `npm run test:repositories` passed.
 - `npm run test:repositories-branch-sync` passed.
-- `npm run test:localhoster-git` passed.
+- `npm run test:developer-runtime-git` passed.
 - `node scripts/test/git-inventory-check.mjs` passed.
 - `node scripts/test/cli-command-catalog-check.mjs` passed.
 - `node scripts/test/cli-surface-integration-check.mjs` passed.
@@ -477,14 +477,14 @@ main during the post-merge integration review ([[infra-post-merge-integration-re
 ```text
 node --check modules/repositories/branch-sync.mjs            pass
 node --check modules/repositories/git-remote-operations.mjs  pass
-node --check modules/localhoster/git.mjs                     pass
+node --check modules/developer-runtime/git.mjs                     pass
 node --check scripts/maintenance/git-remote-sync.mjs         pass
 node scripts/cli/main.mjs git remote-sync-check --help       pass
 node scripts/test/repositories-check.mjs                     pass
 node scripts/test/repositories-service-check.mjs             pass
 node scripts/test/repositories-api-check.mjs                 pass
 node scripts/test/repositories-branch-sync-check.mjs         pass
-node scripts/test/localhoster-git-check.mjs                  pass
+node scripts/test/developer-runtime-git-check.mjs                  pass
 node scripts/test/git-inventory-check.mjs                    pass
 node scripts/test/cli-command-catalog-check.mjs              pass
 ```
@@ -498,7 +498,7 @@ not evidence of a regression in this workflow without an isolated rerun.
 
 - Automatic fetch adds network latency to a command that was previously able to run entirely from cached refs. The command's safety contract justifies that cost; failures must be bounded by explicit network timeouts and must not block inspection of other repositories.
 - `--prune` mutates remote-tracking refs by removing branches that no longer exist on the remote. It does not delete local branches, and the refresh needs this behavior to avoid treating a deleted remote branch as current.
-- The CLI refresh intentionally updates `FETCH_HEAD`. Suppressing that write would make Localhoster's existing remote-freshness age stale after the CLI had actually fetched.
+- The CLI refresh intentionally updates `FETCH_HEAD`. Suppressing that write would make Developer-runtime's existing remote-freshness age stale after the CLI had actually fetched.
 - Authentication and remote-helper configuration can fail independently of local Git inspection. Keep those failures distinct from branch-sync state.
 - A remote can change between the pre-push fetch and the push. Never force; rely on normal non-fast-forward rejection and then refresh again.
 - A linked worktree shares refs/configuration with its main repository while keeping a distinct checkout. Shared branch collection must use the repository identity/worktree utilities already present instead of assuming `.git` is always a directory.

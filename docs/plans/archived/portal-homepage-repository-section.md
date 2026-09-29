@@ -48,7 +48,7 @@ The canonical repository registry is complete and is not a blocker for this work
 ## Goals
 
 - Give users one consistent way to enter, see, change, copy, and navigate with repository context.
-- Let Plans, Sessions, Tokens, Localhoster, Agent Config, and the homepage resolve the same selected repository.
+- Let Plans, Sessions, Tokens, Developer-runtime, Agent Config, and the homepage resolve the same selected repository.
 - Keep URLs short, readable, bookmarkable, and stable.
 - Preserve domain-specific filtering and semantics rather than applying one implicit server filter to every response.
 - Make the homepage useful before and after a repository is selected.
@@ -61,7 +61,7 @@ The canonical repository registry is complete and is not a blocker for this work
 - Adding a repository management CLI.
 - Making every page support repository scope in the first implementation phase.
 - Hiding global configuration, health, or installation warnings under repository scope.
-- Treating a display name, folder name, telemetry label, or Localhoster identity as canonical identity.
+- Treating a display name, folder name, telemetry label, or Developer-runtime identity as canonical identity.
 - Adding persistent user preference storage for the selected repository.
 - Adding a separate repository-detail page.
 
@@ -123,7 +123,7 @@ flowchart LR
   Domain --> View["Page-specific view"]
 ```
 
-Domain data continues to store and compare `repositoryId`. Do not persist `urlKey` into Plans, telemetry events, Localhoster records, sessions, or configuration findings as their relationship key.
+Domain data continues to store and compare `repositoryId`. Do not persist `urlKey` into Plans, telemetry events, Developer-runtime records, sessions, or configuration findings as their relationship key.
 
 ## Information Architecture
 
@@ -197,7 +197,7 @@ Repository context is not one automatic filter injected into every API. Each pag
 | Plans | Plans across monitored repositories | Plans associated by canonical `repositoryId` |
 | Sessions | Sessions across repositories | Sessions associated with the repository |
 | Tokens | All eligible telemetry | Telemetry associated with the repository |
-| Localhoster | All discovered environments | Environments associated with the repository |
+| Developer-runtime | All discovered environments | Environments associated with the repository |
 | Agent Config | Global overview | Repository-local config plus separately labeled global config |
 | Global health | Always visible | Still visible and clearly global |
 
@@ -219,7 +219,7 @@ Show:
   - recent token activity when available;
   - repository-local configuration warnings when available.
 
-Each repository card or row selects its `urlKey` and opens `/?repository=<urlKey>`. It may also expose direct links to scoped Plans, Tokens, Localhoster, Sessions, and Agent Config when data exists.
+Each repository card or row selects its `urlKey` and opens `/?repository=<urlKey>`. It may also expose direct links to scoped Plans, Tokens, Developer-runtime, Sessions, and Agent Config when data exists.
 
 Do not show the current generic homepage widgets as if they describe one repository before a repository is selected. Global warnings remain valid in the unscoped view.
 
@@ -227,7 +227,7 @@ Do not show the current generic homepage widgets as if they describe one reposit
 
 Show repository-specific summaries and entry points for:
 
-- Localhost environments.
+- Developer-runtime environments.
 - Sessions.
 - Plans.
 - Token usage.
@@ -389,15 +389,15 @@ The reviewed checkout predates the completed registry implementation. Reconcile 
 - `portal/telemetry/api.js`, `portal/telemetry/modals.js`, `portal/telemetry/renders.js`
   - Preserve event/session repository metadata without confusing it with shared selection.
 
-### Localhoster
+### Developer-runtime
 
-- `modules/localhoster/identity.mjs`
+- `modules/developer-runtime/identity.mjs`
   - The reviewed checkout owns identity locally; the completed registry should have replaced or delegated this logic.
-- `modules/localhoster/snapshot.mjs`
+- `modules/developer-runtime/snapshot.mjs`
   - Ensure public instances expose canonical repository association.
-- `scripts/cli/portal-routes-localhoster.mjs`
+- `scripts/cli/portal-routes-developer-runtime.mjs`
   - Add a repository-scoped read projection without changing existing mutation identities.
-- `portal/localhoster/app.js`, `portal/localhoster/state.js`, `portal/localhoster/templates.js`
+- `portal/developer-runtime/app.js`, `portal/developer-runtime/state.js`, `portal/developer-runtime/templates.js`
   - Filter displayed projects/instances by canonical association while keeping settings mutations keyed by their existing internal identifiers.
 
 ### Agent Config
@@ -422,7 +422,7 @@ The reviewed checkout does not contain a homepage entry file. Coordinate with `p
 ### Tests
 
 - `scripts/test/plan-docs-check.mjs`
-- `scripts/test/localhoster-check.mjs`
+- `scripts/test/developer-runtime-check.mjs`
 - `scripts/test/telemetry-portal-state-check.mjs`
 - `scripts/test/telemetry-cohort-check.mjs`
 - `scripts/test/test-roborepo.sh`
@@ -502,7 +502,7 @@ Exit criterion: `/` is a repository entry point and `/?repository=<urlKey>` is t
 
 ### Phase 7 — Extend remaining pages
 
-- [ ] Scope Localhoster by canonical repository association.
+- [ ] Scope Developer-runtime by canonical repository association.
 - [ ] Add repository-local Agent Config projection while retaining global configuration.
 - [ ] Add Sessions scope when the Sessions page exists.
 - [ ] Ensure unsupported pages communicate scope limitations.
@@ -534,7 +534,7 @@ Required automated coverage:
 - Tokens shared/local parameter composition.
 - Tokens canonical filtering and legacy telemetry fallback.
 - Analysis cache separation by canonical repository.
-- Localhoster canonical association.
+- Developer-runtime canonical association.
 - Homepage scoped and unscoped projections.
 - Browser payload privacy.
 
@@ -542,7 +542,7 @@ Repo-native verification commands:
 
 ```text
 npm run test:plans
-npm run test:localhoster
+npm run test:developer-runtime
 npm run test:telemetry-portal-state
 npm run test:telemetry-cohort
 npm test

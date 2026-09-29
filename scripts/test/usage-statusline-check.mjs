@@ -65,9 +65,9 @@ function runFormatter(input, env = {}) {
 
     // All runtime modules copied to managed storage (not just the entrypoint).
     for (const mod of RUNTIME_MODULES) {
-      assert.ok(fs.existsSync(path.join(home, ".roborepo", "runtime", "usage-statusline", mod)), `enable installs ${mod}`);
+      assert.ok(fs.existsSync(path.join(home, ".roborepo", "package-runtime", "usage-statusline", mod)), `enable installs ${mod}`);
     }
-    const entrypoint = path.join(home, ".roborepo", "runtime", "usage-statusline", "claude-statusline.mjs");
+    const entrypoint = path.join(home, ".roborepo", "package-runtime", "usage-statusline", "claude-statusline.mjs");
     const settings = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
     assert.equal(settings.statusLine.command, `node "${entrypoint}"`, "Claude command references managed entrypoint");
 
@@ -90,7 +90,7 @@ function runFormatter(input, env = {}) {
     const after = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
     assert.equal(after.statusLine, undefined, "disable removes owned Claude statusLine");
     for (const mod of RUNTIME_MODULES) {
-      assert.ok(!fs.existsSync(path.join(home, ".roborepo", "runtime", "usage-statusline", mod)), `disable removes ${mod}`);
+      assert.ok(!fs.existsSync(path.join(home, ".roborepo", "package-runtime", "usage-statusline", mod)), `disable removes ${mod}`);
     }
     const afterCodex = fs.readFileSync(path.join(home, ".codex", "config.toml"), "utf8");
     for (const item of ["model-with-reasoning", "context-remaining", "five-hour-limit", "weekly-limit", "git-branch"]) {

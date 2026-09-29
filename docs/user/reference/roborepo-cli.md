@@ -60,7 +60,7 @@ run `roborepo harness refresh`.
 | `roborepo doctor --installed [--verbose]` | Verifies that installed harness paths resolve correctly; also fails when a local store is over its size cap. |
 | `roborepo maintenance repair [--dry-run] [--on-conflict ...]` | Repairs a moved or renamed checkout by relinking stale symlinks against the current path; it leaves copied config content alone. |
 | `roborepo maintenance repair local-config [--dry-run or --apply]` | Recovers safe local Claude/Codex settings from recent backups when `update` or `doctor --installed` reports local config repair candidates. |
-| `roborepo maintenance stores [list]` | Lists the local stores RoboRepo keeps on disk — telemetry spools, localhoster history, capture logs — with each one's size against its bound. |
+| `roborepo maintenance stores [list]` | Lists the local stores RoboRepo keeps on disk — telemetry spools, runtime history, capture logs — with each one's size against its bound. |
 | `roborepo maintenance stores reset <id> [--all]` | Reclaims space in one store. Applies that store's own retention policy, or with `--all` clears it outright. Store ids come from `stores list`. |
 | `roborepo maintenance portal-pids [--reap]` | Lists `~/.roborepo/portal/server-<port>.pid` files and whether each one's process is still alive. `--reap` deletes only entries whose process is gone, never a running portal or one owned by another user. |
 
@@ -99,16 +99,16 @@ Most users only need `list`, `inspect`, `enable`, and `disable`.
 
 | Command | What it does |
 | --- | --- |
-| `roborepo web [--no-open] [--port <n>]` | Starts the local portal on `127.0.0.1` (default port `4317`) and opens it. `/config` manages packages and permissions, `/plans` browses plan docs, `/localhoster` lists local web apps, and `/tokens` shows token usage when telemetry has data. |
+| `roborepo web [--no-open] [--port <n>]` | Starts the local portal on `127.0.0.1` (default port `4317`) and opens it. `/config` manages packages and permissions, `/plans` browses plan docs, `/runtime` lists local web apps, and `/tokens` shows token usage when telemetry has data. |
 | `roborepo web --detach [--no-open] [--port <n>]` | Starts the same portal in the background. A cold start warms its views before binding and can take ~30s. |
 | `roborepo web stop [--port <n>]` | Stops the detached portal. PID files are tracked per port, so pass the same `--port` used to start it. |
-| `roborepo localhoster [--json] [--open]` | Lists active localhost HTTP apps, prints the portal snapshot as JSON, or opens `/localhoster`. |
+| `roborepo runtime [--json] [--open]` | Lists active localhost HTTP apps, prints the portal snapshot as JSON, or opens `/runtime`. |
 
 If a portal is already running on the port, `roborepo web` reuses it when it runs current code and
 restarts it when the code has changed since it started.
 
 See [Plan Docs Walkthrough](../guides/plan/lifecycle/plan-docs.md),
-[Telemetry Walkthrough](../guides/telemetry.md), and [Localhoster](localhoster.md) for the pages.
+[Telemetry Walkthrough](../guides/telemetry.md), and [Runtime](developer-runtime.md) for the pages.
 
 ## Telemetry
 

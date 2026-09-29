@@ -8,7 +8,7 @@ related:
   - roborepo-cli-surface-implementation-plan
   - native-skill-tools-boundary
   - plan-session-launching-milestone-1
-  - localhoster-docker-process-providers
+  - developer-runtime-docker-process-providers
   - gemini-cli-provider-integration
   - harness-capability-derived-resource-targeting
 reviewed_commit: 179a31d0beaf9c8abb4ce6b4fe5756e130dc84ad
@@ -1929,7 +1929,7 @@ earlier phase notes.
 | Config grid becomes too wide | Keep dynamic data now; handle axis orientation in the follow-up below |
 | Provider-specific telemetry leaks into shared schema | Normalize shared fields or namespace extensions |
 | Broad migration becomes unreviewable | Land vertical phases with contract tests and output characterization |
-| Naming collision with `localhoster-docker-process-providers`' unrelated provider/capability vocabulary | Use `harnessProvider`/`harnessCapabilities` explicitly throughout; do not build a shared generic provider framework — the two contracts and lifecycles are unrelated |
+| Naming collision with `developer-runtime-docker-process-providers`' unrelated provider/capability vocabulary | Use `harnessProvider`/`harnessCapabilities` explicitly throughout; do not build a shared generic provider framework — the two contracts and lifecycles are unrelated |
 
 ## Follow-up work
 

@@ -6,7 +6,7 @@ import { effectiveEnabledIds, knownHarnessIds } from "./rules-render.mjs";
 import { stateSkillsDir, stateDir } from "./state-paths.mjs";
 import { isMainModule } from "./roots.mjs";
 import { slashCommandLiveDir } from "./skill-command-config.mjs";
-import { runtimeAssetDestination } from "./package-harness-config.mjs";
+import { packageRuntimeAssetDestination } from "./package-harness-config.mjs";
 import { listSourceSkills } from "./skill-files.mjs";
 
 const MANAGED_SKILL_MARKER = ".builtin-managed";
@@ -18,7 +18,7 @@ function currentDesired(catalog = loadPackageCatalog({ includeUnavailable: true 
   const enabled = new Set(effectiveEnabledIds(catalog));
   const skills = new Set();
   const commands = new Map();
-  const runtimeAssets = new Set();
+  const packageRuntimeAssets = new Set();
 
   for (const pkg of catalog) {
     if (!enabled.has(pkg.id)) continue;
@@ -35,13 +35,13 @@ function currentDesired(catalog = loadPackageCatalog({ includeUnavailable: true 
         for (const harness of resource.harnesses || []) {
           commandSet(commands, harness).add(`${pkg.id}:${resource.name}.md`);
         }
-      } else if (resource.type === "runtime-asset") {
-        runtimeAssets.add(runtimeAssetDestination(pkg, resource));
+      } else if (resource.type === "package-runtime-asset") {
+        packageRuntimeAssets.add(packageRuntimeAssetDestination(pkg, resource));
       }
     }
   }
 
-  return { skills, commands, runtimeAssets };
+  return { skills, commands, packageRuntimeAssets };
 }
 
 function commandSet(commands, harness) {
@@ -153,18 +153,18 @@ function pruneCommands({ desiredCommands, removeAll, dryRun }) {
   return removed;
 }
 
-function pruneRuntimeAssets({ desiredRuntimeAssets, removeAll, dryRun }) {
-  const runtimeDir = path.join(stateDir, "runtime");
+function prunePackageRuntimeAssets({ desiredPackageRuntimeAssets, removeAll, dryRun }) {
+  const packageRuntimeDir = path.join(stateDir, "package-runtime");
   let removed = 0;
   let packages = [];
   try {
-    packages = fs.readdirSync(runtimeDir, { withFileTypes: true });
+    packages = fs.readdirSync(packageRuntimeDir, { withFileTypes: true });
   } catch {
     return 0;
   }
   for (const pkgEnt of packages) {
     if (!pkgEnt.isDirectory()) continue;
-    const pkgDir = path.join(runtimeDir, pkgEnt.name);
+    const pkgDir = path.join(packageRuntimeDir, pkgEnt.name);
     let entries = [];
     try {
       entries = fs.readdirSync(pkgDir, { withFileTypes: true });
@@ -173,8 +173,8 @@ function pruneRuntimeAssets({ desiredRuntimeAssets, removeAll, dryRun }) {
     }
     for (const ent of entries) {
       const target = path.join(pkgDir, ent.name);
-      if (!removeAll && desiredRuntimeAssets.has(target)) continue;
-      removed += removePath(target, "runtime asset", { dryRun }) ? 1 : 0;
+      if (!removeAll && desiredPackageRuntimeAssets.has(target)) continue;
+      removed += removePath(target, "package-runtime asset", { dryRun }) ? 1 : 0;
     }
     try {
       if (!dryRun && fs.existsSync(pkgDir) && fs.readdirSync(pkgDir).length === 0) fs.rmdirSync(pkgDir);
@@ -185,12 +185,12 @@ function pruneRuntimeAssets({ desiredRuntimeAssets, removeAll, dryRun }) {
 
 export function cleanupPackageProjections({ removeAll = false, dryRun = false } = {}) {
   const desired = removeAll
-    ? { skills: new Set(), commands: new Map(), runtimeAssets: new Set() }
+    ? { skills: new Set(), commands: new Map(), packageRuntimeAssets: new Set() }
     : currentDesired();
   const removed =
     pruneCommands({ desiredCommands: desired.commands, removeAll, dryRun }) +
     pruneSkills({ desiredSkills: desired.skills, removeAll, dryRun }) +
-    pruneRuntimeAssets({ desiredRuntimeAssets: desired.runtimeAssets, removeAll, dryRun });
+    prunePackageRuntimeAssets({ desiredPackageRuntimeAssets: desired.packageRuntimeAssets, removeAll, dryRun });
   if (removed === 0) console.log(`package projection cleanup: no ${removeAll ? "owned" : "orphaned"} projections`);
   return { removed };
 }

@@ -21,7 +21,7 @@ try {
   // ---- Listing an empty state root still names every registered store ----
   const empty = run([]);
   assert.equal(empty.status, 0, "list succeeds against an empty state root");
-  for (const id of ["localhoster-history", "telemetry-spool-claude", "capture-dense-bash-claude"]) {
+  for (const id of ["developer-runtime-history", "telemetry-spool-claude", "capture-dense-bash-claude"]) {
     assert.ok(empty.stdout.includes(id), `list names ${id}`);
   }
   assert.ok(empty.stdout.includes(tempRoot), "list reports the state root it inspected");

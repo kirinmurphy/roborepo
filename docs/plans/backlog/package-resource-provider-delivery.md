@@ -27,7 +27,7 @@ The baseline deliberately does **not** redesign package manifests or rename `res
 The package and harness systems already contain most of the ingredients needed for this separation:
 
 - `scripts/cli/package-catalog.mjs` normalizes packages with heterogeneous `resources[]`.
-- The package resource vocabulary currently includes `skill`, `slash-command`, `rules`, `hooks`, `permissions`, `mcp`, `plugin`, `service`, `cli-command`, `harness-config`, `runtime-asset`, and provider-specific types.
+- The package resource vocabulary currently includes `skill`, `slash-command`, `rules`, `hooks`, `permissions`, `mcp`, `plugin`, `service`, `cli-command`, `harness-config`, `package-runtime-asset`, and provider-specific types.
 - `scripts/harnesses/provider-manifest.schema.json` declares provider paths, capabilities, detection rules, and provider-specific extensions.
 - `scripts/harnesses/contract.mjs` validates both provider capabilities and the adapter methods those capabilities require.
 - Claude and Codex already hide provider-specific config formats and storage details behind adapter code.

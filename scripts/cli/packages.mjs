@@ -11,7 +11,7 @@ import { configFileMcpProviders, ensureConfigFileMcp, removeConfigFileMcp } from
 import { loadMcpPresets } from "./mcp-presets.mjs";
 import { writeRootConfig } from "./root-config-writes.mjs";
 import { hookFilePath, mergeHooksInto, unmergeHooksFrom, installHookScripts, removeHookScripts } from "./hook-composition.mjs";
-import { installRuntimeAsset, mergeHarnessConfig, removeRuntimeAsset, unmergeHarnessConfig } from "./package-harness-config.mjs";
+import { installPackageRuntimeAsset, mergeHarnessConfig, removePackageRuntimeAsset, unmergeHarnessConfig } from "./package-harness-config.mjs";
 import { installPackageCommands, removePackageCommands } from "./slash-commands.mjs";
 import { cleanupPackageProjections } from "./package-projection-cleanup.mjs";
 import { getHarnessProvider } from "../harnesses/registry.mjs";
@@ -434,8 +434,8 @@ export async function enablePackage(rest, _seen = new Set()) {
         if (dryRun) { console.log(`  [dry-run] enable service ${component.id}`); break; }
         servicePromises.push(setService(component.id, true));
         break;
-      case "runtime-asset":
-        installRuntimeAsset(pkg, component, { dryRun });
+      case "package-runtime-asset":
+        installPackageRuntimeAsset(pkg, component, { dryRun });
         break;
       case "harness-config":
         if (dryRun) { console.log(`  [dry-run] merge harness config ${component.source} (${component.harness})`); break; }
@@ -642,8 +642,8 @@ export async function disablePackage(rest) {
           writeSettings,
         });
         break;
-      case "runtime-asset":
-        removeRuntimeAsset(pkg, component, { dryRun });
+      case "package-runtime-asset":
+        removePackageRuntimeAsset(pkg, component, { dryRun });
         break;
       case "skill":
         if (dryRun) {

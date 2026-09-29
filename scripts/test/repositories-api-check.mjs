@@ -28,7 +28,7 @@ function get(urlPath, handlers) {
 
 try {
   const id = "git:github.com/kirinmurphy/roborepo";
-  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "localhoster", evidence: "git-remote", confidence: "high", localRoot: "rootaaaa1111", stateRoot });
+  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "developer-runtime", evidence: "git-remote", confidence: "high", localRoot: "rootaaaa1111", stateRoot });
   recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "plans", evidence: "configured-scan-root", confidence: "high", stateRoot });
 
   // ---- Summary shape is browser-safe: no absolute paths, no root, no raw config ----
@@ -41,8 +41,8 @@ try {
   assert.ok(!("root" in summary) && !("localRoots" in summary), "summary carries no root field");
   assert.equal(summary.repositoryId, id);
   assert.equal(summary.providerUrl, "https://github.com/kirinmurphy/roborepo");
-  assert.deepEqual([...summary.discoveredBy].sort(), ["localhoster", "plans"]);
-  assert.equal(summary.capabilities.localhoster, true);
+  assert.deepEqual([...summary.discoveredBy].sort(), ["developer-runtime", "plans"]);
+  assert.equal(summary.capabilities.developerRuntime, true);
   assert.equal(summary.capabilities.plans, true);
   assert.equal(summary.capabilities.telemetry, false);
   assert.equal(summary.enrollments.plans, undefined, "capabilities != enrollments");

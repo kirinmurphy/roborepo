@@ -38,7 +38,7 @@ Retention only makes sense once it is clear what each store holds and how long t
 | Telemetry markers | "What changed, and when?" — user-authored annotations that give telemetry its before/after |
 | Telemetry snapshots | "What was the configuration at that moment?" — content-addressed, referenced by markers |
 | Telemetry experiments | "Did that change help?" — live records pairing a start and end marker |
-| Localhoster history | "Why did this app go unhealthy on Tuesday?" — transition events only, not a registry |
+| Developer-runtime history | "Why did this app go unhealthy on Tuesday?" — transition events only, not a registry |
 | Dense bash log | "Which command patterns are worth an allowlist entry or a script?" — a corpus to mine |
 | Usage snapshots | "What is my token headroom right now?" — one current reading per harness |
 
@@ -91,7 +91,7 @@ Verified at commit `ea84711`.
 
 | Store | Path | Shape | Bound today |
 | --- | --- | --- | --- |
-| Localhoster history | `<stateRoot>/localhoster/history.jsonl` | Append-only JSONL | 14 days, then 2MB |
+| Developer-runtime history | `<stateRoot>/developer-runtime/history.jsonl` | Append-only JSONL | 14 days, then 2MB |
 | Telemetry spool | `<stateRoot>/telemetry/spool/<harness>.jsonl` | Append-only JSONL | 25MB per harness |
 | Telemetry markers | `<stateRoot>/telemetry/events/markers.jsonl` | Append-only JSONL | none |
 | Telemetry snapshots | `<stateRoot>/telemetry/snapshots/<id>.json` | One file per id, immutable | none |
@@ -111,7 +111,7 @@ They are listed to show the survey was complete.
 Both cap size. They differ in what else they measure, and in how they write — and the write
 difference is load-bearing.
 
-| Dimension | `modules/localhoster/history.mjs` | `scripts/cli/telemetry-capture.mjs` |
+| Dimension | `modules/developer-runtime/history.mjs` | `scripts/cli/telemetry-capture.mjs` |
 | --- | --- | --- |
 | Age policy | 14 days (`DEFAULT_RETENTION_DAYS`) | none |
 | Size cap | 2MB (`HISTORY_MAX_BYTES`) | 25MB (`SPOOL_MAX_BYTES`) |
@@ -221,7 +221,7 @@ not the bound itself. Reproduce with:
 
 ```
 du -sh "${ROBOREPO_STATE_ROOT:-$HOME/.roborepo}"/telemetry/spool/* \
-       "${ROBOREPO_STATE_ROOT:-$HOME/.roborepo}"/localhoster/history.jsonl
+       "${ROBOREPO_STATE_ROOT:-$HOME/.roborepo}"/developer-runtime/history.jsonl
 ```
 
 Figures below are from one development machine at `ea84711`, so treat them as an order of
@@ -229,7 +229,7 @@ magnitude, not a population.
 
 | Store | Measured now | maxAgeDays | maxBytes | Basis |
 | --- | --- | --- | --- | --- |
-| Localhoster history | 456KB / 1,589 events / 14 days | 14 (user-set, 1–365) | 2MB | unchanged; steady state sits well under cap |
+| Developer-runtime history | 456KB / 1,589 events / 14 days | 14 (user-set, 1–365) | 2MB | unchanged; steady state sits well under cap |
 | Telemetry spool (claude) | 17.6MB | none | 25MB | unchanged; drain buffer, age is meaningless |
 | Telemetry spool (codex) | 21.4MB | none | 25MB | unchanged |
 | Telemetry markers | 671B / 3 records | none | 5MB | ~224B/record, user-authored; cap is a runaway guard only |
@@ -302,7 +302,7 @@ Agreement is then enforced by a test rather than by hope — see Validation.
 
 ### Happy path: one append, end to end
 
-The normal case for localhoster history, after the change. Every store follows this shape; only the
+The normal case for developer-runtime history, after the change. Every store follows this shape; only the
 final commit differs.
 
 1. `appendHistoryEvents` writes the new events and calls the engine.
@@ -357,22 +357,22 @@ Both stores must come out behaviorally identical; their existing tests are the c
       the durable store, not a buffer — so there is no missing drain to file, and a byte cap is the
       correct and only bound for it. The 40MB observed across two files is expected behavior below a
       per-file cap that has simply never fired.
-- [x] Make the registry's localhoster policy read `preferences.historyRetentionDays` instead of the
+- [x] Make the registry's developer-runtime policy read `preferences.historyRetentionDays` instead of the
       hard-coded 14. Added `preferenceKey` plus `resolveStorePolicy(store, preferences)` — the
       registry declares which preference governs a store and the caller supplies the value, so a
       leaf module never imports a feature module. The append path was already correct
-      (`scripts/cli/localhoster.mjs:264` passes the preference through); this is for the reporting
+      (`scripts/cli/developer-runtime.mjs:264` passes the preference through); this is for the reporting
       surfaces in Phase 5, which would otherwise show a default that disagrees with the live value.
-- [x] Rewrite `compactHistory` in `modules/localhoster/history.mjs` to take its verdict from the
+- [x] Rewrite `compactHistory` in `modules/developer-runtime/history.mjs` to take its verdict from the
       engine, keeping the temp-file-plus-rename commit exactly as is.
 - [x] Rewrite `capSpool` in `scripts/cli/telemetry-capture.mjs` the same way, keeping the in-place
       write. It now gets the gate it lacked, via `measureLog`.
-- [x] Confirm `scripts/test/localhoster-history-check.mjs` and
+- [x] Confirm `scripts/test/developer-runtime-history-check.mjs` and
       `scripts/test/telemetry-spool-store-check.mjs` pass unmodified. Both green.
 
 The migration surfaced one behavior difference worth recording: the compaction floor belongs to the
 append path, not to `compactHistory` itself. Routing a direct call through a floored policy let a
-small file keep expired events, which `localhoster-history-check.mjs:112` caught. `floorBytes` is
+small file keep expired events, which `developer-runtime-history-check.mjs:112` caught. `floorBytes` is
 now a parameter — `0` for a direct call (an explicit request to compact applies the policy at any
 size), `HISTORY_COMPACT_FLOOR_BYTES` for the append path.
 
@@ -439,7 +439,7 @@ survey of `docs/user/` at `81b0c43`:
 - [x] `docs/user/reference/architecture.md` — added `## Runtime State` before Sync Flow. The doc
       covered what installation puts on disk but nothing about what accumulates afterwards.
 - [x] `docs/user/reference/roborepo-cli.md` — documented `maintenance stores` and its reset forms.
-- [x] `docs/user/reference/localhoster.md` — verified, not rewritten. All three of its bullets
+- [x] `docs/user/reference/runtime.md` — verified, not rewritten. All three of its bullets
       (retention preference, 2MB cap, atomic compaction) still hold after the migration.
 - [x] `globals/packages/capture-dense-bash/package.config.json` — done in Phase 4; the description
       now names the new path and states the bound.
@@ -453,7 +453,7 @@ node scripts/test/retention-policy-check.mjs        pass (7 stores registered)
 node scripts/test/maintenance-stores-check.mjs      pass
 node scripts/test/telemetry-store-bounds-check.mjs  pass
 node scripts/test/capture-dense-bash-check.mjs      pass
-node scripts/test/localhoster-history-check.mjs     pass (unmodified)
+node scripts/test/developer-runtime-history-check.mjs     pass (unmodified)
 node scripts/test/telemetry-spool-store-check.mjs   pass (unmodified)
 node scripts/test/package-catalog-check.mjs         pass
 node scripts/test/cli-command-catalog-check.mjs     pass
@@ -496,7 +496,7 @@ node scripts/test/retention-policy-check.mjs        pass (7 stores registered)
 node scripts/test/maintenance-stores-check.mjs      pass
 node scripts/test/telemetry-store-bounds-check.mjs  pass
 node scripts/test/capture-dense-bash-check.mjs      pass
-node scripts/test/localhoster-history-check.mjs     pass (unmodified)
+node scripts/test/developer-runtime-history-check.mjs     pass (unmodified)
 node scripts/test/telemetry-spool-store-check.mjs   pass (unmodified)
 node scripts/test/package-catalog-check.mjs         pass
 node scripts/test/cli-command-catalog-check.mjs     pass
@@ -508,7 +508,7 @@ roborepo doctor --installed                         pass (113 checks)
 Confirmed against a real install after the work landed:
 
 ```
-localhoster-history           451KB (22% of cap)
+developer-runtime-history           451KB (22% of cap)
 telemetry-spool-claude       18.8MB (75% of cap)
 telemetry-spool-codex        21.4MB (86% of cap)
 telemetry-markers              671B  (0% of cap)
@@ -523,7 +523,7 @@ capture-dense-bash-claude         0B (0% of cap)
   recorded there.
 - Migration of existing `~/.claude/logs/dense-bash.jsonl` content to the new location. Throwaway
   observation data, and the package description names the new path.
-- Configurable caps for anything but localhoster's window. Left as the one open question.
+- Configurable caps for anything but developer-runtime's window. Left as the one open question.
 
 ## Risks
 
@@ -552,7 +552,7 @@ settled them.
 
 One question remains open, and it is new:
 
-- **Should the caps be configurable?** Only localhoster's window is, because it already was. Every
+- **Should the caps be configurable?** Only developer-runtime's window is, because it already was. Every
   other bound is a literal in `modules/retention/registry.mjs`. The registry supports per-store
   preference resolution (`preferenceKey` + `resolveStorePolicy`), so exposing more is cheap — but no
   user has asked, and an unused setting is a maintenance cost. Revisit if someone hits a cap.

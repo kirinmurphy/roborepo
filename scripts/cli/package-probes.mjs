@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { repoRoot } from "./paths.mjs";
 import { stateSkillsDir, telemetryDir } from "./state-paths.mjs";
-import { codexStatusLineIncludes, readHarnessConfig, runtimeAssetDestination } from "./package-harness-config.mjs";
+import { codexStatusLineIncludes, readHarnessConfig, packageRuntimeAssetDestination } from "./package-harness-config.mjs";
 import { effectiveEnabledIds, knownHarnessIds } from "./rules-render.mjs";
 
 const CLAUDE_SETTINGS = path.join(os.homedir(), ".claude", "settings.json");
@@ -207,14 +207,14 @@ function probeService(component, desired, telemetryState) {
   });
 }
 
-function probeRuntimeAsset(component, desired, pkg) {
-  const dest = runtimeAssetDestination(pkg, component);
+function probePackageRuntimeAsset(component, desired, pkg) {
+  const dest = packageRuntimeAssetDestination(pkg, component);
   const observed = fs.existsSync(dest);
   return componentResult(component, {
     desired,
     observed,
     owner: observed ? "roborepo" : null,
-    detail: observed ? `runtime asset present: ${dest}` : `runtime asset missing: ${dest}`,
+    detail: observed ? `package-runtime asset present: ${dest}` : `package-runtime asset missing: ${dest}`,
   });
 }
 
@@ -352,7 +352,7 @@ export function buildPackageLiveState(packages) {
       else if (component.type === "plugin") components.push(probePlugin(component, componentDesired, settings));
       else if (component.type === "mcp") components.push(probeMcp(component, componentDesired, settings));
       else if (component.type === "service") components.push(probeService(component, componentDesired, telemetryState));
-      else if (component.type === "runtime-asset") components.push(probeRuntimeAsset(component, componentDesired, pkg));
+      else if (component.type === "package-runtime-asset") components.push(probePackageRuntimeAsset(component, componentDesired, pkg));
       else if (component.type === "harness-config") components.push(probeHarnessConfig(component, componentDesired, settings, pkg));
       else if (component.type === "skill") components.push(probeSkill(component, componentDesired, pkg));
       else components.push(componentResult(component, { desired: componentDesired, observed: false, detail: "unknown component type", blocked: componentDesired }));

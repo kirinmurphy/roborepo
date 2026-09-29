@@ -133,16 +133,16 @@ The existing package lifecycle is already correct and should be extended rather 
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"${runtime:claude-statusline.mjs}\"",
+    "command": "node \"${package-runtime:claude-statusline.mjs}\"",
     "padding": 1
   }
 }
 ```
 
-`scripts/cli/package-harness-config.mjs` expands `${runtime:...}` to the managed path under:
+`scripts/cli/package-harness-config.mjs` expands `${package-runtime:...}` to the managed path under:
 
 ```text
-~/.roborepo/runtime/usage-statusline/
+~/.roborepo/package-runtime/usage-statusline/
 ```
 
 The current formatter reads Claude JSON from stdin and directly maps source fields to display segments:
@@ -744,7 +744,7 @@ Register it in `scripts/cli/portal-server.mjs` following the existing domain rou
 
 - `portal-routes-telemetry.mjs`;
 - `portal-routes-config.mjs`;
-- `portal-routes-localhoster.mjs`;
+- `portal-routes-developer-runtime.mjs`;
 - `portal-routes-plans.mjs`.
 
 Proposed endpoint:
@@ -837,7 +837,7 @@ Turns/tool calls remain a follow-up because neither current status-line surface 
 
 ### `package.config.json`
 
-Register every installed runtime dependency as a `runtime-asset`. The current installer copies individual declared files and does not automatically include sibling imports.
+Register every installed developer-runtime dependency as a `package-runtime-asset`. The current installer copies individual declared files and does not automatically include sibling imports.
 
 For example:
 
@@ -845,23 +845,23 @@ For example:
 {
   "resources": [
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/claude-statusline.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-adapters.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-domain.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-render.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-snapshot-store.mjs"
     }
   ]

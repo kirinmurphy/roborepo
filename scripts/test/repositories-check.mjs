@@ -27,8 +27,8 @@ import {
   associateLegacyHashes,
   plansSourceCoverage,
   planPlansEnrollment,
-  importLocalhosterAliases,
-  canonicalizeLocalhosterIdentity,
+  importDeveloperRuntimeAliases,
+  canonicalizeDeveloperRuntimeIdentity,
   repositoryScopedFinding,
   globalFinding,
   isRepositoryScoped,
@@ -115,8 +115,8 @@ try {
   upsertRepository(reg, { id: "git:github.com/kirinmurphy/roborepo", kind: "git", displayName: "roborepo", now: later });
   assert.equal(Object.keys(reg.repositories).length, 1, "upsert is idempotent");
 
-  assert.equal(recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "localhoster", evidence: "git-remote", confidence: "high", now }), true);
-  assert.equal(recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "localhoster", evidence: "git-remote", confidence: "high", now }), false, "same-source rediscovery within debounce is a no-op");
+  assert.equal(recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "developer-runtime", evidence: "git-remote", confidence: "high", now }), true);
+  assert.equal(recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "developer-runtime", evidence: "git-remote", confidence: "high", now }), false, "same-source rediscovery within debounce is a no-op");
   recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "plans", evidence: "configured-scan-root", confidence: "high", now });
   assert.equal(reg.repositories["git:github.com/kirinmurphy/roborepo"].discoveries.length, 2, "distinct sources both recorded");
 
@@ -224,12 +224,12 @@ try {
   assert.equal(enrollUncovered.covered, false);
   assert.equal(enrollUncovered.suggestedSource, path.resolve(child), "narrow default is the exact repo root, never a parent");
 
-  // ---- Localhoster alias import: idempotent, canonical mapping, skips non-repo targets ----
-  assert.equal(canonicalizeLocalhosterIdentity("git:github.com/kirinmurphy/roborepo").id, "git:github.com/kirinmurphy/roborepo");
-  assert.equal(canonicalizeLocalhosterIdentity("path:/tmp/robo").kind, "local");
-  assert.ok(!canonicalizeLocalhosterIdentity("path:/tmp/robo").id.includes("/tmp"), "path import must not leak path");
-  assert.equal(canonicalizeLocalhosterIdentity("process:/tmp:node"), null);
-  assert.equal(canonicalizeLocalhosterIdentity("builtin:portal"), null);
+  // ---- Developer-runtime alias import: idempotent, canonical mapping, skips non-repo targets ----
+  assert.equal(canonicalizeDeveloperRuntimeIdentity("git:github.com/kirinmurphy/roborepo").id, "git:github.com/kirinmurphy/roborepo");
+  assert.equal(canonicalizeDeveloperRuntimeIdentity("path:/tmp/robo").kind, "local");
+  assert.ok(!canonicalizeDeveloperRuntimeIdentity("path:/tmp/robo").id.includes("/tmp"), "path import must not leak path");
+  assert.equal(canonicalizeDeveloperRuntimeIdentity("process:/tmp:node"), null);
+  assert.equal(canonicalizeDeveloperRuntimeIdentity("builtin:portal"), null);
 
   const migReg = defaultRegistry();
   const lhSettings = {
@@ -238,13 +238,13 @@ try {
       "process:/x:node": "process:/y:node", // not a canonical target -> skipped
     },
   };
-  const first = importLocalhosterAliases(migReg, lhSettings);
+  const first = importDeveloperRuntimeAliases(migReg, lhSettings);
   assert.equal(first.changed, true);
   assert.equal(first.imported.length, 1);
   assert.equal(first.skipped.length, 1);
   assert.equal(resolveRegistryAlias(migReg, "path:/tmp/robo"), "git:github.com/kirinmurphy/roborepo");
   assert.ok(migReg.repositories["git:github.com/kirinmurphy/roborepo"], "alias target repository created");
-  const second = importLocalhosterAliases(migReg, lhSettings);
+  const second = importDeveloperRuntimeAliases(migReg, lhSettings);
   assert.equal(second.changed, false, "re-import is idempotent");
   validateRegistry(migReg);
 
@@ -300,7 +300,7 @@ try {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }
 
-// Test helper: mimic what localhoster discovery does — attach repository fields to a resolved
+// Test helper: mimic what developer-runtime discovery does — attach repository fields to a resolved
 // identity — so association sees the same shape production does.
 function withRepo(identity) {
   return { ...identity, repositoryId: canonicalRepositoryId(identity), rootId: identity.projectRoot ? rootId(identity.projectRoot) : null };

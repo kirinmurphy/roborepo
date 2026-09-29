@@ -1,0 +1,12 @@
+{
+  "path": ["runtime"],
+  "kind": "internal",
+  "title": "Runtime",
+  "description": "List active localhost web apps",
+  "usage": "roborepo runtime [--json] [--open]",
+  "execution": {
+    "adapter": "module",
+    "module": "scripts/cli/runtime.mjs",
+    "export": "runtimeCommand"
+  }
+}

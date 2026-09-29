@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import { repoRoot, requireDevelopmentCheckout } from "./paths.mjs";
 import { serveCommand, webStopCommand } from "./telemetry.mjs";
 
-const FIXTURE_SCRIPT = path.join("local", "dev-fixtures", "localhoster-test-data.mjs");
+const FIXTURE_SCRIPT = path.join("local", "dev-fixtures", "developer-runtime-test-data.mjs");
 const FIXTURE_ACTIONS = new Set(["start", "stop", "status"]);
 
 // The fixture runs as a child process rather than an import: it is a standalone script under

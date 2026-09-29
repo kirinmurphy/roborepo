@@ -1,5 +1,5 @@
 // `roborepo harness ...` command implementations. Thin CLI layer over
-// scripts/harnesses/{registry,discovery,state,runtime}.mjs — this module owns argument parsing
+// scripts/harnesses/{registry,discovery,state,harness-runtime}.mjs — this module owns argument parsing
 // and console output only; harness provider logic stays in scripts/harnesses/.
 
 import { listHarnessProviders, getHarnessProvider, hasHarnessProvider } from "../harnesses/registry.mjs";

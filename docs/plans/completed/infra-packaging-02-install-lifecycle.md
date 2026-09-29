@@ -685,7 +685,7 @@ fixture rather than by reading the code.
 *disable* and leaves the `runtime/` directory; `remove_runtime_state()` never listed it at all.
 Managed uninstall therefore left the directory behind, and `check_no_active_remnants` — which sweeps
 every child of the state root — then reported it and **exited nonzero**. So the leak did not fail
-silently; it made every uninstall on a machine that had ever enabled a runtime-asset package report
+silently; it made every uninstall on a machine that had ever enabled a package-runtime-asset package report
 failure. Fixed by removing `${state_dir}/runtime` in `remove_runtime_state()`.
 
 | Decision | Reasoning |

@@ -21,7 +21,7 @@ const {
   mergeHarnessConfig,
   unmergeHarnessConfig,
   codexStatusLineIncludes,
-  runtimeAssetDestination,
+  packageRuntimeAssetDestination,
 } = await import("../cli/package-harness-config.mjs");
 
 function readSettings(settingsPath) {
@@ -122,9 +122,9 @@ function testCodexColorScalarProvenanceRoundTrip() {
   assert.doesNotMatch(text, /status_line_use_colors/, "unmerge must remove the color scalar roborepo introduced (no prior value existed)");
 }
 
-function testRuntimeAssetDestinationIsPackageAndComponentScoped() {
-  const dest = runtimeAssetDestination({ id: "my-pkg" }, { source: "some/path/script.sh" });
-  assert.match(dest, /runtime[/\\]my-pkg[/\\]script\.sh$/, "runtime asset destination must be scoped under runtime/<pkgId>/<basename>");
+function testPackageRuntimeAssetDestinationIsPackageAndComponentScoped() {
+  const dest = packageRuntimeAssetDestination({ id: "my-pkg" }, { source: "some/path/script.sh" });
+  assert.match(dest, /package-runtime[/\\]my-pkg[/\\]script\.sh$/, "package-runtime asset destination must be scoped under package-runtime/<pkgId>/<basename>");
 }
 
 testClaudeMergeAndUnmerge();
@@ -132,6 +132,6 @@ testClaudeMergeConflictPreservesUnmanagedValue();
 testCodexTuiStatusLineFromScratch();
 testCodexTuiStatusLineDedupeAndUnmerge();
 testCodexColorScalarProvenanceRoundTrip();
-testRuntimeAssetDestinationIsPackageAndComponentScoped();
+testPackageRuntimeAssetDestinationIsPackageAndComponentScoped();
 
 console.log("package-harness-config characterization: all checks passed");

@@ -32,10 +32,10 @@ of use:
 | `telemetry/spool/claude.jsonl` | 25 MB | 25 MB cap — **holds only ~9 days of history** |
 | `telemetry/spool/codex.jsonl` | 21 MB | Same cap |
 | `telemetry/collector/` | 4 MB across 1,018 files | **None** — files date back six weeks |
-| `localhoster/history.jsonl` | 484 KB | 14 days + 2 MB cap |
+| `developer-runtime/history.jsonl` | 484 KB | 14 days + 2 MB cap |
 | `skills/` | 232 KB | None |
 | `repositories/registry.json` | 10 KB | None, by design (see `h4tqm2wz`) |
-| `localhoster/settings.json` | 4 KB | None, by design — user-authored |
+| `developer-runtime/settings.json` | 4 KB | None, by design — user-authored |
 
 Two findings drive this plan.
 
@@ -50,7 +50,7 @@ long-lived install filling the disk) rather than against a requirement (how far 
 reach), and those produce very different numbers: at this usage rate, six months of history would
 cost roughly 500 MB — still small on a modern disk.
 
-**Retention is per-store and inconsistent by accident, not by decision.** Localhoster history has a
+**Retention is per-store and inconsistent by accident, not by decision.** Developer-runtime history has a
 carefully built two-stage policy (age, then size). The telemetry collector, which accumulates one
 file per session forever, has nothing. The difference does not reflect a judgment about the two
 stores; it reflects which one someone happened to build a policy for.
@@ -62,11 +62,11 @@ The stores do agree on some conventions, arrived at independently:
 - every path helper takes a `stateRoot` parameter (`historyPathFor`, `settingsPathFor`,
   `registryPathFor`), so nothing hardcodes a home directory;
 - the three JSON stores each write atomically via a `.tmp` file plus `renameSync`;
-- the two revisioned stores (`localhoster/settings.json`, `repositories/registry.json`) each carry a
+- the two revisioned stores (`developer-runtime/settings.json`, `repositories/registry.json`) each carry a
   `revision` integer for conflict detection.
 
 The atomic-write block is copy-pasted three times with only the temp-file prefix differing
-(`modules/localhoster/history.mjs`, `modules/localhoster/settings.mjs`,
+(`modules/developer-runtime/history.mjs`, `modules/developer-runtime/settings.mjs`,
 `modules/repositories/registry.mjs`). That is the concrete duplication worth removing; the rest of
 the convergence is fine as-is.
 
@@ -84,7 +84,7 @@ the convergence is fine as-is.
 
 - Changing what telemetry captures, or its capture pipeline. This plan reads sizes and applies
   retention; it does not touch the schema.
-- Adding retention to user-authored data. `localhoster/settings.json` holds saved links and
+- Adding retention to user-authored data. `developer-runtime/settings.json` holds saved links and
   preferences the user created; it is never pruned by age.
 - Deleting repository registry records. `h4tqm2wz` establishes that records persist permanently and
   age out of view rather than out of existence.
@@ -100,8 +100,8 @@ Each store owns its own path helper, read/write pair, and policy:
 
 | Store | Module | Retention constant |
 | --- | --- | --- |
-| Localhoster history | `modules/localhoster/history.mjs` | `DEFAULT_RETENTION_DAYS = 14`, `HISTORY_MAX_BYTES = 2MB` |
-| Localhoster settings | `modules/localhoster/settings.mjs` | None (user-authored) |
+| Developer-runtime history | `modules/developer-runtime/history.mjs` | `DEFAULT_RETENTION_DAYS = 14`, `HISTORY_MAX_BYTES = 2MB` |
+| Developer-runtime settings | `modules/developer-runtime/settings.mjs` | None (user-authored) |
 | Repository registry | `modules/repositories/registry.mjs` | None |
 | Telemetry spool | `scripts/cli/telemetry-capture.mjs` | `SPOOL_MAX_BYTES = 25MB` per harness |
 | Telemetry collector | `scripts/cli/telemetry-capture.mjs` (session cursors) | None |
@@ -117,14 +117,14 @@ What it records is **where** each store lives. What it does not record is how bi
 what prunes it, or why. It is a path registry, not a policy registry, and it is the natural place to
 extend rather than a reason to build something new.
 
-Two stores sit outside it: `localhoster/history.jsonl` and `localhoster/settings.json`, whose path
+Two stores sit outside it: `developer-runtime/history.jsonl` and `developer-runtime/settings.json`, whose path
 helpers take an injected `stateRoot` parameter instead (`historyPathFor`, `settingsPathFor`) so the
-localhoster modules stay testable without touching the real state root. Any inventory has to
+developer-runtime modules stay testable without touching the real state root. Any inventory has to
 accommodate both shapes rather than assuming every path is a module-level constant.
 
 ### Retention that exists is good
 
-`maybeCompact` in `modules/localhoster/history.mjs` is the model worth generalizing: it drops events
+`maybeCompact` in `modules/developer-runtime/history.mjs` is the model worth generalizing: it drops events
 past the age window, trims to the size cap only if still oversized, and returns without rewriting
 when nothing changed. That last property matters — it is what keeps a steady-state append from
 rewriting the file byte-for-byte.
@@ -173,7 +173,7 @@ Apply the inventory's policy to the two unbounded stores that accumulate without
   authored (never prune) and record the answer as the rationale.
 
 Stores whose correct policy is "unbounded" keep it, with the rationale recorded:
-`localhoster/settings.json` because the user wrote it, `repositories/registry.json` because
+`developer-runtime/settings.json` because the user wrote it, `repositories/registry.json` because
 `h4tqm2wz` establishes records as permanent at ~1.1 KB each.
 
 ### 3. Express retention as time, with size as a backstop
@@ -246,7 +246,7 @@ Thresholds are shares, not byte counts, and live in the inventory rather than in
 
 - **Bottom of the Tokens page** (`portal/telemetry/`) — the receipt, scoped to the page whose data
   it describes. Deliberately not the shared portal footer: storage is a telemetry concern, and a
-  readout on every page would put it in front of users looking at Plans or Localhost, where it is
+  readout on every page would put it in front of users looking at Plans or Developer-runtime, where it is
   noise.
 - **`roborepo doctor`** — a finding at `warning` and above, plus a line for any store actively
   discarding data. Follows doctor's existing check conventions.
@@ -321,7 +321,7 @@ stores one obvious way to write safely.
 
 ## Validation
 
-- [ ] `npm run test:localhoster-history` still passes — existing retention behavior is unchanged by
+- [ ] `npm run test:developer-runtime-history` still passes — existing retention behavior is unchanged by
       the shared write helper.
 - [ ] `npm run test:repositories` and `npm run test:telemetry` pass after the helper swap.
 - [ ] New `scripts/test/state-stores-check.mjs`, registered as `test:state-stores`:
@@ -359,7 +359,7 @@ stores one obvious way to write safely.
   file rather than leaving the previous version intact. Ten call sites across five modules use it,
   including install and workspace state, and each falls back to a default on unparseable JSON — so
   a truncation reads as "no state" rather than as an error. Converging it on the atomic helper is
-  low-risk and removes a silent data-loss path, but it widens Phase 2 beyond the three localhoster
+  low-risk and removes a silent data-loss path, but it widens Phase 2 beyond the three developer-runtime
   and repository stores.
 - **A size warning that fires constantly gets ignored.** The spool sits near its cap by design, so a
   naive "over threshold" finding would warn forever. Distinguish "large" from "discarding" and from

@@ -120,7 +120,7 @@ export async function telemetryCaptureCommand(args) {
 // read-only, and only `telemetry purge --all` deletes), so it is the durable store rather than a
 // buffer, and an old record is not stale. Bytes are the only meaningful bound.
 //
-// Measurement comes from modules/retention, shared with localhoster history. The commit stays here
+// Measurement comes from modules/retention, shared with developer-runtime history. The commit stays here
 // and stays in-place: jsonl-tail.mjs holds a byte offset between calls and detects this shrink to
 // rebuild. An atomic rename — correct for history, whose reader reads whole files — would break
 // that cursor.
@@ -196,7 +196,7 @@ function repoMetadata(cwd) {
   // repository_id — the correlation the legacy raw remote_hash could never provide. repository_id
   // is credential- and path-free (git: id, or an opaque local: id derived from the root), so it is
   // safe to store in the clear. Legacy git_root_hash/remote_hash stay for the migration window.
-  // The local: id realpaths the root so it agrees with resolveProjectIdentity (Localhoster/Plans)
+  // The local: id realpaths the root so it agrees with resolveProjectIdentity (Developer-runtime/Plans)
   // for symlinked repos. The legacy git_root_hash below stays on the RAW toplevel for back-compat.
   const normalizedRemote = remote ? normalizeGitRemote(remote) : null;
   const repositoryId = normalizedRemote || (root ? localRepositoryIdForRoot(root) : null);

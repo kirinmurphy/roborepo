@@ -72,7 +72,7 @@ function migrateRegistry(parsed) {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("repository registry must be an object");
   if (parsed.version === REGISTRY_VERSION) return parsed;
   // No prior versions exist yet. When v2 arrives, add a v1->v2 branch here (mirrors
-  // localhoster migrateSettings) and back up the old file in loadRegistry before rewriting.
+  // developer-runtime migrateSettings) and back up the old file in loadRegistry before rewriting.
   throw new Error(`unsupported repository registry version: ${parsed.version}`);
 }
 
@@ -283,7 +283,7 @@ export function priorRepositoryForRoot(registry, { rootId, nextRepositoryId }) {
 }
 
 // Confirm that an opaque source identity aliases to a canonical repository. Cycle-checked before
-// commit (mirrors localhoster mutateAlias). Idempotent.
+// commit (mirrors developer-runtime mutateAlias). Idempotent.
 export function setAlias(registry, fromIdentity, toRepositoryId, { now = new Date().toISOString() } = {}) {
   safeRepositoryId(toRepositoryId);
   if (fromIdentity === toRepositoryId) throw new Error("alias cannot point to itself");

@@ -27,7 +27,7 @@ let caseId = 0;
 // remove_runtime_state() enumerates what it deletes rather than removing the root wholesale (the
 // workspace lives inside it). An enumerated list is safe but not self-maintaining: a new state path
 // added to state-paths.mjs is simply missed, and the leftover then fails --check-clean. That is
-// exactly how <stateRoot>/runtime (package runtime assets) leaked — projection cleanup pruned the
+// exactly how <stateRoot>/package-runtime (package-runtime assets) leaked — projection cleanup pruned the
 // files on package disable but never the directory, and uninstall never removed it at all.
 //
 // Every child of the state root is one of exactly two things:
@@ -36,7 +36,7 @@ let caseId = 0;
 const OWNED_STATE_ENTRIES = [
   "command-overrides.json", "enabled-packages.json", "telemetry", "telemetry-backups", "backups",
   "presets", "rules", "config-state", "harnesses", "repositories", "usage", "capture", "portal",
-  "skills", "runtime", "install-state.json", "initialization.json", "experimental.json",
+  "skills", "package-runtime", "install-state.json", "initialization.json", "experimental.json",
 ];
 // User-owned content, or a pointer whose fate follows it — preserved by default.
 const PRESERVED_STATE_ENTRIES = ["workspace", "workspace-root.json"];

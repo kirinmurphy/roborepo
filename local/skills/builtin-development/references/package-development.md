@@ -42,7 +42,7 @@ speculatively; the current approach is deliberate (see `validatePackageCatalog`)
 
 `RESOURCE_TYPES` (package-catalog.mjs): `skill`, `slash-command`, `rules`, `hooks`, `permissions`,
 `codex_tool_approvals`, `mcp`, `plugin`, `service`, `cli-command`, `harness-config`,
-`runtime-asset`.
+`package-runtime-asset`.
 
 Validation depth differs by type — know this before assuming everything is checked:
 
@@ -59,7 +59,7 @@ Validation depth differs by type — know this before assuming everything is che
 | `plugin` | Yes — non-empty `.id`, `.marketplace.{name,source}` present | `enablePlugin` — expects `.id`, `.marketplace.{name,source}` |
 | `service` | Yes — non-empty `.id` | `setService(component.id, ...)` — expects `.id` |
 | `harness-config` | Yes — source exists inside package dir, valid harness (`claude`/`codex`) | package-managed live harness config merge/unmerge |
-| `runtime-asset` | Yes — source exists inside package dir, optional relative `.target` | copied to `~/.roborepo/runtime/<package-id>/` and referenced by harness config |
+| `package-runtime-asset` | Yes — source exists inside package dir, optional relative `.target` | copied to `~/.roborepo/package-runtime/<package-id>/` and referenced by harness config |
 
 All resource types now get shape-level validation at `roborepo package validate` time, not
 just at enable-time. This closed a real gap that existed earlier in this repo's history (see
@@ -69,8 +69,8 @@ malformed resource failed loudly at enable-time instead of validate-time. If you
 of these checks, mirror the existing `else if (next.type === ...)` branches in `normalizeResource`
 (`scripts/cli/package-catalog.mjs`).
 
-`harness-config` and `runtime-asset` were added for default-enabled package-owned status-line
-support. Keep runtime assets out of prompt-context accounting; they are copied executable files, not
+`harness-config` and `package-runtime-asset` were added for default-enabled package-owned status-line
+support. Keep package-runtime assets out of prompt-context accounting; they are copied executable files, not
 agent instructions.
 
 ## Ownership and conflict behavior (current, not aspirational)
@@ -245,7 +245,7 @@ lifecycle-check exists — see Deliverable 5 in the source plan).
 [ ] package.config.json matches current schema (schemaVersion 1, valid category, valid resources)
 [ ] Directory name matches id exactly
 [ ] Every declared resource source file actually exists (`roborepo package validate` enforces
-    this for skill/rules/hooks/slash-command/harness-config/runtime-asset)
+    this for skill/rules/hooks/slash-command/harness-config/package-runtime-asset)
 [ ] No resource ID/name collides with another package's claimed skill/slash-command/CLI-command
 [ ] Optional behavior kept entirely inside this package — nothing added to globals/system/
 [ ] Ran `roborepo package validate <id>`

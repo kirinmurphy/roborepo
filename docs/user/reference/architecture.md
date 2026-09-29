@@ -169,7 +169,7 @@ checks that source dirs exist in the repo.
 repositories' `.claude/skills` and `.codex/skills` folders without touching global `~/.claude` or
 `~/.codex`. See [RoboRepo Skills Interface](roborepo-skills.md).
 
-## Runtime State
+## Accumulated State
 
 The materialization map above covers what installation *puts* on disk. This covers what accumulates
 there afterwards: observability data RoboRepo writes while you work, all of it machine-local, none
@@ -177,7 +177,7 @@ of it part of the portable profile.
 
 | Store | Path under `<stateRoot>` | Shape | Bound |
 | --- | --- | --- | --- |
-| Localhoster history | `localhoster/history.jsonl` | append-only JSONL | 14 days (user preference, 1–365), 2MB |
+| Runtime history | `developer-runtime/history.jsonl` | append-only JSONL | 14 days (user preference, 1–365), 2MB |
 | Telemetry spool | `telemetry/spool/<harness>.jsonl` | append-only JSONL | 25MB per harness |
 | Telemetry markers | `telemetry/events/markers.jsonl` | append-only JSONL | 5MB |
 | Telemetry snapshots | `telemetry/snapshots/` | one file per id | 5MB total |

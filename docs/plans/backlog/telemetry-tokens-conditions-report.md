@@ -69,7 +69,7 @@ The first two ship without requiring the third.
 
 | Tier | Primitives | Rationale |
 |---|---|---|
-| Ambient | `rules`, `hooks`, `permissions`, `codex_tool_approvals`, MCP registration, `plugin`, `harness-config`, `service`, `runtime-asset` | Installed state that shapes behavior continuously. |
+| Ambient | `rules`, `hooks`, `permissions`, `codex_tool_approvals`, MCP registration, `plugin`, `harness-config`, `service`, `package-runtime-asset` | Installed state that shapes behavior continuously. |
 | Interaction-scoped | `skill`, `slash-command` / `cli-command`, MCP tool calls | Exists only during an invocation. Exposure/configuration is not equivalent to use. |
 
 A package's ambient footprint is its ambient primitives; its interaction surface is its skills,

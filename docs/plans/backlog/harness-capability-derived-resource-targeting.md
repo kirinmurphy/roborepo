@@ -47,7 +47,7 @@ Verified against `feat/harness-provider-phase1`.
 
 | Group | Types | Mechanism | Survives a new provider? |
 | --- | --- | --- | --- |
-| Registry-driven | `skill`, `mcp`, `service`, `cli-command`, `runtime-asset` | Code maps over `listHarnessProviders()` | Yes |
+| Registry-driven | `skill`, `mcp`, `service`, `cli-command`, `package-runtime-asset` | Code maps over `listHarnessProviders()` | Yes |
 | Sentinel | `rules` | `"both"` compared as a literal string | Yes |
 | Enumerated | `slash-command`, `hooks`, `harness-config` | Explicit id or id list | **No** |
 | Harness-welded | `permissions`, `plugin`, `codex_tool_approvals` | No targeting field exists | **No** |

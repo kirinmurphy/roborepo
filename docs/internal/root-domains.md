@@ -82,7 +82,7 @@ Mode is detected by looking for `.git` or `local/skills` in `appRoot`. `ROBOREPO
 ├── config-state/            per-harness applied config
 ├── install-state.json       which install last wrote to your home dir
 ├── presets/                 onboarding answers
-├── runtime/                 assets installed by enabled packages, per package id
+├── package-runtime/         assets installed by enabled packages, per package id
 ├── skills/                  applied skills, copied here and linked into harness homes
 └── workspace/               workspaceRoot (package mode)
     ├── skills/

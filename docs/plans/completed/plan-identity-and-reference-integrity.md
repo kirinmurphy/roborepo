@@ -149,7 +149,7 @@ already conformed. The other three were folded into the declared vocabulary rath
 ### Already conforming
 
 `git-exec-consolidation`, `package-cli-test-guide`, `package-registry-live-state-reconciliation`,
-`localhoster-metadata-suggestions`, `localhoster-remote-branch-status`,
+`developer-runtime-metadata-suggestions`, `developer-runtime-remote-branch-status`,
 `portal-homepage-repository-section`, `telemetry-analyze-single-pass-perf`,
 `plan-integration-check-determinism`, and the three `plan-lifecycle-suite-*` files.
 

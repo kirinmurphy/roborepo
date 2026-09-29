@@ -1,5 +1,5 @@
 // Serves this portal's own manifest.json/sitemap.xml/robots.txt at their conventional root paths
-// so the portal is a live, self-describing example of the sources modules/localhoster/metadata.mjs
+// so the portal is a live, self-describing example of the sources modules/developer-runtime/metadata.mjs
 // discovers on other apps — manifest.json and sitemap.xml are generated from PAGES (the same list
 // portal-server.mjs already uses for nav/routing) so there is nothing to hand-sync when a page is
 // added or removed.
@@ -34,7 +34,7 @@ export function handleMetadataAsset(req, res, urlPath, { pages, appName, apiRout
 // sitemap above manifest), since every page in PAGES is also in the sitemap. That is dedup working
 // as designed, not a bug — to see manifest's own suggestion distinctly, temporarily comment out the
 // /sitemap.xml branch below (or point PAGES-derived sitemap at a subset) so manifest's "/" has no
-// sitemap entry to collide with. See docs/plans/active/localhoster-metadata-suggestions.md.
+// sitemap entry to collide with. See docs/plans/active/developer-runtime-metadata-suggestions.md.
 function buildManifest(pages, appName) {
   return {
     name: appName,
