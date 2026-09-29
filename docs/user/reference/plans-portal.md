@@ -42,13 +42,20 @@ Resolution order:
 2. `ROBOREPO_PLAN_ROOTS`, split by the platform path delimiter.
 3. Empty roots.
 
-For each discovery root, the scanner does a real recursive walk: it descends into subdirectories
-looking for the first folder that has either `.git` or `docs/plans`. The moment it finds one, that
-folder is treated as a repository root and the walk does not descend further into it — a
-repository's own subfolders are never re-scanned as repository candidates. Nested repositories
-(a repo living inside another discovered repo's tree) are still found independently as long as they
-aren't inside an already-claimed repository boundary.
-Within a repository, only `docs/plans/**/*.md` is scanned (unchanged, separate walk).
+For each discovery root, the scanner walks down through subfolders until it finds a repository:
+
+```mermaid
+flowchart TD
+  Root["Discovery root"] -->|walks into| Folder["Next subfolder"]
+  Folder -->|is checked for| Q{".git or docs/plans?"}
+  Q -->|yes: claims it as| Repo["Repository root"]
+  Q -->|no: applies| Skip{"Hidden, ignored,<br/>or deeper than 6 levels?"}
+  Skip -->|yes: skips| Done["Folder left out"]
+  Skip -->|no: continues into| Folder
+  Repo -->|scans only| Plans["docs/plans/**/*.md"]
+```
+
+A claimed repository's own subfolders are never scanned as repository candidates.
 
 Directories are skipped during the walk (not descended into) if they:
 

@@ -38,13 +38,13 @@ applies each installable resource; the enable/disable switch dispatches on `reso
 
 ### Package composition
 
-A package may list `requires: [pkgId, ...]`. Enabling it enables every required package
-first (deduped, cycle-safe), then its own resources. A composite package — one whose
-payload is purely `requires` — bundles other packages under a single toggle. Composite packages
-enable every required package before reporting themselves enabled.
+A package may list `requires: [pkgId, ...]`:
 
-A composite is reported enabled only when its own resources and every required package
-are enabled.
+- Enabling it enables each required package first (deduplicated and cycle-safe), then its own
+  resources.
+- A **composite** package lists only `requires`, so it bundles other packages under one toggle.
+- A composite reports itself enabled only when every required package, and any resources of its
+  own, are enabled.
 
 > Composition (`requires`, runtime feature enablement) is distinct from an install
 > **bundle** (`manifests/platform/presets.json`), which groups file-copy/link rows at
@@ -104,10 +104,11 @@ package costs before and after enabling it. Two kinds of cost are tracked and ne
 | Startup | Text loaded automatically at chat start: the rendered rules and each installed skill's name and description | A per-harness total in the agent files grid |
 | On-demand | Text loaded only when used: a full skill body or slash command | Per item, rated low (< 1k), medium (1k–3k), or high (> 3k); only medium and high get a chip |
 
-On-demand costs are never summed, since skill bodies do not load together. Settings files, hook
-scripts, and MCP schemas are not prompt text and get no token number. Disabled packages show their
-potential cost but add nothing to the totals. When anything is rated medium or high, a warning panel
-above the grid lists it, highest first. All counts are estimates at about 4 characters per token.
+- On-demand costs are never summed, because skill bodies do not load together.
+- Settings files, hook scripts, and MCP schemas are not prompt text, so they get no token number.
+- Disabled packages show their potential cost but add nothing to the totals.
+- Anything rated medium or high is listed, highest first, in a warning panel above the grid.
+- All counts are estimates at about 4 characters per token.
 
 ## Permissions
 

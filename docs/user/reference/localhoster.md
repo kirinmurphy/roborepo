@@ -37,13 +37,13 @@ listener sets cannot stall the portal.
 The portal process is represented as built-in identity `builtin:portal` and is never probed
 recursively.
 
-A listener "shape" is its page title plus its working directory within the project. When a project
-has exactly one shape, it moves to Active apps automatically (at high or medium identity
-confidence), even if several listeners share that shape. The extra listeners are treated as
-redundant processes serving the same app — two static-file servers pointed at one directory, say —
-and the card names their ports. A project with two or more different shapes (different titles)
-cannot be assigned automatically, because there is no reliable way to pick "the" app; its listeners
-stay in Unrecognized listeners until you associate them.
+A listener's "shape" is its page title plus its working directory within the project. How many
+shapes a project has decides where its listeners appear:
+
+| Project has | Result |
+| --- | --- |
+| One shape, even across several listeners | Moves to Active apps automatically (at high or medium identity confidence). Extra listeners are treated as redundant processes serving the same app, and the card names their ports. |
+| Two or more shapes (different titles) | Stays in Unrecognized listeners until you associate it, because there is no reliable way to pick "the" app. |
 
 Localhoster can also suggest routes from an app's manifest, sitemap, robots, and OpenAPI files
 without saving them as quick links. See [Metadata suggestions](#metadata-suggestions).
@@ -66,18 +66,13 @@ position. Collection is deliberately split by what can be read correctly:
 Every Git read is local and read-only: RoboRepo never runs repository hooks, never takes the
 `.git/index` lock, never waits for credentials, and times out rather than stalling the scan.
 
-RoboRepo never fetches. Ahead/behind and base drift reflect remote-tracking refs as of your last
-fetch, so `fetchedAt` (the mtime of `.git/FETCH_HEAD`) is collected alongside them as the bound on
-how current any of those numbers can be. The portal uses it to widen a claim rather than overstate
-it: when the fetch is older than the drift being reported, the figure renders with a `+` suffix,
-meaning "at least this much."
+RoboRepo never fetches, so the portal shows a Git figure only when it can back it up:
 
-`dirty`, `ahead`, and `behind` are `null` — never `false` or `0` — when the subprocess could not
-answer. The portal renders nothing in that case rather than implying a clean tree, because a wrongly
-reported "clean" is a claim a user would act on. `baseBranch`, `baseBehind`, and `baseMergeBaseAt`
-are likewise `null` when the base branch cannot be resolved, when the branch has no upstream, or on
-the base branch itself. No drift badge renders in those cases: a figure measured against a guessed
-base would be worse than none.
+| Value | Shown as | Why |
+| --- | --- | --- |
+| Ahead/behind and base drift | A `+` suffix ("at least this much") when your last fetch is older than the drift shown | They reflect remote-tracking refs as of your last fetch (`.git/FETCH_HEAD`) |
+| `dirty`, `ahead`, `behind` | Nothing, when the `git` subprocess could not answer | These are `null`, never `false` or `0`, so a failed check never reads as "clean" |
+| `baseBranch`, `baseBehind`, `baseMergeBaseAt` | No drift badge, when the base branch can't be resolved, the branch has no upstream, or you are on the base branch | A figure measured against a guessed base would be worse than none |
 
 ## Docker and process metrics
 
@@ -242,19 +237,16 @@ suggestions, so one broken source never blocks suggestions from the others.
 
 ## Security
 
-Localhoster never accepts a browser-supplied target URL for server-side probing. Targets come only
-from local listener records. Probes do not send cookies or credentials, do not follow redirects away
-from loopback, bound body size and timeouts, and treat titles/favicons as untrusted display data.
-Metadata discovery (manifest/robots/sitemap/OpenAPI reads) shares this same fetch guard rather than
-implementing its own, so it inherits every constraint above — see [Metadata
-suggestions](#metadata-suggestions).
-
-Listeners bound to wildcard or non-loopback interfaces stay visible with a warning. Unsupported
-platforms keep saved settings available while clearly saying automatic discovery is unavailable.
-The unsupported-platform notice links back to this document.
-
-Git collection reads only existing local state and never contacts a remote. See
-[Git context](#git-context) for the hardening applied to every Git subprocess.
+- **Probe targets come only from local listeners**, never from a URL the browser supplies.
+- **Probes stay local:** no cookies or credentials, no redirects away from loopback, and capped body
+  size and time. Titles and favicons are treated as untrusted display data.
+- **[Metadata suggestions](#metadata-suggestions) use the same fetch guard**, so every limit above
+  applies to them too.
+- **Exposed listeners are flagged:** listeners bound to wildcard or non-loopback interfaces stay
+  visible with a warning.
+- **Git reads are local and read-only** and never contact a remote — see [Git context](#git-context).
+- **Unsupported platforms** keep your saved settings and say that automatic discovery is unavailable;
+  that notice links back to this document.
 
 ## Current Limits
 

@@ -8,7 +8,7 @@ For the user-facing walkthrough, start with [../guides/install-workflows.md](../
 
 ## Concept Model
 
-- **Managed copy**: a roborepo-owned home path copied from `globals/` or `manifests/`. Examples include commands, hooks, markers, and Codex rules.
+- **Managed copy**: a RoboRepo-owned home path copied from `globals/` or `manifests/`. Examples include commands, hooks, markers, and Codex rules.
 - **Rendered rules**: `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`, generated from base rule fragments plus the enabled-package registry.
 - **Root config baseline**: `generated/claude/settings.json` or `generated/codex/config.toml`. These are portable templates for mutable harness config.
 - **User-owned config**: an existing regular file or non-roborepo symlink in a harness home.
@@ -90,7 +90,7 @@ So keep `~/.codex/config.toml` as RoboRepo's managed baseline, and put your pers
 profile.
 
 **Claude** has no equivalent native profile mechanism at the user-config level (fixed scope tiers:
-managed > CLI args > project local > project > user). There is no roborepo-provided substitute;
+managed > CLI args > project local > project > user). There is no RoboRepo-provided substitute;
 Claude users keep personal changes in `~/.claude/settings.json` directly, and drift detection shows
 when an update would collide with them.
 
@@ -102,7 +102,7 @@ Default stance: preserve local behavior unless the user explicitly chooses repla
 
 ## Rendered Rules
 
-Rules files are roborepo-generated home files. They are identified by the `# Generated Harness Rules` header and are written as a managed block inside the existing `CLAUDE.md` / `AGENTS.md` file, so user text outside the managed block can stay in place.
+Rules files are RoboRepo-generated home files. They are identified by the `# Generated Harness Rules` header and are written as a managed block inside the existing `CLAUDE.md` / `AGENTS.md` file, so user text outside the managed block can stay in place.
 
 On first render, if a genuine user-authored `CLAUDE.md` or `AGENTS.md` already exists, RoboRepo saves it once under:
 

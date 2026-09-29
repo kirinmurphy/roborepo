@@ -3,7 +3,7 @@
 ## Purpose
 
 This guide covers the checkout installer and its lifecycle: preview, install, update, and uninstall,
-plus moving a verified package to a new Mac. The installer copies roborepo-owned files into your
+plus moving a verified package to a new Mac. The installer copies RoboRepo-owned files into your
 harness homes, renders rules, and preserves your own config; the one choice it asks you to make is
 the [collision policy](#collision-policy).
 
@@ -35,7 +35,7 @@ onboarding.
 The installer writes:
 
 - rendered base rules to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
-- copied roborepo-owned files such as markers, commands, hooks, and Codex rules
+- copied RoboRepo-owned files such as markers, commands, hooks, and Codex rules
 - copied root config baselines when no local file exists
 - `builtin-support` in each installed harness skill directory
 - `~/.local/bin/roborepo`
@@ -113,7 +113,7 @@ files RoboRepo projected into your harnesses.** Those live outside the package d
 does not know about them. Development-checkout mode still skips npm removal because npm does not own
 the checkout.
 
-Managed cleanup removes roborepo-owned copied files, rendered rules, managed skill copies, shell
+Managed cleanup removes RoboRepo-owned copied files, rendered rules, managed skill copies, shell
 wiring, package projections, and machine-local state. If a genuine pre-install backup exists under
 `~/.roborepo/backups/pre-install/`, it is restored. Content that has drifted from what RoboRepo
 wrote, and harness files RoboRepo does not own, are left alone and reported.

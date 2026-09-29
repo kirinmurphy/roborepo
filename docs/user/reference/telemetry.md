@@ -87,10 +87,13 @@ roborepo telemetry experiment end <experiment-id>
 roborepo telemetry experiment status [<experiment-id>]
 ```
 
-`start` creates an experiment definition and its `experiment-start` marker together. `end` appends
-an `experiment-end` marker and links it. `status` reports lifecycle state, definition, cohort sizes,
-effect size, confidence, and whether the result is `ready` — never a provisional winner. A result
-is ready when:
+| Command | What it does |
+| --- | --- |
+| `start` | Creates the experiment definition and its `experiment-start` marker together |
+| `end <id>` | Appends an `experiment-end` marker and links it to the experiment |
+| `status [<id>]` | Reports lifecycle state, definition, cohort sizes, effect size, confidence, and whether the result is `ready` — never a provisional winner |
+
+A result is ready when:
 
 - the primary metric computed for both the before and after cohorts around the start marker;
 - both cohorts meet `eligibility.minimum_sessions_per_cohort` (default 10); and
@@ -135,19 +138,32 @@ and a confidence label:
 When no marker is selected, an earlier-vs-later **midpoint regression** is shown instead, labeled
 *exploratory* in both the portal and CLI because it is not tied to any specific change.
 
-Every comparative finding has the same parts: observation, evidence (cohort sizes, effect size),
-interpretation (labeled as inference), next action, confidence, and data-quality issues. It also
-carries the exact cohort and metric, so the portal's "open analysis" action can reproduce it. No finding ever claims a package, skill, or
-rule *caused* a result — wording stays at "exposed to" / "correlates with."
+Every comparative finding has the same parts:
+
+- **Observation** — what changed
+- **Evidence** — cohort sizes and effect size
+- **Interpretation** — labeled as inference
+- **Next action**, **confidence**, and any **data-quality issues**
+- The exact cohort and metric, so the portal's "open analysis" action can reproduce it
+
+No finding claims a package, skill, or rule *caused* a result; the wording stays at "exposed to" or
+"correlates with."
 
 ## Package telemetry policies
 
-A package's `package.config.json` may declare `telemetry.policies`: `[{ metric, operator, value,
-minimum_samples, severity }]`. RoboRepo validates policy shape (known
-metric id, valid operator, numeric threshold) and evaluates a policy against a computed metric value
-+ sample size, returning `satisfied` / `violated` / `insufficient-samples` / `unknown`. Policies are
-advisory only — nothing in this system blocks a command or tool call. No package in this repository
-declares policies yet; the mechanism is generic and ready for a package to adopt.
+A package's `package.config.json` may declare `telemetry.policies`:
+`[{ metric, operator, value, minimum_samples, severity }]`. RoboRepo checks each policy's shape
+(known metric, valid operator, numeric threshold), then evaluates it:
+
+| Result | When |
+| --- | --- |
+| `satisfied` | The metric meets the threshold |
+| `violated` | The metric misses the threshold |
+| `insufficient-samples` | Fewer sessions than the policy's `minimum_samples` |
+| `unknown` | The metric has no value for these sessions |
+
+Policies are advisory: nothing blocks a command or tool call. No built-in package declares
+policies yet.
 
 ## CLI report
 
@@ -157,8 +173,10 @@ efficiency, cost breakdowns, the exploratory midpoint regression, loops, session
 contributor tables.
 
 `--deep` adds an LLM summary of those findings, run through the headless `claude -p` with your
-existing Claude auth. Only the computed summary is sent, never raw capture or transcript content. The same `analyzeTelemetry()` function and metric
-registry back both this report and the portal, so CLI and portal numbers agree for the same cohort.
+existing Claude auth. Only the computed summary is sent, never raw capture or transcript content.
+
+The report and the portal share one analysis and metric registry, so their numbers agree for the
+same cohort.
 
 ## Portal
 
@@ -168,13 +186,21 @@ creation, and Analysis explorer. See the [Telemetry Walkthrough](../guides/telem
 
 ## Privacy
 
-Telemetry never stores full prompts, shell commands, tool results, transcripts, or absolute paths by
-default — only hashes, lengths, categories, and bounded previews (a 200-character prompt preview; a
-4000-character *transient* failure-text buffer used only to compute a failure-signature hash, never
-persisted). Estimated token/cost figures (~4 chars/token) are clearly distinguished from real
-provider-reported counters. `telemetry export`/`backup`/`purge` cover markers, snapshots, and
-experiments alongside the spool; `purge --backup` remains recoverable. The portal server binds to
-loopback only.
+By default, telemetry keeps derived facts instead of raw content:
+
+| Never stored | Stored instead |
+| --- | --- |
+| Full prompts | Size, hash, and a 200-character preview |
+| Shell commands | Hash, size, and a semantic category |
+| Tool results and transcripts | Sizes only |
+| Absolute paths | Hashes |
+| Failure output | A failure-signature hash; the text used to compute it is never written |
+
+- Estimated token and cost figures (~4 characters per token) are labeled as estimates, apart from
+  counts the provider reports.
+- `telemetry export`, `backup`, and `purge` cover markers, snapshots, and experiments along with
+  the capture spool; `purge --backup` keeps a recoverable copy.
+- The portal server binds to loopback only.
 
 ## Retention
 

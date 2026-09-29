@@ -166,11 +166,17 @@ See [RoboRepo Skills Interface](roborepo-skills.md) for the managed/native bound
 | `roborepo mcp add <name-or-url> [--harness <id>] [--dry-run] [--skip-claude-permission]` | Registers an MCP server with every managed harness that supports MCP (Claude, Codex, Gemini). Repeat `--harness <id>` to target a subset. |
 | `roborepo mcp apply [--dry-run]` | Applies registered MCP servers. |
 
-`mcp add` writes each harness's active config, not the repo baseline, so the server works
-immediately. For Claude it also allows the server's tools in `~/.claude/settings.json` so you are
-not prompted on every call; `--skip-claude-permission` skips that. `jcodemunch` and `jdocmunch` are
-built-in presets; any other name is treated as a `uvx` package, and an HTTP URL is registered as an
-HTTP server. `--dry-run` prints the planned writes without changing anything.
+| You pass | Registered as |
+| --- | --- |
+| `jcodemunch` or `jdocmunch` | A built-in preset |
+| Any other name | A `uvx` package |
+| An HTTP URL | An HTTP server |
+
+- `mcp add` writes each harness's active config, not the repo baseline, so the server works
+  immediately.
+- For Claude it also allows the server's tools in `~/.claude/settings.json`, so you are not prompted
+  on every call; `--skip-claude-permission` skips that.
+- `--dry-run` prints the planned writes without changing anything.
 
 ## Command Output
 

@@ -8,23 +8,16 @@ RoboRepo sits at the intersection of **Git**, **localhost activity**, **agent co
 flowchart LR
   Repo["Repository"]
 
-  Repo -->|tracks| Git["Git + Worktrees"]
-  Repo -->|runs| Local["Localhost apps"]
-  Repo -->|keeps| Plans["Plans"]
-  Repo -->|uses| Agents["Agent Config"]
-  Repo -->|spends| Usage["Tokens + Sessions"]
+  Repo --> Git["Git + Worktrees"]
+  Repo --> Local["Localhost apps"]
+  Repo --> Plans["Plans"]
+  Repo --> Agents["Agent Config"]
+  Repo --> Usage["Tokens + Sessions"]
 
-  Portal["Web Portal"] -->|browses| Repo
-  CLI["CLI"] -->|manages| Repo
+  Portal["Web Portal"] --> Repo
+  CLI["CLI"] --> Repo
 ```
 
-|                  |                                                    |
-| ---------------- | -------------------------------------------------- |
-| **Repositories** | Git, branches, worktrees, local activity           |
-| **Localhoster**  | Running apps, ports, health, Docker, processes     |
-| **Plans**        | Plan docs, lifecycle, readiness, dependencies      |
-| **Agents**       | Skills, rules, hooks, MCP, permissions, packages   |
-| **Telemetry**    | Tokens, sessions, tools, models, changes over time |
 
 ---
 
@@ -51,7 +44,6 @@ The first `roborepo web` also runs one-time machine setup. After that, use eithe
 
 ## Portal
 
-The portal runs locally on your machine.
 
 ```sh
 roborepo web
@@ -75,28 +67,10 @@ Repository-aware data can include:
 | Dirty state    | Health       | Agent configuration |
 | Ahead / behind | Docker       | Token activity      |
 | Worktrees      | CPU / memory | Sessions            |
-
-### Coming soon
-
-A repository-first Home and shared repository scope are planned.
-
-```mermaid
-flowchart LR
-  Home["Home"] -->|opens| Repo["Repository"]
-
-  Repo -->|shows| R1["Plans"]
-  Repo -->|shows| R2["Tokens"]
-  Repo -->|shows| R3["Agents"]
-  Repo -->|shows| R4["Localhost"]
-
-  Scope["Repository Filter"] -.->|filters| R1
-  Scope -.->|filters| R2
-  Scope -.->|filters| R3
-```
-
+ 
 ---
 
-## Localhoster
+## Localhost
 
 Discover running local HTTP applications and associate them with repositories. Automatic
 discovery currently runs on macOS.
@@ -120,41 +94,6 @@ roborepo localhoster --open
 
 ---
 
-## Plans
-
-RoboRepo discovers repository planning documents under:
-
-```text
-docs/plans/
-├── backlog/
-├── active/
-├── completed/
-└── archived/
-```
-
-The Plans portal surfaces:
-
-|                 |                                |
-| --------------- | ------------------------------ |
-| Readiness       | deterministic validation       |
-| Priority        | plan metadata                  |
-| Dependencies    | blockers and relationships     |
-| Git state       | reviewed commit / current HEAD |
-| Agent workflows | create, review, start, sync    |
-
-```mermaid
-flowchart LR
-  Backlog -->|start| Active -->|complete| Completed
-  Active -->|archive| Archived
-  Backlog -->|archive| Archived
-```
-
-![The Plans page: lifecycle tabs and a plan card with priority, review state, and workflow actions](docs/images/plans.png)
-
-[Plan Docs walkthrough →](docs/user/guides/plan/lifecycle/plan-docs.md)  
-[Plans reference →](docs/user/reference/plans-portal.md)
-
----
 
 ## Agent Configuration
 
@@ -219,6 +158,43 @@ flowchart LR
 ![The Tokens page: identifiable waste this week and all time, and a ranked action item](docs/images/tokens.png)
 
 [Telemetry walkthrough →](docs/user/guides/telemetry.md)
+
+---
+
+
+## Plans
+
+RoboRepo discovers repository planning documents under:
+
+```text
+docs/plans/
+├── backlog/
+├── active/
+├── completed/
+└── archived/
+```
+
+The Plans portal surfaces:
+
+|                 |                                |
+| --------------- | ------------------------------ |
+| Readiness       | deterministic validation       |
+| Priority        | plan metadata                  |
+| Dependencies    | blockers and relationships     |
+| Git state       | reviewed commit / current HEAD |
+| Agent workflows | create, review, start, sync    |
+
+```mermaid
+flowchart LR
+  Backlog -->|start| Active -->|complete| Completed
+  Active -->|archive| Archived
+  Backlog -->|archive| Archived
+```
+
+![The Plans page: lifecycle tabs and a plan card with priority, review state, and workflow actions](docs/images/plans.png)
+
+[Plan Docs walkthrough →](docs/user/guides/plan/lifecycle/plan-docs.md)  
+[Plans reference →](docs/user/reference/plans-portal.md)
 
 ---
 

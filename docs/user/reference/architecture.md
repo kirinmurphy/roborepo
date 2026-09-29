@@ -131,17 +131,15 @@ later update. The portable MCP intent remains in `manifests/inventory/mcp-server
 
 ### Drift-aware root config
 
-Root config rows get an additional drift check before collision policy applies. RoboRepo records the
-hash of the last root config it wrote under `~/.roborepo/config-state/root-config.json`. If the live
-file still matches that hash, a changed repo baseline is a clean update and is merged in silently.
-If the live file changed after RoboRepo's last write, it is treated as user drift and goes through
-`keep` (left untouched, candidate staged as `*_update_TIMESTAMP`), `overwrite` (backed up to
-`*_original_TIMESTAMP`, then merged), or `abort`.
+RoboRepo records a hash of the last root config it wrote (`~/.roborepo/config-state/root-config.json`).
+An unchanged file takes baseline updates silently; a file you edited since goes through the
+collision policy. The full rules are in
+[Root Config Drift Detection](config-collision-handling.md#root-config-drift-detection).
 
 Package, permission, and MCP mutations share the same state file, but record only when the pre-write
 file was already clean/missing or matched the repo baseline. If a mutation merges into an
 already-drifted user file, the merged file stays drifted so a later update does not mistake
-preserved user content for roborepo-owned baseline.
+preserved user content for the RoboRepo-owned baseline.
 
 See [Config Collision Handling](config-collision-handling.md) for the exact collision,
 backup, and uninstall behavior.
