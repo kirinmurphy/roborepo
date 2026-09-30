@@ -16,6 +16,48 @@ How telemetry is built, for people changing it. User-facing behavior is in
 | `scripts/cli/telemetry-markers.mjs` | `createMarker()`, shared by the CLI and the portal's marker dialog. |
 | `scripts/cli/telemetry-task-infer.mjs` | An analysis-time task inference path with no live caller; outcome categories are always explicit. |
 
+## Analytics Correctness
+
+The analysis is one pipeline: `analyzeTelemetry()` normalizes events into observations, keeps one
+representative row per operation (`canonicalFlowRows`), derives spikes, loops, read warnings and
+tool costs from those rows, then always builds the conditions report from the same findings. There
+is no second "legacy" rollup. Sessions are identified by `[harness, session_id]` everywhere; a bare
+`session_id` is never a key, because providers reuse ids across harnesses.
+
+Each rule below is an invariant a change must not break, with the code that holds it and the check
+that fails if it breaks. When adding analytics, add the rule's check first.
+
+| Invariant | Held by | Enforced by |
+| --- | --- | --- |
+| Correlation only, never causal wording | `buildFinding`, `comparisonPresentation`, `changePresentation` | `telemetry-compare-check`, `telemetry-conditions-presentation-check` |
+| Unknown condition data is not absence; known presence is compared only with known absence | `aggregateCondition` cohorts; `unknown_condition` on change comparisons | `telemetry-conditions-matrix-check`, `telemetry-audit-tier1-check` |
+| Thin evidence never yields a percentage or a direction (minimum cohort, minimum events, 20% display band) | `CONDITIONS_POLICY` in `telemetry-observations.mjs`; both presentation functions | matrix check, presentation check (equal, near-equal and below-floor cases) |
+| Partial token coverage stays visible | `relative_models.coverage_state`; page meta "observed vs with token data" | `telemetry-conditions-check` |
+| Mirrored rows never double-count | `canonicalFlowRows` | `telemetry-conditions-check` (duplicate flows) |
+| One session id under two harnesses stays two sessions; loops never cross harnesses | `sessionKeyOf` in `telemetry-analyze.mjs` | `telemetry-conditions-check` (collision, alternating-harness loop) |
+| Boundary sessions are excluded, not assigned; one rule for every marker | `splitObservationBoundary`, which `splitCohortsByMarker` delegates to | `telemetry-boundaries-check`, `telemetry-audit-tier1-check` (equivalence) |
+| An unknown-scope marker is "can't compare fairly", not "too little data" | `compareObservationBoundary`, `compareAcrossMarker` | `telemetry-audit-tier1-check` |
+| Ledger ties break on persisted order | ledger sort in `telemetry-conditions.mjs`, `ambientChanges` | `telemetry-audit-tier1-check` |
+| A supersede names a real, active change marker | `assertSupersedable` in `telemetry-markers.mjs` | `telemetry-audit-tier1-check` |
+| Marker corrections keep packages, skills and tags, and never move the boundary silently | `conditions-change-form.js` | portal UI spec "mark change records backdated scope" |
+| Findings that cannot be tied to a session are counted, not silently dropped | `data_quality.findings_lost_to_fallback` | `telemetry-audit-tier1-check` |
+| The demo must not confound the intervention with repo or model | `telemetry-conditions-demo.mjs` | `telemetry-conditions-presentation-check` |
+
+Known limits, so they are not mistaken for bugs:
+
+- The waste card is an upper-bound estimate. A runaway loop counts as both loop waste and spike
+  excess, and the families use different measurement bases (hook deltas vs. characters/4).
+- Token tables skip captures with no token data; the observed-session count includes them.
+- Every comparison is an association. Task mix, model and repository can differ between cohorts.
+- The bundled demo is synthetic and deterministic; it exercises the pipeline, not real usage.
+
+### Gaps in confidence
+
+Every check above asserts behavior on hand-built fixtures. None recomputes a headline number
+independently from the raw spool, so a bug that is wrong the same way in the fixture and the code
+would pass. Closing that gap means an oracle test: recompute session counts, affected-session
+rates and before/after cohorts naively from raw events and require the report to match.
+
 ## Configuration Snapshots
 
 The snapshot builder is dynamic-imported only on `SessionStart`, to keep the hot capture path's

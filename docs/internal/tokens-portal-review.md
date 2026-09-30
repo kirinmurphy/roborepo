@@ -48,7 +48,7 @@ and test rules applied; TypeScript and React conventions did not.
 
 | Finding | Resolution | Source |
 | --- | --- | --- |
-| An older action headline described a falling token share as “up,” because its trigger measures per-call cost. | Derive share direction independently of per-call cost; regression reproduced before correction. | `scripts/cli/telemetry-insights.mjs` |
+| An older action headline described a falling token share as “up,” because its trigger measures per-call cost. | Superseded by the 2026-09-30 audit below: the headline now speaks only in per-call cost. | `scripts/cli/telemetry-insights.mjs` |
 | Missing percentages were treated as no difference. | Centralized presentation states distinguish missing baseline, low sample, neutral, fewer, and more. | `portal/tokens2/conditions-format.js` |
 | Equal before/after rates became “More.” | Explicit equality branch; low-count changes remain provisional. | `conditions-format.js` |
 | A late session request could overwrite a later-opened session. | Request identity guards success and error paths. | `portal/tokens2/app.js` |
@@ -65,11 +65,35 @@ and test rules applied; TypeScript and React conventions did not.
 | Top-level session count omitted sessions without token-bearing captures while coverage counted them. | Page meta uses the canonical observed-session count when conditions are available. | `app.js` |
 | Browser tests checked dialog visibility without loaded facts. | Assert observation unit and next step; cover session races, filtering, bounded scroll, active demo signals, and polling. | `scripts/test/portal-ui/telemetry-conditions.spec.mjs` |
 
+### Logic audit, 2026-09-30
+
+Two independent audits reproduced sixteen findings. The canonical conditions path was sound; the
+risk sat in the older dashboard layer, in presentation gating the matrix check did not cover, and
+in marker editing. All are resolved on `codex/telemetry-tokens-conditions-report`; the invariants
+they protect are listed in [Telemetry Internals](telemetry-internals.md#analytics-correctness).
+
+| Finding | Resolution |
+| --- | --- |
+| Regression headline mixed per-call trigger with share direction, so a worsening could read “down from”. | Trigger, worst-group pick and headline all use per-call cost; share is context. |
+| Change verdicts ignored the display band, checked equality before the evidence floor, and showed percentages on tiny samples. | Evidence floor first, then band, then direction; counts only below the floor. Golden cases added. |
+| Equal-timestamp ledger rows ordered by id. | Persisted order breaks ties, for markers and ambient changes. |
+| Unknown-scope markers reported “below the minimum of 10”. | Reported as “can't compare fairly”. |
+| A supersede could name a missing, non-change or already-superseded marker. | Validated when the marker is created. |
+| Seed message said “5 sessions” for a spool with 105. | Counts real sessions and names the synthetic cohort. |
+| Marker at the boundary was “before” in one path and excluded in the other. | One rule: `effective_at ?? ts`, boundary sessions excluded. Sequence-ordered at-boundary sessions are still assigned, since that is real ordering evidence. |
+| Editing a change dropped packages, skills and tags, and “response” silently moved the boundary to now. | Exposure is carried through; moving to now needs confirmation. |
+| Emerging patterns still said “Investigate why…”. | Anything below a strong signal reads as an early signal. |
+| Demo baseline and focused cohorts differed in repo and model. | Both cohorts share both. |
+| Legacy rollups keyed on bare `session_id`, merging harnesses and fabricating cross-harness loops; tables dropped tokenless sessions while conditions counted them. | One harness-keyed pipeline on canonical rows; the conditions report is always built. Meta line shows observed vs token-bearing sessions. |
+| Findings on unidentified sessions vanished silently. | Counted in `data_quality.findings_lost_to_fallback` (not yet displayed). |
+| Waste card read as a disjoint sum. | Labeled “upper bound” with an overlap explanation; not de-duplicated. |
+| Change rows hid how many sessions had unknown condition data. | `unknown_condition` returned and shown. |
+| Cross-mirror duplicate findings (latent). | Not possible now that analysis runs on deduplicated rows. |
+
 ### Remaining code opportunities
 
 | Priority | Opportunity | Why it matters |
 | --- | --- | --- |
-| High | Unify the legacy action-item/session pipeline with the canonical condition detector results. | Legacy rollups still group some data by session ID and use different capture sets; condition rates use harness/session identity and deduplicated flows. Reconciliation needs explicit compatibility tests and a deliberate change to legacy reports. |
 | Medium | Finish extracting legacy investigation and session markup from `app.js` into HTML templates and focused modules. | New condition markup follows the template convention; older renderers still contain HTML strings and the remaining file exceeds the skill’s size guideline. |
 | Medium | Profile condition serialization on large spools. | Each ledger context still includes evaluated conditions. Index reuse reduces computation, but payload size grows with findings and condition cardinality. No large-spool performance benchmark was run. |
 | Medium | Disambiguate repositories sharing the same display name in selectors. | Canonical values remain distinct, but readable basenames can still look identical. Show owner/path only when labels collide. |
