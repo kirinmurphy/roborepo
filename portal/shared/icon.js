@@ -1,7 +1,7 @@
 // <portal-icon name="refresh"> — single reusable element backed by the ICONS registry below.
 // Add a new icon anywhere on the site by adding one entry here; every call site just sets `name`.
 // Renders inline (no shadow DOM) so page CSS can still target `svg`/`path` the way existing
-// call sites already do (e.g. localhoster's setRefreshing() toggles the icon via [hidden]).
+// call sites already do (e.g. developer-runtime's setRefreshing() toggles the icon via [hidden]).
 const ICONS = {
   refresh: {
     viewBox: "0 0 16 16",
@@ -101,8 +101,8 @@ const ICONS = {
     viewBox: "0 0 16 16",
     body: `<circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.3" /><path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" d="M6.4 6.4h3.2M8 6.4v3.2" />`,
   },
-  // Localhost: a terminal — the dev-server / local process side of the portal.
-  localhost: {
+  // Runtime: a terminal — the dev-server / local process side of the portal.
+  runtime: {
     viewBox: "0 0 16 16",
     body: `<rect x="2.5" y="3.5" width="11" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3" /><path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" d="M5 6.5l2 2-2 2" /><path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" d="M8.5 10.5h2.5" />`,
   },

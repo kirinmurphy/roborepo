@@ -11,7 +11,7 @@
 //     set, and telemetry enabled.
 //   - Tokens: the repo's own mock spool (portal/tokens2/mock-spool.jsonl).
 //   - Plans: this repository's docs/plans (public content).
-//   - Localhoster: two demo apps in throwaway git repos with example remotes (acme/*). Discovery
+//   - Runtime: two demo apps in throwaway git repos with example remotes (acme/*). Discovery
 //     scans the real machine's listeners, so the page's snapshot is filtered to the demo apps
 //     before it renders.
 // Each shot is one page section (an element screenshot), not a full page.
@@ -92,7 +92,7 @@ function setUpHome() {
   fs.copyFileSync(path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl"), path.join(spoolDir, "claude.jsonl"));
 }
 
-// ── Demo apps for Localhoster ──
+// ── Demo apps for Runtime ──
 function git(cwd, ...gitArgs) {
   spawnSync("git", ["-c", "user.name=Demo", "-c", "user.email=demo@example.com", ...gitArgs], { cwd });
 }
@@ -122,8 +122,8 @@ http.createServer((req, res) => {
 
 const DEMO_PREFIX = "git:github.com/acme/";
 
-// Keeps only the demo apps in a Localhoster snapshot and replaces the disposable HOME path.
-function filterLocalhoster(snapshot) {
+// Keeps only the demo apps in a Runtime snapshot and replaces the disposable HOME path.
+function filterDeveloperRuntime(snapshot) {
   const demo = (id) => typeof id === "string" && id.startsWith(DEMO_PREFIX);
   const filtered = {
     ...snapshot,
@@ -195,8 +195,8 @@ function ansiToHtml(lines) {
 const SHOTS = [
   { file: "portal-home.png", page: "/", from: "header.portal-header", to: "a.home-card >> nth=-1" },
   {
-    file: "localhoster.png",
-    page: "/localhoster",
+    file: "runtime.png",
+    page: "/runtime",
     from: "section#content",
     to: "section#content",
     fromPad: 0,
@@ -260,14 +260,14 @@ const base = `http://127.0.0.1:${port}`;
 const { chromium } = require("@playwright/test");
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, deviceScaleFactor: 2, colorScheme: "dark" });
-await context.route("**/api/localhoster", async (route) => {
+await context.route("**/api/developer-runtime", async (route) => {
   const response = await route.fetch();
-  await route.fulfill({ response, json: filterLocalhoster(await response.json()) });
+  await route.fulfill({ response, json: filterDeveloperRuntime(await response.json()) });
 });
 const page = await context.newPage();
 page.setDefaultTimeout(20_000);
 
-// Opens a page and waits for it to settle. Localhoster discovers listeners asynchronously, so its
+// Opens a page and waits for it to settle. Runtime discovers listeners asynchronously, so its
 // page is refreshed until the demo apps appear.
 async function openPage(pagePath) {
   log(`open ${pagePath}`);
@@ -275,7 +275,7 @@ async function openPage(pagePath) {
   // Every portal page shares a loading overlay that is hidden once its first data fetch resolves.
   await page.waitForSelector("#page-loading.hidden", { state: "attached", timeout: 120_000 }).catch(() => {});
   await page.waitForTimeout(1000);
-  if (pagePath !== "/localhoster") return;
+  if (pagePath !== "/runtime") return;
   for (let i = 0; i < 6; i++) {
     if (await page.locator("text=storefront").count() && await page.locator("text=admin-dashboard").count()) {
       // Reload so the shot never catches a refresh spinner mid-animation.
@@ -288,14 +288,14 @@ async function openPage(pagePath) {
     await page.locator("#refresh").click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1500);
   }
-  const debugShot = path.join(os.tmpdir(), "docs-screenshots-localhoster.png");
+  const debugShot = path.join(os.tmpdir(), "docs-screenshots-runtime.png");
   await page.screenshot({ path: debugShot, fullPage: true }).catch(() => {});
   log(`page text:\n${(await page.locator("main").innerText().catch(() => "")).slice(0, 1500)}`);
-  throw new Error(`demo apps never appeared on /localhoster (see ${debugShot})`);
+  throw new Error(`demo apps never appeared on /runtime (see ${debugShot})`);
 }
 
 if (survey) {
-  for (const pagePath of onlyPages ?? ["/", "/localhoster", "/plans", "/config", "/tokens"]) {
+  for (const pagePath of onlyPages ?? ["/", "/runtime", "/plans", "/config", "/tokens"]) {
     await openPage(pagePath);
     await surveyPage(page, pagePath);
     if (outIndex !== -1) {

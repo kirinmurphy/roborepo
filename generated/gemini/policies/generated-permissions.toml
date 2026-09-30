@@ -126,7 +126,7 @@ priority = 500
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "roborepo localhoster"
+commandPrefix = "roborepo runtime"
 decision = "allow"
 priority = 500
 

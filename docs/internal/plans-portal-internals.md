@@ -3,7 +3,7 @@
 How the `/plans` page is built, for people changing it. User-facing behavior is in
 [Plans Portal](../user/reference/plans-portal.md).
 
-## Runtime
+## How It Runs
 
 `roborepo web` starts the shared loopback portal server. `/plans` is registered directly in
 `scripts/cli/portal-server.mjs`, alongside Config and Telemetry.

@@ -8,7 +8,7 @@
 //
 // Four checks previously hand-rolled this, and every copy shared the same two defects: they omitted
 // modules/ (scripts/cli imports it, so the CLI dies at import time the moment a test touches
-// maintenance-stores or localhoster), and they resolved source paths against process.cwd() rather
+// maintenance-stores or developer-runtime), and they resolved source paths against process.cwd() rather
 // than the repo, so the fixture silently built from the wrong tree when run from elsewhere.
 
 import fs from "node:fs";
@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 // Everything the CLI resolves out of appRoot at runtime. modules/ is not optional: scripts/cli
-// imports it directly (maintenance-stores.mjs -> modules/localhoster, modules/retention).
+// imports it directly (maintenance-stores.mjs -> modules/developer-runtime, modules/retention).
 const APP_ROOT_CONTENTS = ["manifests", "globals", "scripts", "modules"];
 
 // A .git dir is what makes isDevelopmentCheckout() report development mode (cli/roots.mjs), which

@@ -9,7 +9,7 @@ import { dispatchRoutes, validateRouteTables } from "./portal-router.mjs";
 import { configRoutes } from "./portal-routes-config.mjs";
 import { maintenanceRoutes } from "./portal-routes-maintenance.mjs";
 import { plansRoutes } from "./portal-routes-plans.mjs";
-import { localhosterRoutes } from "./portal-routes-localhoster.mjs";
+import { developerRuntimeRoutes } from "./portal-routes-developer-runtime.mjs";
 import { telemetryRoutes } from "./portal-routes-telemetry.mjs";
 import { repositoriesRoutes } from "./portal-routes-repositories.mjs";
 import { usageRoutes } from "./portal-routes-usage.mjs";
@@ -22,7 +22,7 @@ const API_ROUTE_TABLES = [
   configRoutes,
   maintenanceRoutes,
   plansRoutes,
-  localhosterRoutes,
+  developerRuntimeRoutes,
   repositoriesRoutes,
   usageRoutes,
   telemetryRoutes,
@@ -63,10 +63,10 @@ export const PAGES = [
   { path: "/tokens", id: "tokens2", title: "Tokens", dir: "tokens2" },
   { path: "/tokens_v1", id: "telemetry", title: "Tokens", dir: "telemetry", hidden: true },
   {
-    path: "/localhoster",
-    id: "localhoster",
-    title: "Localhost",
-    dir: "localhoster",
+    path: "/runtime",
+    id: "developer-runtime",
+    title: "Runtime",
+    dir: "developer-runtime",
   },
 ];
 const PAGE_BY_PATH = new Map(PAGES.map((p) => [p.path, p]));
@@ -159,7 +159,7 @@ export function startPortalServer(handlers) {
     }
     console.log(`roborepo portal:     http://${LOOPBACK}:${actualPort}`);
     console.log(
-      `localhoster:         http://${LOOPBACK}:${actualPort}/localhoster`,
+      `runtime:         http://${LOOPBACK}:${actualPort}/runtime`,
     );
     console.log(`tokens dashboard:    http://${LOOPBACK}:${actualPort}/tokens`);
     console.log("(Ctrl-C to stop)");

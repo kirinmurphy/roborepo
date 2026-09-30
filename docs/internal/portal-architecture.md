@@ -3,7 +3,7 @@
 ## Purpose
 
 The portal is the local `roborepo web` UI: Home (`/`), Config (`/config`), Plans (`/plans`),
-Localhoster (`/localhoster`), and Tokens (`/tokens`). It is static HTML/CSS/browser JavaScript
+Runtime (`/runtime`), and Tokens (`/tokens`). It is static HTML/CSS/browser JavaScript
 served by a loopback-only Node HTTP server — no build step, no framework, no bundler. This doc
 covers the shared architecture (page manifest, browser API helpers, server route dispatch) that
 every page relies on. Page-specific behavior lives in
@@ -20,7 +20,7 @@ portal/
   home/{index.html,styles.css}
   config/{index.html,styles.css,app.js}
   plans/{index.html,styles.css,app.js}
-  localhoster/{index.html,styles.css,app.js,api.js,state.js,templates.js}
+  developer-runtime/{index.html,styles.css,app.js,api.js,state.js,templates.js}
   tokens2/{index.html,styles.css,app.js}     — /tokens (v2 token report)
   telemetry/{index.html,styles.css,app.js}   — /tokens_v1 (v1 dashboard, hidden from nav)
 scripts/cli/portal-server.mjs   — the server: page manifest, route dispatch, static assets
@@ -164,7 +164,7 @@ hand-maintained. Each domain's table:
 | --- | --- | --- |
 | `portal-routes-config.mjs` | `configRoutes` | `/api/config`, `/api/config/source`, `/api/config/packages`, `/api/config/skills`, `/api/config/permissions` |
 | `portal-routes-plans.mjs` | `plansRoutes` | `/api/plans`, `/api/plans/document`, `/api/plans/prompt`, `/api/plans/settings`, `/api/plans/priority`, `/api/plans/lifecycle`, `/api/plans/refresh` |
-| `portal-routes-localhoster.mjs` | `localhosterRoutes` | `/api/localhoster`, `/api/localhoster/refresh`, `/api/localhoster/history`, `/api/localhoster/metadata`, `/api/localhoster/links`, `/api/localhoster/association`, `/api/localhoster/project`, `/api/localhoster/alias`, `/api/localhoster/compose-project`, `/api/localhoster/repository-visibility`, `/api/localhoster/repository-pinned` |
+| `portal-routes-developer-runtime.mjs` | `developerRuntimeRoutes` | `/api/developer-runtime`, `/api/developer-runtime/refresh`, `/api/developer-runtime/history`, `/api/developer-runtime/metadata`, `/api/developer-runtime/links`, `/api/developer-runtime/association`, `/api/developer-runtime/project`, `/api/developer-runtime/alias`, `/api/developer-runtime/compose-project`, `/api/developer-runtime/repository-visibility`, `/api/developer-runtime/repository-pinned` |
 | `portal-routes-repositories.mjs` | `repositoriesRoutes` | `/api/repositories`, `/api/repositories/:id`, `/api/repositories/:id/associations`, `/api/repositories/:id/plans-enrollment` — path-param routes; a method with no matching route on a path that does match returns `405`, matching the old handler's explicit `methodNotAllowed` |
 | `portal-routes-usage.mjs` | `usageRoutes` | `/api/usage`, `/api/usage/refresh` |
 | `portal-routes-telemetry.mjs` | `telemetryRoutes` | `/api/data`, `/api/session`, `/api/insights-llm`, `/api/telemetry/markers` (GET/POST), `/api/telemetry/experiments` (GET/POST), `/api/telemetry/experiments/:id/end` (POST), `/api/telemetry/analysis` (POST) — see `docs/user/reference/telemetry.md` for the marker/experiment/analysis domain |
@@ -191,8 +191,8 @@ silently shadowing another route at request time.
 
 The portal serves `/manifest.json`, `/sitemap.xml`, `/robots.txt`, and `/openapi.json` at their conventional root
 paths (`portal-routes-metadata.mjs`), so `builtin:portal` is itself a live, correct example of the
-same same-origin conventions `modules/localhoster/metadata.mjs` discovers on other apps (see
-`docs/user/reference/localhoster.md`'s "Metadata suggestions" section).
+same same-origin conventions `modules/developer-runtime/metadata.mjs` discovers on other apps (see
+`docs/user/reference/runtime.md`'s "Metadata suggestions" section).
 
 | Artifact | Source | Why |
 | --- | --- | --- |
@@ -255,7 +255,7 @@ loaded a portal page fails the token check. `portalPostJson` always attaches the
 - `npm test` (`scripts/test/test-cli.sh`) — starts the portal server, asserts
   `/api/portal/status`, token exposure, mutating POST success/400/403 responses, and that each
   served `app.js` parses (`node --check`).
-- `roborepo web` — click through Home → Agents → Plans → Localhoster → Tokens, confirm nav highlighting, and
+- `roborepo web` — click through Home → Agents → Plans → Runtime → Tokens, confirm nav highlighting, and
   exercise each page's mutations (Config toggles, Plans refresh/discovery-root edits, Telemetry
   "turn on telemetry").
 - `node --input-type=module --check < portal/<page>/app.js` for a quick module-syntax check on a

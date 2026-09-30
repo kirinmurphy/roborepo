@@ -5,8 +5,8 @@ next_action: Complete — all 4 phases delivered on branch canonical-repository-
 blocked_by: []
 depends_on: []
 related:
-  - localhoster-git-health-history
-  - localhoster-docker-process-providers
+  - developer-runtime-git-health-history
+  - developer-runtime-docker-process-providers
   - roborepo-cli-surface-implementation-plan
 reviewed_commit:
 ---
@@ -15,7 +15,7 @@ reviewed_commit:
 
 ## Purpose
 
-Create one local repository identity system that allows Localhoster instances, telemetry sessions, plans, agent configuration, health findings, worktrees, and future portal features to refer to the same repository reliably.
+Create one local repository identity system that allows Runtime instances, telemetry sessions, plans, agent configuration, health findings, worktrees, and future portal features to refer to the same repository reliably.
 
 This work makes a repository a first-class RoboRepo entity rather than a label independently inferred by each page.
 
@@ -37,7 +37,7 @@ The plan does not yet build repository-centric homepage cards, the repository po
 Today, several subsystems may independently describe the same repository:
 
 - Plans finds `/Users/kirin/projects/roborepo` under a user-selected project folder.
-- Localhoster finds one or more processes running from that repository.
+- Runtime finds one or more processes running from that repository.
 - Telemetry records agent sessions whose working directories are inside it.
 - Agent Config may later inspect repository-local configuration.
 - Doctor may produce findings scoped to it.
@@ -53,7 +53,7 @@ Each domain retains its own records and behavior. The canonical identity is a sh
 ```mermaid
 flowchart TD
   R["Canonical repository"]
-  R --> L["Localhost instances"]
+  R --> L["Runtime instances"]
   R --> P["Plans"]
   R --> T["Telemetry sessions"]
   R --> C["Agent configuration"]
@@ -68,20 +68,20 @@ This enables:
 - A future repository popup and detail page.
 - Homepage repository summaries.
 - Links between an active app, its plans, configuration, telemetry, and health.
-- Multiple localhost processes and worktrees associated with one underlying repository.
+- Multiple developer-runtime processes and worktrees associated with one underlying repository.
 - Clear treatment of unresolved or partially configured repositories.
 
 ## Confirmed Product Decisions
 
 - Implement identity unification now.
 - Treat repositories as first-class entities throughout RoboRepo.
-- Connect localhost instances to repositories represented in other RoboRepo domains.
+- Connect developer-runtime instances to repositories represented in other RoboRepo domains.
 - Prefer reliable structural evidence over prompt-content guessing.
 - Ship identity and association plumbing before repository-centric UI.
 - Preserve Telemetry's local/privacy-oriented data model.
 - Records that cannot be associated remain visible as unresolved; they are never discarded.
 - Automatically discovered repositories may be registered without automatically enabling every domain.
-- Localhoster discovery must not silently enable Plans directory scanning.
+- Runtime discovery must not silently enable Plans directory scanning.
 - Plans project folders remain user-controlled monitoring sources.
 - Provide an explicit path from a discovered repository to Plans enrollment.
 - Prepare for a visible, site-level repository selector that persists across portal navigation.
@@ -98,13 +98,13 @@ The registry answers:
 
 > What repositories does RoboRepo know about?
 
-A repository may enter the registry through Plans, Localhoster, Telemetry, Agent Config, Doctor, a future worktree feature, or an explicit user action.
+A repository may enter the registry through Plans, Runtime, Telemetry, Agent Config, Doctor, a future worktree feature, or an explicit user action.
 
 ### Domain associations
 
 Domain records refer to the canonical repository ID:
 
-- A Localhoster instance belongs to a repository.
+- A Runtime instance belongs to a repository.
 - A plan belongs to a repository.
 - A telemetry session may belong to a repository.
 - A repository-local config finding belongs to a repository.
@@ -116,7 +116,7 @@ Enrollment answers:
 
 > Which features has the user enabled for this repository?
 
-Discovering a repository does not automatically authorize all ongoing scans. A Localhoster-discovered repository can be known and active while Plans monitoring remains disabled.
+Discovering a repository does not automatically authorize all ongoing scans. A Runtime-discovered repository can be known and active while Plans monitoring remains disabled.
 
 ### User scope
 
@@ -130,7 +130,7 @@ These concerns must remain separate:
 
 | Concern | Example |
 | --- | --- |
-| Discovery | Localhoster sees a server launched inside `arcade` |
+| Discovery | Runtime sees a server launched inside `arcade` |
 | Identity | The server resolves to `git:github.com/kirinmurphy/arcade` |
 | Enrollment | The user chooses whether Plans scans `arcade/docs/plans` |
 | Activity | `arcade` currently has one listening process |
@@ -171,18 +171,18 @@ A repository can be discovered, resolved, active, and not monitored by Plans at 
 
 ## Existing Signals
 
-### Localhoster
+### Runtime
 
-`modules/localhoster/identity.mjs` already:
+`modules/developer-runtime/identity.mjs` already:
 
 - Finds the nearest Git root from a process working directory.
 - Normalizes SSH and HTTPS remotes to `git:<host>/<owner>/<repo>`.
 - Falls back to `path:<realpath>` and then a low-confidence process identity.
 - Labels evidence and confidence.
 
-Localhoster settings schema version 2 also supports user-confirmed identity aliases with cycle protection.
+Runtime settings schema version 2 also supports user-confirmed identity aliases with cycle protection.
 
-Localhoster can discover repositories without any prior Plans configuration. It may discover several processes belonging to one repository, and it may later discover processes launched from worktrees of that repository.
+Runtime can discover repositories without any prior Plans configuration. It may discover several processes belonging to one repository, and it may later discover processes launched from worktrees of that repository.
 
 ### Plans
 
@@ -199,7 +199,7 @@ Plans does not yet publish one shared canonical repository identity. Its project
 
 ### Telemetry
 
-Telemetry records repository label, hashed working-directory/Git-root information, hashed remote information, branch, commit, and session ID. Existing raw remote hashes cannot be directly joined to Localhoster's normalized clear-text remote identity unless normalization and hashing are performed consistently.
+Telemetry records repository label, hashed working-directory/Git-root information, hashed remote information, branch, commit, and session ID. Existing raw remote hashes cannot be directly joined to Runtime's normalized clear-text remote identity unless normalization and hashing are performed consistently.
 
 Telemetry already has a repository-oriented page filter. The shared identity model should replace domain-specific repository identification without removing page-specific filters prematurely.
 
@@ -218,7 +218,7 @@ Every domain can contribute evidence to the repository registry:
 | Source | What it discovers | Automatic registry entry | Automatic domain enrollment |
 | --- | --- | --- | --- |
 | Plans sources | Repositories under user-approved scan roots | Yes | Plans is already enabled through the source |
-| Localhoster | Repositories owning running processes | Yes | Localhost tracking only; not Plans |
+| Runtime | Repositories owning running processes | Yes | Runtime tracking only; not Plans |
 | Telemetry | Repositories associated with agent sessions | Yes when identity is sufficiently reliable | Telemetry association only |
 | Agent Config | Repositories with detected local config | Yes when confidently resolved | Config inspection only |
 | Doctor | Repositories checked during scoped health work | Yes when confidently resolved | No additional enrollment |
@@ -230,7 +230,7 @@ Record provenance rather than reducing discovery to a single `discoveredBy` valu
 {
   "discoveries": [
     {
-      "source": "localhoster",
+      "source": "developer-runtime",
       "firstSeenAt": "ISO-8601",
       "lastSeenAt": "ISO-8601",
       "evidence": "git-remote",
@@ -346,7 +346,7 @@ Responsibilities:
 - Return confidence, evidence type, and association provenance.
 - Avoid domain-specific presentation logic.
 
-Localhoster should import this module rather than owning the canonical implementation.
+Runtime should import this module rather than owning the canonical implementation.
 
 ## Normalization Rules
 
@@ -419,9 +419,9 @@ Preserve the current behavior:
 
 Identity adoption must not reduce this capability or convert all sources into individually selected repositories.
 
-### Enrollment from Localhoster
+### Enrollment from Runtime
 
-When Localhoster discovers a repository that is not covered by a Plans source:
+When Runtime discovers a repository that is not covered by a Plans source:
 
 - Add or update the repository in the shared registry.
 - Mark Plans monitoring as disabled or uncovered.
@@ -455,11 +455,11 @@ This UI move is not required for the identity plumbing.
 
 ## Domain Adoption
 
-### Localhoster
+### Runtime
 
-- Replace direct use of `modules/localhoster/identity.mjs` with the shared resolver.
+- Replace direct use of `modules/developer-runtime/identity.mjs` with the shared resolver.
 - Preserve existing public identity strings where they already match the canonical format.
-- Migrate or delegate existing Localhoster aliases into the shared registry without losing confirmed associations.
+- Migrate or delegate existing Runtime aliases into the shared registry without losing confirmed associations.
 - Include `repositoryId`, local `rootId` when applicable, confidence, and evidence in server-side snapshots.
 - Associate multiple processes and ports with one repository.
 - Associate worktree processes with the canonical repository while retaining worktree-specific branch/root metadata.
@@ -586,9 +586,9 @@ Create one repository summary shape:
   "activity": "active",
   "confidence": "high",
   "evidence": "git-remote",
-  "discoveredBy": ["localhoster", "plans"],
+  "discoveredBy": ["developer-runtime", "plans"],
   "capabilities": {
-    "localhoster": true,
+    "developer-runtime": true,
     "plans": true,
     "telemetry": true,
     "agentConfig": false,
@@ -636,7 +636,7 @@ Potential detail content:
 - Repository name and provider link.
 - Discovery sources and association confidence.
 - Known local roots and worktrees.
-- Active and known localhost instances.
+- Active and known developer-runtime instances.
 - Active, recent, and associated plans.
 - Repository-local agent configuration.
 - Token use and telemetry warnings.
@@ -646,7 +646,7 @@ Potential detail content:
 Potential actions:
 
 - Open provider page.
-- Open an active localhost instance.
+- Open an active developer-runtime instance.
 - Include or exclude Plans monitoring.
 - Resolve or unlink an ambiguous association.
 - Hide or restore the repository.
@@ -657,7 +657,7 @@ This experience is explicitly deferred. The v2 plumbing must avoid API or schema
 
 The future homepage may list repositories that have any of:
 
-- Active or previously identified localhost ports.
+- Active or previously identified developer-runtime ports.
 - Associated plans.
 - Associated agent configuration.
 - Associated telemetry.
@@ -678,13 +678,13 @@ This plan is pure plumbing plus browser-safe API contracts; it defines no user-f
 
 ## Migration
 
-1. Inventory current repository labels, IDs, filters, Plans sources, and Localhoster aliases.
-2. Introduce the shared resolver with behavior-equivalence tests against Localhoster's current resolver.
+1. Inventory current repository labels, IDs, filters, Plans sources, and Runtime aliases.
+2. Introduce the shared resolver with behavior-equivalence tests against Runtime's current resolver.
 3. Add the registry and versioned schema without changing UI.
 4. Add discovery provenance, lifecycle dimensions, local roots, and per-domain enrollment.
-5. Import confirmed Localhoster aliases into the shared registry, retaining a migration marker and backup.
+5. Import confirmed Runtime aliases into the shared registry, retaining a migration marker and backup.
 6. Register repositories currently found through configured Plans sources.
-7. Adopt the resolver in Localhoster and Plans.
+7. Adopt the resolver in Runtime and Plans.
 8. Add new repository references to Telemetry capture.
 9. Add read-time matching for legacy Telemetry records.
 10. Attach repository IDs to repository-local Agent Config and structured Doctor findings where applicable.
@@ -706,7 +706,7 @@ Do not remove existing fields until all current consumers have migrated. This co
 - If two records conflict, do not silently merge them; retain both and surface an actionable conflict.
 - If an alias target disappears, keep the alias record but mark it unresolved until repaired.
 - If historical telemetry cannot be associated confidently, leave it unassociated.
-- If a Localhoster process lacks a recoverable working directory, retain the instance as unresolved.
+- If a Runtime process lacks a recoverable working directory, retain the instance as unresolved.
 - If Plans enrollment cannot write or validate its source configuration, do not mark monitoring enabled.
 - If a configured Plans source disappears, retain the repository and historical associations while marking source coverage unavailable.
 - If a selected global repository no longer exists or is hidden, reset safely to **All repositories** and explain the state in the future UI.
@@ -719,7 +719,7 @@ Do not remove existing fields until all current consumers have migrated. This co
 - Keep Telemetry read-time legacy matching indexed by hash.
 - Keep browser payloads deduplicated and path-free.
 - Index domain records by `repositoryId`.
-- Calculate Plans source coverage without recursively rescanning all sources for every Localhoster refresh.
+- Calculate Plans source coverage without recursively rescanning all sources for every Runtime refresh.
 - Batch registry updates produced by process discovery.
 - Avoid provider API calls in the identity-critical path.
 
@@ -736,11 +736,11 @@ Add focused tests for:
 - Discovery provenance from multiple domains.
 - Discovered, monitored, active, unresolved, hidden, and combined states.
 - Alias confirmation, transitive resolution, removal, and cycle rejection.
-- Localhoster behavior parity after resolver extraction.
-- Multiple Localhoster ports associating with one repository.
-- Plans receiving the same ID as Localhoster for the same Git repository.
+- Runtime behavior parity after resolver extraction.
+- Multiple Runtime ports associating with one repository.
+- Plans receiving the same ID as Runtime for the same Git repository.
 - Repositories found under broad Plans sources.
-- A Localhoster-discovered repository remaining unenrolled in Plans.
+- A Runtime-discovered repository remaining unenrolled in Plans.
 - Plans enrollment reusing an existing covering source.
 - Plans enrollment adding the exact repository root by default.
 - Enrollment failure leaving the repository unmonitored.
@@ -755,17 +755,17 @@ Add focused tests for:
 - Existing Plans and Telemetry repository filters retaining behavior after canonical-ID adoption.
 - Repository query scope composing correctly with time, model, harness, and status filters.
 
-Run the existing Localhoster, Plans, Telemetry, Doctor, Config/context-cost, portal routing, and full test suites after focused tests pass.
+Run the existing Runtime, Plans, Telemetry, Doctor, Config/context-cost, portal routing, and full test suites after focused tests pass.
 
 ## Acceptance Criteria
 
-- Localhoster, Plans, and new Telemetry records resolve the same Git repository to the same canonical ID.
+- Runtime, Plans, and new Telemetry records resolve the same Git repository to the same canonical ID.
 - Equivalent SSH and HTTPS remotes correlate.
 - Multiple processes, ports, clones, and worktrees can associate with one canonical repository without losing location-specific metadata.
-- Existing confirmed Localhoster aliases migrate without loss.
+- Existing confirmed Runtime aliases migrate without loss.
 - Repositories discovered through any supported domain appear once in the registry with provenance.
 - Automatic discovery does not automatically enable unrelated domain monitoring.
-- A Localhoster-discovered repository can be explicitly enrolled in Plans.
+- A Runtime-discovered repository can be explicitly enrolled in Plans.
 - Existing Plans sources continue discovering child repositories and plan content.
 - Plans source configuration and repository result filtering remain separate concepts.
 - Historical telemetry is associated only when current hashes support a confident match.
@@ -800,7 +800,7 @@ Run the existing Localhoster, Plans, Telemetry, Doctor, Config/context-cost, por
 
 - Extract and test the resolver.
 - Add canonical IDs, registry persistence, aliases, provenance, and local roots.
-- Migrate Localhoster without visible behavior changes.
+- Migrate Runtime without visible behavior changes.
 
 ### Phase 2: Domain convergence
 

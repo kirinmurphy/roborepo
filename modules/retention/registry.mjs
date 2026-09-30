@@ -5,7 +5,7 @@
 // Monitoring row all read this.
 //
 // stateRoot is a parameter rather than an import, matching historyPathFor in
-// modules/localhoster/history.mjs and settingsPathFor in its settings.mjs. That is what makes the
+// modules/developer-runtime/history.mjs and settingsPathFor in its settings.mjs. That is what makes the
 // whole registry testable against a temp directory with no environment juggling.
 
 import path from "node:path";
@@ -24,14 +24,14 @@ const MB = 1024 * 1024;
 export function retentionStores(stateRoot) {
   return [
     {
-      id: "localhoster-history",
-      label: "Localhoster history",
+      id: "developer-runtime-history",
+      label: "Runtime history",
       shape: LOG_SHAPE,
-      target: path.join(stateRoot, "localhoster", "history.jsonl"),
+      target: path.join(stateRoot, "developer-runtime", "history.jsonl"),
       // Matches DEFAULT_RETENTION_DAYS/HISTORY_MAX_BYTES/HISTORY_COMPACT_FLOOR_BYTES.
       //
       // maxAgeDays here is the DEFAULT. The live value is a user preference
-      // (preferences.historyRetentionDays, 1-365, see modules/localhoster/settings-schema.mjs), so
+      // (preferences.historyRetentionDays, 1-365, see modules/developer-runtime/settings-schema.mjs), so
       // this entry declares `preferenceKey` and callers pass the resolved value through
       // resolveStorePolicy. Reporting surfaces that have no settings loaded still show a truthful
       // default rather than nothing.
@@ -104,7 +104,7 @@ export function findRetentionStore(stateRoot, id) {
 
 // Overlay a live user preference onto a store's declared default.
 //
-// The registry cannot read the preference itself: localhoster owns its settings file, and importing
+// The registry cannot read the preference itself: developer-runtime owns its settings file, and importing
 // it here would point a leaf module at a feature module. So the store declares WHICH preference
 // governs it and the caller — which already has the settings loaded — supplies the value.
 //

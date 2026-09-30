@@ -19,7 +19,7 @@ Replace the current Agents-at-`/` landing page with a repository-first Home and 
 
 Home should answer "what repositories does RoboRepo know about?" before trying to become a generic dashboard. It uses the global repository model delivered by `pljvmyh`, shows compact cross-domain status on each repository, and links directly into the existing domain pages with canonical repository scope.
 
-Repository detail lives at `/repositories/<urlKey>`. It provides a stable, bookmarkable place to understand one repository, see its activity and configured discovery sources, and enter Plans, Tokens, Agents, or Localhost as appropriate.
+Repository detail lives at `/repositories/<urlKey>`. It provides a stable, bookmarkable place to understand one repository, see its activity and configured discovery sources, and enter Plans, Tokens, Agents, or Runtime as appropriate.
 
 The page also retains the useful "Attention" intent from the superseded homepage plan, but recasts it around the repository-first information architecture. Repositories remain the dominant Home content. Attention is a secondary global section, and repository-specific findings appear on a detail page only when they can be associated by canonical `repositoryId`.
 
@@ -32,7 +32,7 @@ This story supersedes the still-relevant homepage behavior from `portal-homepage
 - Add `/repositories/<urlKey>` as the persistent repository detail route.
 - Reuse canonical repository identity and global repository-source/scope infrastructure from `pljvmyh`.
 - Show concise per-repository runtime, plan, telemetry, agent-config, and warning status without duplicating full domain pages.
-- Keep Localhost as a separate operational management page.
+- Keep Runtime as a separate operational management page.
 - Preserve useful Attention requirements from the older homepage plan: token-heavy chats, telemetry anomalies, large agent resources, and installation health.
 - Reuse shared domain calculations rather than reimplementing warning policy in Home JavaScript.
 - Make partial domain failures degrade independently.
@@ -41,8 +41,8 @@ This story supersedes the still-relevant homepage behavior from `portal-homepage
 
 ## Non-goals
 
-- Replacing Plans, Tokens, Agents, or Localhost with Home/detail views.
-- Adding one-repository filtering to Localhost.
+- Replacing Plans, Tokens, Agents, or Runtime with Home/detail views.
+- Adding one-repository filtering to Runtime.
 - Implementing repository-level agent configuration.
 - Creating a modal-only repository detail experience.
 - Turning Home into a generic grid of duplicate domain dashboards.
@@ -101,7 +101,7 @@ Before this story:
 - There is no `portal/home/` page.
 - The canonical repository registry and browser-safe repository list/detail APIs already exist, with `pljvmyh` extending them with `urlKey`, global sources, private local-root resolution, and shared scope.
 - Repository summaries already distinguish capabilities from enrollments and intentionally strip filesystem paths.
-- Localhost already groups running instances by canonical repository and remains the operational runtime page. `h4tqm2wz` makes those repositories persist beyond their processes and adds a lifecycle (`active`/`idle`/`stale`) plus visibility-based hiding, so the repository directory here can list a repository that is not currently running and show why.
+- Runtime already groups running instances by canonical repository and remains the operational developer-runtime page. `h4tqm2wz` makes those repositories persist beyond their processes and adds a lifecycle (`active`/`idle`/`stale`) plus visibility-based hiding, so the repository directory here can list a repository that is not currently running and show why.
 - Plans and Tokens provide deeper domain views.
 - Config/Agents provides global agent resource/configuration data; repository-level config remains future work.
 - Telemetry already computes anomaly/session data and a cumulative concern threshold.
@@ -117,7 +117,7 @@ Change portal routing so:
 
 - `/` serves a new `home` page and becomes the default for `roborepo serve` / `roborepo web` open behavior;
 - `/config` becomes the canonical Agents route;
-- `/localhoster`, `/plans`, and `/tokens` remain stable;
+- `/runtime`, `/plans`, and `/tokens` remain stable;
 - Home is the first portal navigation item;
 - clicking Home always clears repository scope because Home is the repository directory;
 - existing saved `/config` links remain valid.
@@ -136,7 +136,7 @@ Recommended summary fields:
 | --- | --- |
 | Display name | Canonical registry display name |
 | Activity | Repository lifecycle state from `h4tqm2wz` — `active`, `idle`, or `stale`. Hidden repositories are excluded from the default directory. |
-| Runtime | Active Localhost app/group count or concise status |
+| Runtime | Active Runtime app/group count or concise status |
 | Plans | Active plan count and total plan count |
 | Tokens / sessions | Recent associated session/activity summary when available |
 | Agents | Global-only / repository config coming soon until that feature lands |
@@ -149,9 +149,9 @@ Direct actions may link to:
 - **Plans** → `/plans?repository=<urlKey>`
 - **Tokens** → `/tokens?repository=<urlKey>`
 - **Agents** → `/config?repository=<urlKey>`
-- **Localhost** → `/localhoster` when runtime capability exists
+- **Runtime** → `/runtime` when developer-runtime capability exists
 
-Because Localhost is intentionally unscoped, its link opens the operational list rather than pretending a one-repository filter exists.
+Because Runtime is intentionally unscoped, its link opens the operational list rather than pretending a one-repository filter exists.
 
 If the registry is empty, Home should present the zero-configuration model established by `pljvmyh`: start a local project or add a repository/folder through repository management.
 
@@ -177,7 +177,7 @@ The first version should contain:
 - configured-source coverage summary;
 - repository-specific Attention findings;
 - Plans summary and scoped link;
-- Localhost runtime summary and unscoped Localhost link;
+- Runtime developer-runtime summary and unscoped Runtime link;
 - recent Tokens/session summary and scoped link;
 - Agents status and scoped link;
 - timestamps useful for understanding last seen/last activity.
@@ -206,7 +206,7 @@ Exact endpoint naming may follow existing route conventions, but the responsibil
 - keep expensive analysis behind existing caches/policies;
 - avoid exposing domain-internal raw records when a summary is sufficient.
 
-Each domain loader must run behind its own timeout and cancellation boundary. Apply this uniformly to Localhost, Plans, Telemetry, Doctor, and any later domain loader; do not let one slow loader consume the aggregate request budget. A timeout becomes a partial failure result such as `{ "domain": "telemetry", "status": "timeout" }`. The aggregate response still completes, includes the affected domain name, preserves any stale successful data already available for that domain, and marks that data stale rather than empty.
+Each domain loader must run behind its own timeout and cancellation boundary. Apply this uniformly to Runtime, Plans, Telemetry, Doctor, and any later domain loader; do not let one slow loader consume the aggregate request budget. A timeout becomes a partial failure result such as `{ "domain": "telemetry", "status": "timeout" }`. The aggregate response still completes, includes the affected domain name, preserves any stale successful data already available for that domain, and marks that data stale rather than empty.
 
 Suggested Home shape:
 
@@ -242,14 +242,14 @@ Preserve the useful behavior from the older Active Apps widget without creating 
 
 For each repository:
 
-- reuse the Localhost snapshot;
+- reuse the Runtime snapshot;
 - count/show active, non-hidden HTTP apps and Compose/runtime groups;
 - include concise status and entrypoint/origin where safe/useful on detail;
-- keep Localhost's own cache/refresh policy authoritative;
+- keep Runtime's own cache/refresh policy authoritative;
 - preserve unsupported-platform and refresh-failure signals;
-- link to `/localhoster` for operational actions.
+- link to `/runtime` for operational actions.
 
-Do not copy Localhost alias, hide, favorite, association, history, or settings controls onto Home.
+Do not copy Runtime alias, hide, favorite, association, history, or settings controls onto Home.
 
 ### 6. Plans Summary becomes repository plan status
 
@@ -414,7 +414,7 @@ Follow the loaded code-style and JavaScript conventions:
 ### Refresh behavior
 
 - poll Home aggregate state at a modest interval appropriate to runtime freshness;
-- allow Localhost's established cache/refresh policy to govern discovery;
+- allow Runtime's established cache/refresh policy to govern discovery;
 - do not trigger doctor on every Home poll;
 - repository detail may refresh active/runtime summaries without reloading stable repository metadata;
 - correctness and clear stale/error states matter more than fine-grained DOM patch optimization.
@@ -429,7 +429,7 @@ After this story, the canonical page layout is:
 | `/config` | Agents |
 | `/plans` | Plans |
 | `/tokens` | Tokens |
-| `/localhoster` | Localhost |
+| `/runtime` | Runtime |
 | `/repositories/<urlKey>` | Repository detail |
 
 Navigation behavior:
@@ -437,7 +437,7 @@ Navigation behavior:
 - Home always opens unscoped `/`;
 - repository cards open `/repositories/<urlKey>`;
 - repository detail links into Plans/Tokens/Agents with `repository=<urlKey>`;
-- Localhost links remain unscoped;
+- Runtime links remain unscoped;
 - shared scoped navigation among Plans/Tokens/Agents continues to follow `pljvmyh`;
 - browser back/forward works across Home → detail → domain pages.
 
@@ -468,8 +468,8 @@ Navigation behavior:
 
 ### Domain summary sources
 
-- Localhost service/snapshot code
-  - active runtime counts/status only; management remains on Localhost.
+- Runtime service/snapshot code
+  - active developer-runtime counts/status only; management remains on Runtime.
 - Plans service/snapshot code
   - repository plan counts and recently changed timestamps.
 - Telemetry analysis/service code
@@ -499,12 +499,12 @@ Navigation behavior:
 - [ ] Add zero-repository state that points to runtime discovery or repository management.
 - [ ] Keep unresolved activity outside normal repository cards.
 - [ ] Add repository detail identity, activity, source/association, and local-root-count data.
-- [ ] Add direct Plans/Tokens/Agents/Localhost links using the scope rules from `pljvmyh`.
+- [ ] Add direct Plans/Tokens/Agents/Runtime links using the scope rules from `pljvmyh`.
 - [ ] Add partial-failure handling per repository/domain.
 
 ### Phase 3 — Runtime and Plans summaries
 
-- [ ] Reuse Localhost snapshots for active runtime status without duplicating management controls.
+- [ ] Reuse Runtime snapshots for active developer-runtime status without duplicating management controls.
 - [ ] Add repository plan counts.
 - [ ] Add seven-day recently changed plan data on repository detail.
 - [ ] Use Git last-commit timestamp with filesystem mtime fallback.
@@ -553,7 +553,7 @@ Existing repo-native checks to preserve and extend:
 npm run test:repositories
 npm run test:repositories-service
 npm run test:repositories-api
-npm run test:localhoster
+npm run test:developer-runtime
 npm run test:plans
 npm run test:plans-portal-state
 npm run test:telemetry
@@ -570,7 +570,7 @@ Add focused coverage for:
 - repository detail URL-key resolution, aliases, hidden/unknown keys, and browser history;
 - zero-repository and unresolved-repository states;
 - repository card summaries joining by canonical `repositoryId`;
-- Localhost runtime data appearing without Localhost management controls;
+- Runtime developer-runtime data appearing without Runtime management controls;
 - recent plan timestamp precedence and seven-day boundaries under a fixed clock;
 - shared telemetry concern policy producing the same effective threshold for chart and Home;
 - token-heavy sessions using cumulative total rather than delta spikes;
@@ -586,10 +586,10 @@ Add focused coverage for:
 - Opening RoboRepo's portal lands on `/` Home.
 - Agents has a stable canonical `/config` route.
 - Home begins with a repository directory backed by visible canonical repositories.
-- An installation with no known repositories explains that repositories can appear through Localhost activity or be added through repository management.
+- An installation with no known repositories explains that repositories can appear through Runtime activity or be added through repository management.
 - Every repository card can open `/repositories/<urlKey>`.
 - Repository detail is persistent/bookmarkable and shows identity, activity, source/association summary, and domain entry points.
-- Plans/Tokens/Agents links use the shared canonical repository scope; Localhost remains unscoped.
+- Plans/Tokens/Agents links use the shared canonical repository scope; Runtime remains unscoped.
 - Runtime and plan summary data replace the old separate Active Apps and Plans Summary homepage widgets.
 - Recently changed plans use a seven-day window and do not invent creation dates.
 - Home includes one secondary Attention section covering Token usage, Telemetry, Agent config, and Health.
@@ -598,6 +598,6 @@ Add focused coverage for:
 - Findings appear on repository detail only when associated through canonical `repositoryId`; global findings remain clearly global.
 - Independent domain failures do not prevent repository navigation or healthy domains from rendering.
 - Normal Home/detail payloads contain no absolute local paths, credentials, internal alias graph, or raw telemetry prompts/results.
-- Localhost remains a standalone operational page.
+- Runtime remains a standalone operational page.
 - The two superseded homepage backlog files are removed.
 - Targeted tests and `npm test` pass.

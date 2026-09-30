@@ -2,7 +2,7 @@
 // file for why the server is not a Playwright webServer fixture).
 //
 // Covers docs/plans/active/portal-onboarding-home.md Phase 4 acceptance:
-//   - nav order Home, Agents, Plans, Tokens, Localhost
+//   - nav order Home, Agents, Plans, Tokens, Runtime
 //   - the four Home entry cards link to the right routes
 //   - existing deep links still load (and Home is the only default)
 //   - active-nav state follows the canonical route (Home on /, Agents on /config, ...)
@@ -15,13 +15,13 @@
 
 import { test, expect } from "@playwright/test";
 
-const NAV_ORDER = ["Home", "Agents", "Plans", "Tokens", "Localhost"];
+const NAV_ORDER = ["Home", "Agents", "Plans", "Tokens", "Runtime"];
 
 const HOME_CARDS = [
   { title: "Agents", href: "/config" },
   { title: "Plans", href: "/plans" },
   { title: "Tokens", href: "/tokens" },
-  { title: "Localhost", href: "/localhoster" },
+  { title: "Runtime", href: "/runtime" },
 ];
 
 // Every canonical route and the nav label that must read active on it.
@@ -30,7 +30,7 @@ const ROUTES = [
   { path: "/config", active: "Agents" },
   { path: "/plans", active: "Plans" },
   { path: "/tokens", active: "Tokens" },
-  { path: "/localhoster", active: "Localhost" },
+  { path: "/runtime", active: "Runtime" },
 ];
 
 test.describe("portal home (portal-onboarding-home)", () => {
@@ -175,7 +175,7 @@ test.describe("portal home (portal-onboarding-home)", () => {
     }
   });
 
-  test("global nav order is Home, Agents, Plans, Tokens, Localhost", async ({ page }) => {
+  test("global nav order is Home, Agents, Plans, Tokens, Runtime", async ({ page }) => {
     await page.goto("/");
     const labels = await page.locator("#nav a").allTextContents();
     expect(labels.map((s) => s.trim())).toEqual(NAV_ORDER);
@@ -202,7 +202,7 @@ test.describe("portal home (portal-onboarding-home)", () => {
     }
   });
 
-  test("deep links for /config, /plans, /tokens, /localhoster still load", async ({ page }) => {
+  test("deep links for /config, /plans, /tokens, /runtime still load", async ({ page }) => {
     for (const { path } of ROUTES.slice(1)) {
       const resp = await page.goto(path);
       expect(resp.status()).toBe(200);

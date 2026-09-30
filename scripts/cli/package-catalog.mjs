@@ -24,7 +24,7 @@ const RESOURCE_TYPES = new Set([
   "service",
   "cli-command",
   "harness-config",
-  "runtime-asset",
+  "package-runtime-asset",
 ]);
 const SKILL_INVOCATIONS = new Set(["auto", "manual"]);
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -313,11 +313,11 @@ function normalizeResource(resource, { pkgId, root, index }) {
     next.source = validateInsideSource(root, next.source, `${pkgId}:harness-config`);
     if (!fs.existsSync(path.join(root, next.source))) throw new Error(`${pkgId}:harness-config source missing: ${next.source}`);
     validateHarness(next.harness, `${pkgId}:harness-config`, { requiredCapability: "package-config" });
-  } else if (next.type === "runtime-asset") {
-    next.source = validateInsideSource(root, next.source, `${pkgId}:runtime-asset`);
-    if (!fs.existsSync(path.join(root, next.source))) throw new Error(`${pkgId}:runtime-asset source missing: ${next.source}`);
+  } else if (next.type === "package-runtime-asset") {
+    next.source = validateInsideSource(root, next.source, `${pkgId}:package-runtime-asset`);
+    if (!fs.existsSync(path.join(root, next.source))) throw new Error(`${pkgId}:package-runtime-asset source missing: ${next.source}`);
     if (next.target !== undefined && !isSafeRelativeTarget(next.target)) {
-      throw new Error(`${pkgId}:runtime-asset target must be a relative path`);
+      throw new Error(`${pkgId}:package-runtime-asset target must be a relative path`);
     }
   } else if (next.type === "rules" || next.type === "hooks") {
     next.source = validateInsideSource(root, next.source, `${pkgId}:${next.type}`);

@@ -181,7 +181,7 @@ Everything else (the two symlink levels, the layer table) lives in
   thin per-service wrappers that only re-expose what a root command already does. The namespace
   carries `advanced: true` to stay out of the root menu; its children deliberately do not, because
   `includeAdvanced: false` in `help-renderer.mjs` would hide them from `roborepo help dev` too.
-- **`web --detach` cold starts are slow.** The portal warms telemetry/localhoster views before it
+- **`web --detach` cold starts are slow.** The portal warms telemetry/developer-runtime views before it
   binds — measured ~29s on a normal dev checkout. `waitForPortalReady` allows 60s for that; do not
   "tidy" it back down to a few seconds or every cold detached start fails while the child goes on
   to bind moments later.

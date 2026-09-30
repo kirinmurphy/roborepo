@@ -60,7 +60,7 @@ const run = (args) =>
 const USE = "Use resolve_repo, search_symbols, get_file_outline, find_references, get_context_bundle for code exploration.";
 
 // The repo name jcodemunch indexes under is the checkout's directory name, which is what makes a
-// worktree its own entry (a worktree of roborepo indexes as e.g. "localhoster-metadata-suggestions",
+// worktree its own entry (a worktree of roborepo indexes as e.g. "developer-runtime-metadata-suggestions",
 // not "roborepo"). Matching on basename is therefore correct here, not a simplification.
 const repoName = path.basename(cwd);
 

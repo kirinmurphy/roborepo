@@ -10,23 +10,23 @@
   },
   "resources": [
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/claude-statusline.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-adapters.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-domain.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-render.mjs"
     },
     {
-      "type": "runtime-asset",
+      "type": "package-runtime-asset",
       "source": "scripts/usage-snapshot-store.mjs"
     },
     {

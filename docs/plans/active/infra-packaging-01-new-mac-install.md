@@ -66,7 +66,7 @@ The package foundation already exists:
   omitted two runtime directories, so every command failed immediately on the installed package
   (`ERR_MODULE_NOT_FOUND` for `scripts/harnesses/registry.mjs`, imported by
   `scripts/cli/command-catalog.mjs`; and `modules/`, imported by `scripts/cli/plans.mjs`,
-  `localhoster.mjs`, `repositories.mjs`, and `telemetry-capture.mjs`). Both entries were added to
+  `developer-runtime.mjs`, `repositories.mjs`, and `telemetry-capture.mjs`). Both entries were added to
   `package.json`'s `files` array in `e72a943` (`fix(package): ship missing runtime dirs and unify
   workspace resolution`), and the installed package now runs correctly: `version` reports package
   mode with an npm-owned `appRoot`, and `doctor` passes with no harness installed. Restoring a
@@ -91,7 +91,7 @@ installed command.
 | Path | Current responsibility | Expected change |
 | --- | --- | --- |
 | `package.json` | Package identity, `bin`, runtime file allowlist (`scripts/harnesses/` and `modules/` already present), Node requirement, and npm scripts | Register the smoke and retained-artifact commands; change the allowlist further only when the real install exposes another missing runtime file |
-| `scripts/harnesses/` and `modules/` | Harness registry and the `plan-docs`/`localhoster`/`repositories` modules, both imported by the CLI at runtime | Already packaged (`e72a943`); no further change expected |
+| `scripts/harnesses/` and `modules/` | Harness registry and the `plan-docs`/`developer-runtime`/`repositories` modules, both imported by the CLI at developer-runtime | Already packaged (`e72a943`); no further change expected |
 | `bin/roborepo` | Packaged executable entry point | No planned behavior change; the smoke runner invokes the installed copy directly |
 | `scripts/cli/roots.mjs` and `scripts/cli/paths.mjs` | Resolve package/development mode and application, workspace, state, and harness paths | Consume through command output; fix only if the real artifact reports an incorrect root |
 | `scripts/cli/workspace.mjs` | `setup`, workspace initialization/status/import, and package-mode workspace behavior | Exercised by the smoke workflow; no speculative rewrite |

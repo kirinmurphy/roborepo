@@ -1,4 +1,4 @@
-// Retention measurement for append-only JSONL logs: localhoster history, the telemetry spool,
+// Retention measurement for append-only JSONL logs: developer-runtime history, the telemetry spool,
 // telemetry markers, and the dense-bash capture log.
 //
 // Measures and returns a verdict. Never writes — see policy.mjs for why the commit stays with each
@@ -6,7 +6,7 @@
 //
 // The gate below is the reason this module exists rather than each store calling dropCountForBytes
 // directly. Retention almost never has anything to do, and finding that out must not cost a full
-// read+parse of a 25MB file on every append. localhoster had this ladder; the spool did not, and
+// read+parse of a 25MB file on every append. developer-runtime had this ladder; the spool did not, and
 // stat'd then rewrote wholesale whenever it tripped.
 
 import fs from "node:fs";
@@ -137,7 +137,7 @@ function defaultParseLine(line) {
 }
 
 // Every store here stamps its records with an ISO string, but under different field names —
-// localhoster uses `at`, telemetry capture uses `ts`. Both are checked so neither store needs a
+// developer-runtime uses `at`, telemetry capture uses `ts`. Both are checked so neither store needs a
 // custom extractor for what is the same convention spelled two ways.
 function defaultTimestampOf(record) {
   const raw = record?.at ?? record?.ts;

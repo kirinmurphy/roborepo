@@ -174,8 +174,8 @@ owned by their feature plans:
 | Command permission overrides and supported user preferences                 | Profile records                                    | Include                             |
 | Canonical repository identity, aliases, visibility, enrollment              | Profile records                                    | Include                             |
 | Repository local roots, discovery evidence, activity, last-seen data        | Machine                                            | Exclude                             |
-| Portable Localhoster names, favorites, links, and preferences               | Profile records                                    | Include after schema split          |
-| Localhoster processes, ports, paths, health, and operational history        | Machine                                            | Exclude                             |
+| Portable Runtime names, favorites, links, and preferences               | Profile records                                    | Include after schema split          |
+| Runtime processes, ports, paths, health, and operational history        | Machine                                            | Exclude                             |
 | Plans presentation preferences                                              | Profile records                                    | Include                             |
 | Plan/repository discovery roots and scan state                              | Machine                                            | Exclude                             |
 | Source telemetry and user markers                                           | Open initial-release decision                      | Include only if confirmed           |
@@ -245,13 +245,13 @@ must target the final feature-owned schemas rather than create competing interim
       packages/
       config/
       repositories/
-      localhoster/
+      developer-runtime/
       plans/
   machine/
     install/
     config/
     repositories/
-    localhoster/
+    runtime/
     plans/
     telemetry/
     sessions/
@@ -330,7 +330,7 @@ downloads another application version automatically.
 
 ### Portable and machine projections
 
-Repository, Localhoster, Plans, package state, and telemetry currently mix portable and machine
+Repository, Runtime, Plans, package state, and telemetry currently mix portable and machine
 fields. Their owning plans/modules must expose one of these interfaces:
 
 - a persisted portable schema written directly under `records/`; or
@@ -567,7 +567,7 @@ Exit criteria:
 - [ ] Adopt the final desired package-state schema from its owning plan.
 - [ ] Adopt copied/external source semantics from the user-managed package plan.
 - [ ] Split repository identity/enrollment from private local roots and observations.
-- [ ] Split portable Localhoster choices from operational state.
+- [ ] Split portable Runtime choices from operational state.
 - [ ] Split portable Plans preferences from discovery roots and scan state.
 - [ ] Decide telemetry inclusion; split source records if included.
 - [ ] Classify session preferences separately from sensitive session history.

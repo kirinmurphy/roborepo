@@ -26,7 +26,7 @@ These docs are for people installing and using the RoboRepo package.
 | Skills | [RoboRepo Skills Interface](reference/roborepo-skills.md) |
 | Hooks | [Claude Hooks](reference/claude-hooks.md), [Codex Hooks](reference/codex-hooks.md) |
 | Plans portal | [Plans Portal](reference/plans-portal.md) |
-| Localhoster | [Localhoster](reference/localhoster.md) |
+| Runtime | [Runtime](reference/runtime.md) |
 | Telemetry | [Telemetry Service Reference](reference/telemetry.md) |
 | Indexing | [jcodemunch](reference/jcodemunch.md), [jdocmunch](reference/jdocmunch.md) |
 | Chat-time behaviors | [Convention Capture](reference/convention-capture.md) |

@@ -1,7 +1,7 @@
 // Latest-snapshot persistence for non-CLI consumers (the future portal homepage). This module runs
-// in TWO places: imported by the CLI/portal, and copied into ~/.roborepo/runtime/ as part of the
+// in TWO places: imported by the CLI/portal, and copied into ~/.roborepo/package-runtime/ as part of the
 // installed Claude status-line command. So it CANNOT import scripts/cli/state-paths.mjs (that path
-// does not exist beside the copied runtime asset) — it resolves the state dir itself, with the same
+// does not exist beside the copied package-runtime asset) — it resolves the state dir itself, with the same
 // env precedence as scripts/cli/paths.mjs (ROBOREPO_STATE_ROOT > ROBOREPO_STATE_DIR > ~/.roborepo).
 import fs from "node:fs";
 import os from "node:os";

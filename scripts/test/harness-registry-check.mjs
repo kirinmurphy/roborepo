@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Harness provider registry, discovery, state, and runtime (Phase 2). See
+// Harness provider registry, discovery, state, and harness-runtime (Phase 2). See
 // docs/plans/active/discoverable-harness-provider-architecture-plan.md Phase 2 validation section.
 
 import { defineHarnessProvider } from "../harnesses/contract.mjs";
@@ -10,7 +10,7 @@ import {
   isProviderEnabled,
 } from "../harnesses/state.mjs";
 import { listHarnessProviders, getHarnessProvider, hasHarnessProvider, harnessDisplayName } from "../harnesses/registry.mjs";
-import { createHarnessRuntime, requireHarnessCapability } from "../harnesses/runtime.mjs";
+import { createHarnessRuntime, requireHarnessCapability } from "../harnesses/harness-runtime.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -132,7 +132,7 @@ if (process.platform !== "win32") {
   }
 }
 
-// --- Synthetic third provider: proves the registry/runtime/discovery pipeline carries no
+// --- Synthetic third provider: proves the registry/harness-runtime/discovery pipeline carries no
 // hardcoded two-provider (claude/codex) assumption anywhere in this phase's code. ---
 const thirdManifest = {
   schemaVersion: 1,
@@ -153,10 +153,10 @@ assert(thirdProvider.id === "synthetic-third", "synthetic third provider must co
 // --- State: zero/one/multi enabled-provider scenarios, explicit-disable survives refresh ---
 let state = { schemaVersion: 1, lastDiscoveredAt: new Date(0).toISOString(), providers: {} };
 
-// Zero enabled: runtime.providersFor must return empty, not throw.
+// Zero enabled: harnessRuntime.providersFor must return empty, not throw.
 {
-  const runtime = createHarnessRuntime({ state });
-  assert(runtime.providersFor("root-config").length === 0, "zero enabled providers must yield empty list");
+  const harnessRuntime = createHarnessRuntime({ state });
+  assert(harnessRuntime.providersFor("root-config").length === 0, "zero enabled providers must yield empty list");
 }
 
 const detected = [
@@ -167,11 +167,11 @@ state = applyDiscoveryToState(state, detected);
 assert(isProviderEnabled(state, "claude"), "claude enabled after discovery");
 assert(isProviderEnabled(state, "codex"), "codex enabled after discovery");
 
-// One enabled: disable codex, runtime must only surface claude for a shared capability.
+// One enabled: disable codex, harnessRuntime must only surface claude for a shared capability.
 state = setProviderEnabled(state, "codex", false);
 {
-  const runtime = createHarnessRuntime({ state });
-  const rootConfigProviders = runtime.providersFor("root-config").map((p) => p.id);
+  const harnessRuntime = createHarnessRuntime({ state });
+  const rootConfigProviders = harnessRuntime.providersFor("root-config").map((p) => p.id);
   assert(rootConfigProviders.length === 1 && rootConfigProviders[0] === "claude", "one enabled provider must scope to that provider only");
 }
 
@@ -185,8 +185,8 @@ assert(rediscovered.providers.codex.selectionSource === "user", "disabled provid
 // Multi enabled: re-enable codex, both must appear for a shared capability.
 const bothEnabled = setProviderEnabled(rediscovered, "codex", true);
 {
-  const runtime = createHarnessRuntime({ state: bothEnabled });
-  const ids = runtime.providersFor("root-config").map((p) => p.id).sort();
+  const harnessRuntime = createHarnessRuntime({ state: bothEnabled });
+  const ids = harnessRuntime.providersFor("root-config").map((p) => p.id).sort();
   assert(ids.length === 2 && ids[0] === "claude" && ids[1] === "codex", "multi enabled providers must both surface for a shared capability");
 }
 
@@ -196,7 +196,7 @@ assertThrows(
   "requireHarnessCapability must reject an undeclared capability (claude has no telemetry-rate-limits)"
 );
 
-console.log("harness registry/discovery/state/runtime: all checks passed");
+console.log("harness registry/discovery/state/harness-runtime: all checks passed");
 
 function withDiscoveryEnv({ home, pathPrefix }, fn) {
   const previousHome = process.env.HOME;

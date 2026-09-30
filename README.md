@@ -2,14 +2,14 @@
 
 **Admin panel for your local dev environment.**
 
-RoboRepo sits at the intersection of **Git**, **localhost activity**, **agent configuration**, **development planning**, and **token/session telemetry**.
+RoboRepo sits at the intersection of **Git**, **runtime activity**, **agent configuration**, **development planning**, and **token/session telemetry**.
 
 ```mermaid
 flowchart LR
   Repo["Repository"]
 
   Repo --> Git["Git + Worktrees"]
-  Repo --> Local["Localhost apps"]
+  Repo --> Local["Runtime apps"]
   Repo --> Plans["Plans"]
   Repo --> Agents["Agent Config"]
   Repo --> Usage["Tokens + Sessions"]
@@ -49,13 +49,13 @@ The first `roborepo web` also runs one-time machine setup. After that, use eithe
 roborepo web
 ```
 
-![The portal home page: navigation and the four areas — Agents, Plans, Tokens, and Localhost](docs/images/portal-home.png)
+![The portal home page: navigation and the four areas — Agents, Plans, Tokens, and Runtime](docs/images/portal-home.png)
 
 ---
 
 ## Repositories
 
-RoboRepo keeps one identity per repository, so a checkout, its worktrees, the localhost apps it
+RoboRepo keeps one identity per repository, so a checkout, its worktrees, the runtime apps it
 runs, its plans, and its agent sessions all resolve to the same repository.
 
 Repository-aware data can include:
@@ -70,14 +70,14 @@ Repository-aware data can include:
  
 ---
 
-## Localhost
+## Runtime
 
 Discover running local HTTP applications and associate them with repositories. Automatic
 discovery currently runs on macOS.
 
 ```sh
-roborepo localhoster
-roborepo localhoster --open
+roborepo runtime
+roborepo runtime --open
 ```
 
 | Observes  | Examples                          |
@@ -88,9 +88,9 @@ roborepo localhoster --open
 | Process   | PID, CPU, memory, uptime          |
 | Docker    | container and Compose metadata    |
 
-![Localhoster listing two running apps, each tied to its GitHub repository and branch](docs/images/localhoster.png)
+![Runtime listing two running apps, each tied to its GitHub repository and branch](docs/images/runtime.png)
 
-[Localhoster reference →](docs/user/reference/localhoster.md)
+[Runtime reference →](docs/user/reference/runtime.md)
 
 ---
 
@@ -219,7 +219,7 @@ The README covers common entry points. See the reference for the full command su
 | Layer             | Responsibility                        |
 | ----------------- | ------------------------------------- |
 | Repository domain | canonical repository identity         |
-| Domain modules    | Plans, Localhoster, telemetry, config |
+| Domain modules    | Plans, Runtime, telemetry, config |
 | Packages          | configurable RoboRepo functionality   |
 | Harness providers | harness-specific implementations      |
 | Portal            | browser interface                     |
@@ -260,7 +260,7 @@ support works, see [How the Harnesses Work](docs/internal/harnesses-explained.md
 | ----------------- | ------------------------------------------------------------------------------------------ |
 | First-time setup  | [docs/user/guides/first-time-setup.md](docs/user/guides/first-time-setup.md)               |
 | CLI               | [docs/user/reference/roborepo-cli.md](docs/user/reference/roborepo-cli.md)                 |
-| Localhoster       | [docs/user/reference/localhoster.md](docs/user/reference/localhoster.md)                   |
+| Runtime       | [docs/user/reference/runtime.md](docs/user/reference/runtime.md)                   |
 | Plans             | [docs/user/reference/plans-portal.md](docs/user/reference/plans-portal.md)                 |
 | Telemetry         | [docs/user/guides/telemetry.md](docs/user/guides/telemetry.md)                             |
 | Agent config      | [docs/user/reference/config-control-panel.md](docs/user/reference/config-control-panel.md) |

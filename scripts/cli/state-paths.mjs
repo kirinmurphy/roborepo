@@ -41,7 +41,7 @@ export const repositoriesRegistryPath = path.join(stateDir, "repositories", "reg
 // Latest normalized usage snapshots, one file per harness (usage/latest/<harness>.json). Written
 // best-effort by the status-line command (Claude) / app-server collector (Codex); read by the
 // /api/usage portal route. See globals/packages/usage-statusline/scripts/usage-snapshot-store.mjs,
-// which resolves this same path independently because it also runs as a copied runtime asset.
+// which resolves this same path independently because it also runs as a copied package-runtime asset.
 export const usageDir = path.join(stateDir, "usage");
 export const usageLatestDir = path.join(usageDir, "latest");
 // Observation logs written by capture packages — shell commands, and whatever later packages

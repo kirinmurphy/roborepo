@@ -4,63 +4,63 @@ import { repoRoot } from "./paths.mjs";
 import { stateDir } from "./state-paths.mjs";
 import { writeRootConfig } from "./root-config-writes.mjs";
 import { getHarnessProvider } from "../harnesses/registry.mjs";
-import { requireHarnessCapability } from "../harnesses/runtime.mjs";
+import { requireHarnessCapability } from "../harnesses/harness-runtime.mjs";
 import { validateAdapterComputeResult } from "../harnesses/schemas.mjs";
 
-export function runtimeAssetDestination(pkg, component) {
+export function packageRuntimeAssetDestination(pkg, component) {
   const target = component.target || path.basename(component.source);
-  return path.join(stateDir, "runtime", pkg.id, target);
+  return path.join(stateDir, "package-runtime", pkg.id, target);
 }
 
-export function installRuntimeAsset(pkg, component, { dryRun = false } = {}) {
+export function installPackageRuntimeAsset(pkg, component, { dryRun = false } = {}) {
   const sourcePath = path.join(repoRoot, component.source);
-  const destPath = runtimeAssetDestination(pkg, component);
+  const destPath = packageRuntimeAssetDestination(pkg, component);
   if (dryRun) {
-    console.log(`  [dry-run] install runtime asset ${component.source} -> ${destPath}`);
+    console.log(`  [dry-run] install package-runtime asset ${component.source} -> ${destPath}`);
     return destPath;
   }
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   fs.copyFileSync(sourcePath, destPath);
   fs.chmodSync(destPath, fs.statSync(sourcePath).mode | 0o755);
-  console.log(`  runtime asset: ${destPath}`);
+  console.log(`  package-runtime asset: ${destPath}`);
   return destPath;
 }
 
-export function removeRuntimeAsset(pkg, component, { dryRun = false } = {}) {
-  const destPath = runtimeAssetDestination(pkg, component);
+export function removePackageRuntimeAsset(pkg, component, { dryRun = false } = {}) {
+  const destPath = packageRuntimeAssetDestination(pkg, component);
   if (dryRun) {
-    console.log(`  [dry-run] remove runtime asset ${destPath}`);
+    console.log(`  [dry-run] remove package-runtime asset ${destPath}`);
     return;
   }
   try {
     fs.unlinkSync(destPath);
-    console.log(`  removed runtime asset: ${destPath}`);
+    console.log(`  removed package-runtime asset: ${destPath}`);
   } catch (err) {
     if (err.code !== "ENOENT") throw err;
-    console.log(`  ok: runtime asset already absent: ${destPath}`);
+    console.log(`  ok: package-runtime asset already absent: ${destPath}`);
   }
 }
 
 export function readHarnessConfig(component, pkg) {
   const data = JSON.parse(fs.readFileSync(path.join(repoRoot, component.source), "utf8"));
-  return expandRuntimeRefs(data, runtimeSubstitutions(pkg));
+  return expandPackageRuntimeRefs(data, packageRuntimeSubstitutions(pkg));
 }
 
-function runtimeSubstitutions(pkg) {
+function packageRuntimeSubstitutions(pkg) {
   return new Map(
     (pkg.components || [])
-      .filter((component) => component.type === "runtime-asset")
-      .map((component) => [path.basename(component.source), runtimeAssetDestination(pkg, component)])
+      .filter((component) => component.type === "package-runtime-asset")
+      .map((component) => [path.basename(component.source), packageRuntimeAssetDestination(pkg, component)])
   );
 }
 
-function expandRuntimeRefs(value, substitutions) {
+function expandPackageRuntimeRefs(value, substitutions) {
   if (typeof value === "string") {
-    return value.replace(/\$\{runtime:([^}]+)\}/g, (match, name) => substitutions.get(name) || match);
+    return value.replace(/\$\{package-runtime:([^}]+)\}/g, (match, name) => substitutions.get(name) || match);
   }
-  if (Array.isArray(value)) return value.map((entry) => expandRuntimeRefs(entry, substitutions));
+  if (Array.isArray(value)) return value.map((entry) => expandPackageRuntimeRefs(entry, substitutions));
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, expandRuntimeRefs(entry, substitutions)]));
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, expandPackageRuntimeRefs(entry, substitutions)]));
   }
   return value;
 }

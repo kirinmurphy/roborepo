@@ -1,7 +1,7 @@
 // `roborepo maintenance stores` — inspect and reset the bounded local stores.
 //
 // One command over the whole registry rather than a per-store flag on each feature's CLI: a user
-// asking "what is roborepo keeping on my disk" should not have to know that telemetry, localhoster,
+// asking "what is roborepo keeping on my disk" should not have to know that telemetry, developer-runtime,
 // and the capture packages each own part of the answer.
 //
 // Reset applies a store's own policy (the same measurement its write path uses), or with --all
@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { isMainModule } from "./roots.mjs";
 import { stateDir } from "./state-paths.mjs";
-import { loadSettings } from "../../modules/localhoster/settings.mjs";
+import { loadSettings } from "../../modules/developer-runtime/settings.mjs";
 import {
   FILE_SET_SHAPE,
   LOG_SHAPE,
@@ -144,7 +144,7 @@ function removeFiles(files) {
   return removed;
 }
 
-// Localhoster's window is a user preference, so the displayed and applied bound must be the live
+// Runtime's window is a user preference, so the displayed and applied bound must be the live
 // value rather than the registry's default. Every other store's policy is its literal.
 function policyFor(store) {
   if (!store.preferenceKey) return store.policy;

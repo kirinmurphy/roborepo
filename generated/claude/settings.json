@@ -17,7 +17,7 @@
       "Bash(roborepo telemetry:*)",
       "Bash(roborepo git:*)",
       "Bash(roborepo index:*)",
-      "Bash(roborepo localhoster:*)",
+      "Bash(roborepo runtime:*)",
       "Bash(roborepo version:*)",
       "Bash(roborepo plans:*)",
       "Bash(npm test:*)",

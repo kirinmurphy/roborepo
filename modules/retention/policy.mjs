@@ -2,7 +2,7 @@
 //
 // This module holds no I/O. It defines the policy shape, validates it, and turns raw measurements
 // into a verdict. log-store.mjs and file-set-store.mjs do the reading; the store itself does the
-// writing. That three-way split is the point of the module: before it, localhoster and the
+// writing. That three-way split is the point of the module: before it, developer-runtime and the
 // telemetry spool each had their own cutoff arithmetic, their own constants, and their own idea of
 // when the work was worth doing — and the two disagreed in ways that were partly deliberate and
 // partly accidental, which could only be told apart by reading both in full.

@@ -38,7 +38,7 @@ check("unreadable parent is NOT absence",
 
 // --- deriveLifecycle ---
 const ID = "git:github.com/k/app";
-const base = { repositoryId: ID, kind: "git", displayName: "app", source: "localhoster", evidence: "git-remote", confidence: "high", stateRoot };
+const base = { repositoryId: ID, kind: "git", displayName: "app", source: "developer-runtime", evidence: "git-remote", confidence: "high", stateRoot };
 recordRepositoryDiscovery({ ...base, localRoot: "roota", localRootPath: live, now: "2026-08-11T00:00:00.000Z" });
 let reg = loadRegistry({ stateRoot });
 
@@ -183,7 +183,7 @@ check("the record that took the root is not superseded", supersededBy(reg, RENAM
 // missing one it replaces. A running repository cannot hit this, because its identity is resolved
 // from the process's own cwd every scan; only a persisted path is trusted from storage.
 {
-  const { resolveProjectIdentity } = await import("../../modules/localhoster/identity.mjs");
+  const { resolveProjectIdentity } = await import("../../modules/developer-runtime/identity.mjs");
   const { canonicalRepositoryId } = await import("../../modules/repositories/identity.mjs");
   const { execFileSync } = await import("node:child_process");
   const git = (...args) => execFileSync("git", args, { stdio: "ignore" });

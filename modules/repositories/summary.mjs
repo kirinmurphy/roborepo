@@ -53,7 +53,7 @@ export function repositoryDetailPayload(record) {
 function capabilitiesFor(record) {
   const sources = new Set((record.discoveries || []).map((d) => d.source));
   return {
-    localhoster: sources.has("localhoster"),
+    developerRuntime: sources.has("developer-runtime"),
     plans: sources.has("plans") || isEnabled(record, "plans"),
     telemetry: sources.has("telemetry"),
     agentConfig: sources.has("agentConfig"),
