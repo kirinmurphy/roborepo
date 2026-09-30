@@ -202,6 +202,7 @@ export function startMultiMemberFixture() {
   stopServers();
   const servers = [];
   for (const checkout of CHECKOUTS) {
+    if (!fs.existsSync(checkout.dir)) continue;
     for (const [role, port] of checkout.servers) {
       // cwd is what makes Runtime attribute the process to this checkout: identity is resolved from
       // the listener's working directory.
@@ -210,6 +211,7 @@ export function startMultiMemberFixture() {
         detached: true,
         stdio: "ignore",
       });
+      child.on("error", (error) => console.warn(`multi-member fixture: failed to start ${role} on port ${port}: ${error.message}`));
       child.unref();
       servers.push({ pid: child.pid, role, port, checkout: path.basename(checkout.dir) });
     }
