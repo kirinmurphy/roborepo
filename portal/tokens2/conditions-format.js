@@ -34,7 +34,8 @@ export function changePresentation(comparison) {
   const confident = comparison.relative_delta != null;
   const side = (cohort) => `${cohort.affected}/${cohort.observations} sessions${confident ? ` (${percent(cohort.rate)})` : ""}`;
   const counts = before && after ? `${side(before)} before → ${side(after)} after` : "";
-  const exclusions = `${comparison.ambiguous_boundary ?? 0} ambiguous · ${comparison.spanning_boundary ?? 0} spanning`;
+  const unknown = comparison.unknown_condition ? ` · ${comparison.unknown_condition} unknown condition` : "";
+  const exclusions = `${comparison.ambiguous_boundary ?? 0} ambiguous · ${comparison.spanning_boundary ?? 0} spanning${unknown}`;
   const detail = [counts, exclusions, "association only"].filter(Boolean).join(" · ");
   if (comparison.state !== "comparison available" || !before || !after) return {
     state: "collecting", label: `${event}: ${comparison.state ?? "unavailable"}`, detail,

@@ -47,3 +47,14 @@ assert.deepEqual(legacySplit.before, ["early"]);
 const backdated = shape(splitCohortsByMarker(boundaryEvents, { schema: 1, ts: "2026-09-02T00:00:00.000Z", effective_at: boundary, type: "change" }));
 assert.deepEqual(backdated, legacySplit);
 console.log("telemetry audit tier 1: legacy and canonical boundary splits agree");
+
+// Finding 15: change comparisons report sessions left out for unknown condition data.
+import { compareObservationBoundary } from "../cli/telemetry-boundaries.mjs";
+import { changePresentation } from "../../portal/tokens2/conditions-format.js";
+import { normalizeObservations } from "../cli/telemetry-observations.mjs";
+const conditionEvents = [1, 2].map((id) => ({ ...event(id), config_snapshot_id: null }));
+const compared = compareObservationBoundary(normalizeObservations(conditionEvents).sessions, marker("mark_c"), new Set(),
+  { condition: { dimension: "packages", value: "p", label: "configured" }, snapshots: new Map() });
+assert.equal(compared.unknown_condition, 2);
+assert.match(changePresentation({ event_kind: "spike", ...compared }).detail, /2 unknown condition/);
+console.log("telemetry audit tier 1: change comparisons disclose unknown-condition sessions");

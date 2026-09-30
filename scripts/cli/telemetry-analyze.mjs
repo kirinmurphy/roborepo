@@ -49,10 +49,22 @@ const SOURCE_EXTS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".jso
 //     exploratory fallback when no marker is selected").
 //   - compareMetric: metric id for the marker-relative comparison (only used when markerId is set).
 export function analyzeTelemetry(events, options = {}) {
-  const { cohortFilter = null, markers = [], markerId = null, compareMetric = "tokens.total", repositoryHashIndex = null } = options;
+  const { cohortFilter = null, markers = [], repositoryHashIndex = null } = options;
   const normalizedFilter = cohortFilter ? normalizeCohortFilter(cohortFilter) : null;
   const scopedEvents = normalizedFilter ? applyCohortFilter(events, normalizedFilter, { markers, repositoryHashIndex }) : events;
-  const scopedIndex = indexScopedEvents(scopedEvents);
+  // One representative row per operation, so mirrored captures never double-count.
+  const observations = normalizeObservations(scopedEvents, { repositoryHashIndex });
+  const report = analyzeRows(canonicalFlowRows(observations), scopedEvents, events, normalizedFilter, options);
+  report.conditions = buildConditionsReport(scopedEvents, report, options, observations);
+  for (const [key, kind] of [["spikes", "spike"], ["loops", "loop"], ["read_warnings", "read-warning"]]) {
+    for (const finding of report[key]) finding.condition_context = report.conditions.ledger.find((row) => row.kind === kind && row.session_id === finding.session_id && row.harness === finding.harness)?.context ?? null;
+  }
+  report.version += ":" + createHash("sha256").update(JSON.stringify(report.conditions)).digest("hex").slice(0, 16);
+  return report;
+}
+
+function analyzeRows(rows, scopedEvents, events, normalizedFilter, { markers = [], markerId = null, compareMetric = "tokens.total" }) {
+  const scopedIndex = indexScopedEvents(rows);
   const captures = scopedIndex.captures;
   const captureIndex = indexCaptures(captures);
   const sessions = rollupSessions(captures);
@@ -60,17 +72,17 @@ export function analyzeTelemetry(events, options = {}) {
   const spikeCaptures = captures.filter((event) => (event.delta_tokens || 0) >= spikeThreshold && spikeThreshold > 0);
   // Session-context lookup so every flagged event (spike, loop) can carry the same "which chat was
   // this" markers the sessions table shows — title (first prompt), activity summary, repo/branch.
-  const sessionsById = new Map(sessions.map((s) => [s.session_id, s]));
+  const sessionsById = new Map(sessions.map((s) => [sessionKeyOf(s), s]));
   // Deduplicate spikes: show only the worst spike per session, with count so the user sees how
   // many turns exceeded the threshold without seeing the same session repeated on every row.
   const spikeCountBySess = new Map();
   for (const event of spikeCaptures) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     spikeCountBySess.set(id, (spikeCountBySess.get(id) || 0) + 1);
   }
   const bestSpikeBySess = new Map();
   for (const event of spikeCaptures) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     if (!bestSpikeBySess.has(id) || (event.delta_tokens || 0) > (bestSpikeBySess.get(id)?.delta_tokens ?? 0)) {
       bestSpikeBySess.set(id, event);
     }
@@ -87,7 +99,7 @@ export function analyzeTelemetry(events, options = {}) {
     spike_threshold: spikeThreshold,
     // One row per session (worst spike), with spike_count showing how many turns crossed the threshold.
     spikes: [...bestSpikeBySess.values()]
-      .map((event) => ({ ...spikeRow(event, sessionsById), spike_count: spikeCountBySess.get(event.session_id || "unknown") || 1 }))
+      .map((event) => ({ ...spikeRow(event, sessionsById), spike_count: spikeCountBySess.get(sessionKeyOf(event)) || 1 }))
       .sort((a, b) => b.delta_tokens - a.delta_tokens),
     // Also expose harnesses present in the data so the dashboard can render a filter.
     harnesses: scopedIndex.harnesses,
@@ -121,7 +133,7 @@ export function analyzeTelemetry(events, options = {}) {
     regression: { ...regression(captures), exploratory: true, label: "midpoint (exploratory — not tied to any specific change)" },
     loops: detectLoops(captures, sessionsById),
     data_quality_warnings: dataQualityWarnings(scopedEvents),
-    read_warnings: readWarnings(scopedEvents, sessionsById),
+    read_warnings: readWarnings(rows, sessionsById),
     // Phase 5: testing-efficiency summary (plan: "Derived testing findings"), computed from the same
     // metrics registry the CLI report and portal both read — see telemetry-metrics.mjs.
     testing_efficiency: testingEfficiencySummary(captures),
@@ -144,22 +156,6 @@ export function analyzeTelemetry(events, options = {}) {
   }
   // Ranked plain-English conclusions derived from the facts above — the "what this means" headline.
   report.insights = deriveInsights(report);
-  if (options.conditions) {
-    const observations = normalizeObservations(scopedEvents, { repositoryHashIndex });
-    // Run existing finding detectors on one representative per operation, separated by
-    // harness so identical provider session IDs cannot contaminate each other's findings.
-    const canonical = canonicalFlowRows(observations);
-    const facts = { spikes: [], loops: [], read_warnings: [] };
-    for (const harness of [...new Set(canonical.map((row) => row.harness))].sort()) {
-      const detected = analyzeTelemetry(canonical.filter((row) => row.harness === harness));
-      for (const key of Object.keys(facts)) facts[key].push(...detected[key]);
-    }
-    report.conditions = buildConditionsReport(scopedEvents, facts, options, observations);
-    for (const [key, kind] of [["spikes", "spike"], ["loops", "loop"], ["read_warnings", "read-warning"]]) {
-      for (const finding of report[key]) finding.condition_context = report.conditions.ledger.find((row) => row.kind === kind && row.session_id === finding.session_id && row.harness === finding.harness)?.context ?? null;
-    }
-    report.version += ":" + createHash("sha256").update(JSON.stringify(report.conditions)).digest("hex").slice(0, 16);
-  }
   return report;
 }
 
@@ -318,9 +314,9 @@ function usageWindows(captures, now = captures[0]?.ts ?? new Date().toISOString(
 function rollupSessions(captures) {
   const bySession = new Map();
   for (const event of captures) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     const current = bySession.get(id) ?? {
-      session_id: id,
+      session_id: event.session_id || "unknown",
       repo: event.repo?.label ?? "unknown",
       harness: event.harness,
       branch: event.repo?.branch ?? null,
@@ -427,14 +423,14 @@ function spikeRow(event, sessionsById) {
     harness: event.harness ?? null,
     cause,
     hint,
-    context: sessionContext(event.session_id, sessionsById),
+    context: sessionContext(event, sessionsById),
   };
 }
 
 // The "which chat was this" markers, pulled from the session rollup so every flagged event speaks
 // the same language as the sessions table: opening prompt, activity summary, repo/branch/harness.
-function sessionContext(sessionId, sessionsById) {
-  const s = sessionsById?.get(sessionId);
+function sessionContext(event, sessionsById) {
+  const s = sessionsById?.get(sessionKeyOf(event));
   if (!s) return null;
   return { title: s.title ?? null, activity: s.activity ?? null, repo: s.repo, branch: s.branch ?? null, harness: s.harness ?? null };
 }
@@ -501,7 +497,7 @@ function toolCost(captures) {
 function groupCost(captures) {
   const byGroup = new Map();
   const groupSessions = new Map();
-  const totalSessions = new Set(captures.map((e) => e.session_id).filter(Boolean)).size || 1;
+  const totalSessions = new Set(captures.filter((e) => e.session_id).map(sessionKeyOf)).size || 1;
   for (const event of resultCaptures(captures)) {
     const g = toolGroup(event.last_result.tool);
     const cur = byGroup.get(g) ?? { group: g, calls: 0, total_chars: 0 };
@@ -509,7 +505,7 @@ function groupCost(captures) {
     cur.total_chars += event.last_result.chars;
     byGroup.set(g, cur);
     if (!groupSessions.has(g)) groupSessions.set(g, new Set());
-    if (event.session_id) groupSessions.get(g).add(event.session_id);
+    if (event.session_id) groupSessions.get(g).add(sessionKeyOf(event));
   }
   return [...byGroup.values()]
     .map((r) => {
@@ -646,12 +642,12 @@ function detectLoops(captures, sessionsById) {
   const bySession = new Map();
   for (const event of captures) {
     if (event.event !== "PostToolUse" || !event.tool?.name) continue;
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     if (!bySession.has(id)) bySession.set(id, []);
     bySession.get(id).push(event);
   }
   const loops = [];
-  for (const [id, events] of bySession) {
+  for (const events of bySession.values()) {
     events.sort((a, b) => a.ts.localeCompare(b.ts));
     let runTool = null, run = 0, bestTool = null, best = 0, bestStartTs = null, runStartTs = null;
     // Wasted tokens for a run = every repeat turn's delta beyond the first (the first call did
@@ -665,7 +661,7 @@ function detectLoops(captures, sessionsById) {
     }
     if (best >= LOOP_REPEAT_THRESHOLD) {
       loops.push({
-        session_id: id,
+        session_id: events[0].session_id || "unknown",
         repo: events[0].repo?.label ?? "unknown",
         harness: events[0].harness ?? null,
         tool: bestTool,
@@ -675,7 +671,7 @@ function detectLoops(captures, sessionsById) {
         hint: mcpServerOf(events.find((e) => (e.tool.mcp_tool || e.tool.name) === bestTool)?.tool?.name)
           ? "MCP tool firing in a tight loop — check the agent/skill that calls it"
           : bestTool + " repeated " + best + "× in a row — likely a runaway loop",
-        context: sessionContext(id, sessionsById),
+        context: sessionContext(events[0], sessionsById),
       });
     }
   }
@@ -732,7 +728,7 @@ function readWarnings(events, sessionsById) {
   const byDoc = new Map();
   const bySession = new Map();
   for (const event of events) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     if (!bySession.has(id)) bySession.set(id, []);
     bySession.get(id).push(event);
     const result = event.last_result;
@@ -768,8 +764,8 @@ function readWarnings(events, sessionsById) {
       }));
     }
   }
-  for (const [id, sessionEvents] of bySession) {
-    const repeatedDocs = warnings.filter((warning) => warning.session_id === id && warning.type === "repeated_document_read").length;
+  for (const sessionEvents of bySession.values()) {
+    const repeatedDocs = warnings.filter((warning) => warning.type === "repeated_document_read" && sessionKeyOf(warning) === sessionKeyOf(sessionEvents[0])).length;
     const jdocCalls = sessionEvents.filter((event) => mcpServerOf(event.last_result?.tool || event.tool?.name) === "jdocmunch").length;
     if (repeatedDocs > 0 && jdocCalls === 0) {
       warnings.push(readWarningRow("stale_doc_lookup", sessionEvents[0], sessionsById, {
@@ -800,7 +796,7 @@ function readWarningRow(type, event, sessionsById, extra) {
     harness: event.harness || null,
     repo: event.repo?.label || "unknown",
     ts: event.ts,
-    context: sessionContext(sessionId, sessionsById),
+    context: sessionContext(event, sessionsById),
     ...extra,
   };
 }
@@ -814,6 +810,11 @@ function isNativeSourceRead(event) {
 
 function hasTokens(event) {
   return event && event.tokens && typeof event.tokens.total === "number";
+}
+
+// Provider session ids are only unique within a harness; every per-session rollup keys on both.
+function sessionKeyOf(event) {
+  return JSON.stringify([event.harness ?? null, event.session_id || "unknown"]);
 }
 
 const minStr = (a, b) => (a <= b ? a : b);

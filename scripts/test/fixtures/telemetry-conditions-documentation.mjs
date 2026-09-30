@@ -18,6 +18,6 @@ export function documentationScenario() {
     };
   });
   const markers = [{ schema: 2, marker_id: "mark_0000000000000001", type: "change", title: "Prefer section-level document reads", ts: "2026-09-04T03:00:00Z", effective_at: "2026-09-04T03:00:00Z", scope: "all", watching_kinds: ["read-warning"] }];
-  const report = analyzeTelemetry(events, { conditions: true, snapshots, markers });
+  const report = analyzeTelemetry(events, { snapshots, markers });
   return { events, snapshots, markers, report };
 }

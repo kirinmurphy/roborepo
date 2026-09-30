@@ -227,7 +227,8 @@ function renderMeta(data) {
   if (!el) return;
   const sessions = data.sessions || [];
   const parts = [
-    fmt(data.conditions?.data_quality.sessions ?? sessions.length) + " observed sessions",
+    fmt(data.conditions.data_quality.sessions) + " observed sessions"
+      + (sessions.length < data.conditions.data_quality.sessions ? ` (${fmt(sessions.length)} with token data)` : ""),
     fmt(data.event_count ?? data.capture_count ?? 0) + " captures",
   ];
   // Period: first session start → last session end (no precomputed field; derived here).
@@ -502,7 +503,7 @@ function wireSessionChips() {
     const sessionId = chip.dataset.sessionId;
     if (!sessionId) return;
     e.preventDefault();
-    const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId);
+    const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId && (x.harness ?? "") === (chip.dataset.harness ?? ""));
     const harness = s?.harness || chip.dataset.harness || "";
     const finding = chip.dataset.finding || `total ${s?.total_tokens ?? "?"} tokens — investigate why this session used so much context`;
     openSessionModal(sessionId, harness, finding, s?.title || null);
@@ -562,7 +563,7 @@ function renderTimelineStrip(data) {
       btn.setAttribute("aria-label", btn.title);
       if (m.count > 1) btn.textContent = "×" + m.count;
       btn.addEventListener("click", () => {
-        const s = (data.sessions || []).find((x) => x.session_id === m.sessionId);
+        const s = (data.sessions || []).find((x) => x.session_id === m.sessionId && (x.harness ?? null) === (m.harness ?? null));
         openSessionModal(m.sessionId, m.harness || s?.harness || "", m.label, s?.title || null);
       });
       col.appendChild(btn);
@@ -904,7 +905,7 @@ function loopsBody(rows, data) {
     frag.appendChild(itemRow({
       dotColor: "var(--danger)",
       head: `${esc(l.tool)} repeated ${l.max_repeat}× — ${esc(l.repo)}`,
-      detail: `Session: ${sessionLink(l.session_id, data, l.context?.title ? `"${l.context.title}"` : null)}`,
+      detail: `Session: ${sessionLink(l.session_id, l.harness, data, l.context?.title ? `"${l.context.title}"` : null)}`,
       hint: l.hint,
     }));
   }
@@ -930,7 +931,7 @@ function readWarningsBody(rows, data) {
     const instances = list.slice(0, 5);
     const overflow = list.length - instances.length;
     const instanceLines = instances.map((w) =>
-      `<div class="read-instance">${esc(w.repo || "unknown")} · <span class="num">${tokShort(w.approx_tokens)}</span> approx tokens · ${w.read_count || 1} read${(w.read_count || 1) > 1 ? "s" : ""} · Session: ${sessionLink(w.session_id, data)}</div>`,
+      `<div class="read-instance">${esc(w.repo || "unknown")} · <span class="num">${tokShort(w.approx_tokens)}</span> approx tokens · ${w.read_count || 1} read${(w.read_count || 1) > 1 ? "s" : ""} · Session: ${sessionLink(w.session_id, w.harness, data)}</div>`,
     ).join("");
     frag.appendChild(itemRow({
       dotColor: type === "large_document_read" ? "var(--warn)" : "var(--danger)",
@@ -1134,7 +1135,7 @@ function renderAgentPrompt(data) {
   lines.push("");
   lines.push("=== TOKEN TELEMETRY REPORT ===");
   lines.push("");
-  lines.push(`Period: ${(data.sessions || []).length} sessions, ${(data.capture_count || 0)} tool-call captures.`);
+  lines.push(`Period: ${data.conditions.data_quality.sessions} observed sessions (${(data.sessions || []).length} with token data), ${(data.capture_count || 0)} tool-call captures.`);
   const spikeCount = (data.spikes || []).length;
   if (spikeCount) lines.push(`Usage spikes: ${spikeCount} turns exceeded the ${tokShort(data.spike_threshold)} per-turn spike threshold (2σ above the mean).`);
   const sevenDay = data.usage_windows?.seven_day;
@@ -1246,7 +1247,7 @@ function renderFullData(data) {
   if (data.sessions?.length) {
     container.appendChild(rawTable("Top sessions by tokens", ["session", "repo", "tokens", "captures"],
       data.sessions.slice(0, 10).map((s) => [
-        { html: sessionLink(s.session_id, data, s.title || s.session_id?.slice(0, 8)) },
+        { html: sessionLink(s.session_id, s.harness, data, s.title || s.session_id?.slice(0, 8)) },
         esc(s.repo || "unknown"),
         { num: tokShort(s.total_tokens) },
         { num: s.captures || 0 },
@@ -1310,9 +1311,9 @@ function rawTable(title, headers, rows) {
 // When the session exists in the report (data.sessions), render a chip with a rich tooltip of
 // human-friendly session context (what it was about, what it did, where, when). When it doesn't,
 // fall back to the plain static label. One code path — no per-session markup.
-function sessionLink(sessionId, data, fallbackLabel) {
+function sessionLink(sessionId, harness, data, fallbackLabel) {
   const id = sessionId || "";
-  const s = (data.sessions || []).find((x) => x.session_id === id);
+  const s = (data.sessions || []).find((x) => x.session_id === id && (x.harness ?? null) === (harness ?? null));
   const label = fallbackLabel || id.slice(0, 8);
   if (!s) return `<span class="session-chip session-unknown"><code>${esc(label)}</code></span>`;
   // data-session-id is the click target — wireSessionChips' delegated listener opens the

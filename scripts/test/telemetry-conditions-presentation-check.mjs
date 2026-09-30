@@ -27,7 +27,7 @@ assert.equal(changePresentation({ ...equal, relative_delta: null, after: { affec
 assert.match(changePresentation({ ...equal, relative_delta: null, after: { affected: 0, observations: 12, rate: 0 } }).label, /Early signal: fewer/);
 const records = fs.readFileSync(new URL("../../portal/tokens2/mock-spool.jsonl", import.meta.url), "utf8").trim().split("\n").map(JSON.parse);
 const evidence = conditionDemoEvidence(records);
-const report = analyzeTelemetry(evidence.events, { conditions: true, snapshots: evidence.snapshots });
+const report = analyzeTelemetry(evidence.events, { snapshots: evidence.snapshots });
 // The demo must not confound the intervention with repo or model: both cohorts share them.
 const cohortValues = (baseline, pick) => [...new Set(evidence.events.filter((row) => {
   const index = Number(row.session_id.match(/^demo-comparison-(\d+)$/)?.[1] ?? NaN);

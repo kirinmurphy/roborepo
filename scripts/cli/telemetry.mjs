@@ -427,8 +427,8 @@ function telemetryReport(args) {
     return;
   }
   const markers = readMarkers();
-  const report = analyzeTelemetry(events, { markers, conditions: args.includes("--conditions"), snapshots: args.includes("--conditions") ? readSnapshots() : [] });
-  if (report.conditions) console.log(JSON.stringify(report.conditions, null, 2));
+  const report = analyzeTelemetry(events, { markers, snapshots: readSnapshots() });
+  if (args.includes("--conditions")) console.log(JSON.stringify(report.conditions, null, 2));
   // Headline first: the deterministic "what this means" conclusions, before any raw table.
   printInsights(report.insights);
   printDataQualityWarnings(report.data_quality_warnings);
@@ -1239,7 +1239,7 @@ function cachedAnalysisEntry(window, harness, extra = {}) {
     ? { models: model ? [model] : [], repos: repo ? [repo] : [], repository_ids: repository ? [repository] : [] }
     : null;
   const repositoryHashIndex = repositoryHashIndexCached();
-  const report = analyzeTelemetry(windowed, { cohortFilter, markers, markerId, compareMetric: "tokens.total", repositoryHashIndex, conditions: true, snapshots: readSnapshots() });
+  const report = analyzeTelemetry(windowed, { cohortFilter, markers, markerId, compareMetric: "tokens.total", repositoryHashIndex, snapshots: readSnapshots() });
   // Backfill session titles from transcripts: the transcript always has the first user message
   // (turn 1), whereas the spool only captures prompts when hooks fired — so new sessions or
   // sessions started before telemetry was enabled may have no spool title or a mid-chat title.
@@ -1316,7 +1316,7 @@ function loadMockAnalysisJson() {
   const evidence = conditionDemoEvidence(events);
   const collectingMarker = { ...MOCK_MARKER, marker_id: "mark_0000000000000002", title: "Limit retry loops (demo)",
     ts: "2026-06-15T11:59:00.000Z", effective_at: "2026-06-15T11:59:00.000Z", watching_kinds: ["loop"] };
-  const report = analyzeTelemetry(evidence.events, { markers: [MOCK_MARKER, collectingMarker], markerId: MOCK_MARKER.marker_id, conditions: true, snapshots: evidence.snapshots });
+  const report = analyzeTelemetry(evidence.events, { markers: [MOCK_MARKER, collectingMarker], markerId: MOCK_MARKER.marker_id, snapshots: evidence.snapshots });
   report.available_harnesses = [...new Set(evidence.events.map((e) => e.harness).filter(Boolean))].sort();
   report.harness_display_names = Object.fromEntries(
     (report.available_harnesses || []).map((id) => [id, hasHarnessProvider(id) ? getHarnessProvider(id).manifest.displayName : id]),
@@ -1489,7 +1489,7 @@ function sessionSpoolContext(sessionId, markers) {
 
 // Pull one session's rows out of the (cached) analyzed report so the session popup can show
 // deterministic "what happened" findings without re-running the pipeline. Rows live in the report
-// keyed by session_id; the testing summary is report-global so it rides along as-is. Returns null
+// keyed by [harness, session_id]; the testing summary is report-global so it rides along as-is. Returns null
 // when the report can't be computed (e.g. no spool) — the session endpoint still works, just
 // without findings.
 function sessionReportRows({ id, harness }) {

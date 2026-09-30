@@ -27,15 +27,17 @@ export function splitObservationBoundary(observations, marker) {
 export function compareObservationBoundary(observations, marker, affectedIds, { condition = null, snapshots = [], policy = CONDITIONS_POLICY } = {}) {
   // Legacy basename scope is not a canonical repository scope.
   const scopeKnown = marker.schema >= 2 && (marker.repository_id || marker.scope === "all");
-  const scoped = scopeKnown ? observations.filter((item) => (!marker.repository_id || item.repository_id === marker.repository_id)
-    && (!condition || evaluateCondition(item, condition, snapshots).state === "present")) : [];
+  const inScope = scopeKnown ? observations.filter((item) => !marker.repository_id || item.repository_id === marker.repository_id) : [];
+  const scoped = condition ? inScope.filter((item) => evaluateCondition(item, condition, snapshots).state === "present") : inScope;
+  // Unknown condition data is excluded, never treated as absence; say how much was left out.
+  const unknownCondition = condition ? inScope.filter((item) => evaluateCondition(item, condition, snapshots).state === "unknown").length : 0;
   const split = splitObservationBoundary(scoped, marker);
   const cohort = (items) => ({ observations: items.length, affected: items.filter((item) => affectedIds.has(item.id)).length,
     rate: items.length ? items.filter((item) => affectedIds.has(item.id)).length / items.length : null });
   const before = cohort(split.before), after = cohort(split.after);
   const enough = Math.min(before.observations, after.observations) >= policy.minimum_cohort;
   return { marker_id: marker.marker_id, observation_unit: "session", before, after,
-    ambiguous_boundary: split.ambiguous.length, spanning_boundary: split.spanning.length,
+    ambiguous_boundary: split.ambiguous.length, spanning_boundary: split.spanning.length, unknown_condition: unknownCondition,
     state: !scopeKnown ? "can't compare fairly" : !scoped.length ? "recorded" : (!before.observations || !after.observations) && (split.ambiguous.length || split.spanning.length) ? "can't compare fairly" : enough ? "comparison available" : "collecting",
     relative_delta: enough && before.rate > 0 && Math.min(before.affected, after.affected) >= policy.minimum_events ? (after.rate - before.rate) / before.rate : null,
     condition, policy, correlation_only: true };
