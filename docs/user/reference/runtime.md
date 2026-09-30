@@ -206,8 +206,9 @@ From the portal you can:
 
 Runtime inspects an app's own same-origin conventions and
 suggests candidate routes as suggestions — never as automatic quick links. A suggestion only becomes
-a saved link when the user opens it from the "Suggested routes" action and confirms it through the
-normal add-link form.
+a saved link when the user opens it from an app's Links panel. A checkout row's Links panel belongs
+to the app that row links to; a Compose container's panel lists discovered routes only, since
+Compose containers have no saved links yet.
 
 Sources inspected, each same-origin and loopback-only:
 

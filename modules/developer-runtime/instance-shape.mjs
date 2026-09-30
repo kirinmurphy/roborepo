@@ -31,6 +31,7 @@ export function toInstance({ listener, identity, candidates, probe, cwd, git = n
     // both statusLabel (CLI) and statusText (portal) already read it.
     tls: probe?.tls ?? null,
     title: probe?.title ?? null,
+    contentType: probe?.contentType ?? null,
     health,
     // null when the container/metrics provider is unsupported, failed, or found nothing for this
     // instance — never a fabricated empty object, matching the correct-or-absent discipline git

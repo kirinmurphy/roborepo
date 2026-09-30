@@ -242,13 +242,11 @@ main {
  * longer a single band that can sensibly stay visible while collapsed. One shared drawer background
  * runs behind the main section and every worktree section — they are one workspace, not competing
  * surfaces — so only the "Worktrees" heading and a left rule mark where the nested checkouts begin. */
+/* The row band: the first nested layer of base.css's surface scale (--surface-band). */
 .repository-roots {
   display: grid;
   gap: 0;
-  background: color-mix(in srgb, var(--ink) 5%, var(--panel));
-}
-:root[data-theme="light"] .repository-roots {
-  background: var(--bg);
+  background: var(--surface-band);
 }
 /* Full-width, not an inset/padded sub-panel — every row underneath (main and worktrees alike)
  * shares one flat background and one uniform size, since they are one workspace, not a nested
@@ -281,10 +279,10 @@ main {
 .repository-shared-service:not(:last-child) {
   border-bottom: 1px solid var(--line);
 }
-/* A worktree is its own <details>: name/branch/entrypoint stay visible once the repository card is
- * open, and only its member list hides behind its own chevron — expanding one worktree's members
- * never affects any sibling worktree. Same dimensions as the main row — no indent, no left rule,
- * no smaller text — so a worktree reads as a peer row, not a nested sub-item. */
+/* One checkout per row: glyph, identity (branch, copy, drift), then the actions column (promoted
+ * link, Links, member toggle). Main checkout and worktrees share every dimension — no indent, no
+ * left rule, no smaller text — so a worktree reads as a peer row, not a nested sub-item. Its member
+ * list opens only from the toggle, never from the row surface. */
 .repository-root {
   display: block;
   font-size: var(--text-sm);
@@ -292,48 +290,197 @@ main {
 .repository-root:not(:last-child) {
   border-bottom: 1px solid var(--line);
 }
-.repository-root > summary {
-  list-style: none;
-  cursor: pointer;
-}
-.repository-root > summary::-webkit-details-marker {
-  display: none;
-}
-.repository-root .card-git-row:not(:empty) {
+.repository-root-head {
+  display: grid;
+  grid-template-columns: var(--checkout-glyph-width) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--checkout-glyph-gap);
+  row-gap: 6px;
   padding: 8px 16px;
 }
-.repository-root .git-badge {
-  font-size: var(--text-sm);
+.repository-root-glyph {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  color: var(--dim);
 }
-.repository-root-head {
+/* The identity column's two lines join the row grid directly, so the glyph and the actions centre
+ * on the branch line and the drift warning takes a second grid row of its own underneath. */
+.repository-root-identity {
+  display: contents;
+}
+.repository-root-identity-line {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* Branch label and info icon are one tooltip trigger, so they sit as one unit. */
+.repository-root-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.repository-root-branch {
+  overflow-wrap: anywhere;
+}
+.repository-root-copy {
+  margin-left: 6px;
+}
+.repository-root-copy:empty {
+  display: none;
+}
+/* A checkout with one thing to copy gets a plain copy button rather than the dropdown; it takes the
+ * dropdown trigger's bare-icon look (base.css .copy-menu-trigger) so the two read as one control. */
+.repository-root-copy .copy-button {
+  border: 0;
+  background: none;
+  padding: 2px;
+  border-radius: 5px;
+  color: var(--dim);
+}
+.repository-root-copy .copy-button:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.repository-root-copy .copy-button.copy-button-copied {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+/* The shared git row keeps its drift phrase on one line; here it has a line of its own and may wrap
+ * rather than push the actions column over. */
+.repository-root-identity .git-drift {
+  grid-column: 2;
+  grid-row: 2;
+  white-space: normal;
+  font-size: var(--text-xs);
+}
+.repository-root-actions {
+  grid-column: 3;
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 16px 8px;
+  white-space: nowrap;
 }
-.repository-root-meta {
+.repository-root-actions .repository-entrypoint {
+  font-size: var(--text-sm);
+}
+/* The Links trigger, and the member caret while its list is open, share one soft filled style (the
+ * --wash-control fill: no border, full-ink text); hover deepens it. A collapsed caret is just the
+ * caret, filled only on hover — the fill appearing when it opens marks the open state. */
+.repository-root-toggle,
+.checkout-links-cell .menu-button-trigger {
+  border: 0;
+  border-radius: 5px;
+  color: var(--ink);
+}
+.repository-root-toggle {
+  background: none;
+}
+.checkout-links-cell .menu-button-trigger,
+.repository-root-toggle[aria-expanded="true"],
+.repository-root-toggle:hover,
+.repository-root-toggle:focus-visible {
+  background: var(--wash-control);
+}
+.repository-root-toggle[aria-expanded="true"]:hover,
+.checkout-links-cell .menu-button-trigger:hover,
+.checkout-links-cell .menu-button-trigger:focus-visible,
+.checkout-links-cell .menu-button-trigger[aria-expanded="true"] {
+  background: var(--wash-control-strong);
+}
+.checkout-links-cell .menu-button-chevron {
+  color: inherit;
+}
+/* A bare caret, the same footprint as the ⋮ trigger it alternates with. The accessible name and
+ * title ("Show 2 members") carry what the text used to. */
+.repository-root-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  /* The Links trigger's height (one line of body text plus base.css's default button padding), so
+   * an open caret's fill and the Links fill beside it are the same height. */
+  height: var(--checkout-control-height);
+  padding: 0;
+}
+.repository-root-toggle .compose-project-chevron {
+  color: inherit;
+}
+/* The right-hand columns, shared by checkout rows and the member cards inside them: port, then a
+ * fixed-width Links cell, then a fixed-width control cell (⋮ or caret). Both cells keep their width
+ * when empty, so every port on a card — row or member — ends in the same column. */
+/* The Links trigger's natural width (portal-menu-button labeled "Links" with its caret), measured,
+ * so an empty cell reserves exactly the space a filled one takes. */
+.repository-card {
+  --checkout-links-width: 84px;
+  --checkout-control-height: calc(var(--text-sm) * var(--line-height-normal) + 2 * var(--space-xs));
+  /* The glyph column (the md icon) and the gap after it. Member rows indent by the same amount, so
+   * a member's name lines up under its checkout's branch name. */
+  --checkout-glyph-width: 20px;
+  --checkout-glyph-gap: 10px;
+}
+.checkout-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* The Links trigger's height, so a row or member without one is not a few pixels shorter than
+   * its siblings. */
+  min-height: var(--checkout-control-height);
+  white-space: nowrap;
+  flex: none;
+}
+.checkout-links-cell {
+  display: inline-flex;
+  justify-content: flex-end;
+  width: var(--checkout-links-width);
+}
+.checkout-control-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+}
+/* Inside a combined trigger the info icon has no hover state of its own: the tooltip appearing is
+ * the hover feedback, and highlighting just the icon implied it was a separate control. */
+.repository-root-trigger .info-icon:hover,
+.member-trigger .info-icon:hover {
   color: var(--dim);
-  font-size: var(--text-xs);
-  margin-left: auto;
+  border-color: var(--dim);
 }
-/* "Inactive" is a state, not a quantity — it recedes below the member counts it sits among rather
- * than reading as one more figure. Opacity instead of a new colour token: --dim is already the
- * faintest ink the palette defines, and both themes derive their own from it. */
-.repository-root-meta.is-inactive {
-  opacity: 0.72;
-  font-style: italic;
+/* A member's name and info icon are one tooltip trigger, as on the checkout row. */
+.member-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
-/* Nothing behind the caret, so the row drops the affordances of a disclosure it no longer performs
- * (the chevron is removed and the toggle refused in buildRootSection). */
-.repository-root.is-empty > summary {
-  cursor: default;
+.repository-root-menu,
+.repository-root-menu .action-menu {
+  display: inline-flex;
+  align-items: center;
 }
-.repository-root .compose-project-chevron {
-  transition: transform 0.15s ease;
-  color: var(--dim);
+/* Reuses the Compose port rows' status pill, sized down to sit beside the port link. */
+.repository-root-actions .port-health-badge {
+  font-size: var(--text-2xs);
 }
-.repository-root[open] > summary .compose-project-chevron {
+.repository-root.is-open .repository-root-toggle .compose-project-chevron {
   transform: rotate(180deg);
+}
+/* Below the width where both columns fit, the actions drop under the identity column, aligned with
+ * the branch rather than with the glyph. */
+@media (max-width: 560px) {
+  .repository-root-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .repository-root-actions {
+    grid-column: 2;
+    grid-row: 3;
+  }
 }
 /* Aligned to the first text line of column one, not to that column's box. `align-items: center` on
  * .card-head centers the menu against the whole column — which includes the title row's wrap
@@ -413,9 +560,12 @@ main {
   background: none;
   padding: 0;
 }
-.card-title portal-info-icon .info-icon {
-  width: var(--icon-md);
-  height: var(--icon-md);
+/* One step under the base size everywhere on this page: the info icon annotates a name, and at the
+ * base size it competed with the name it annotates. */
+.card-title portal-info-icon .info-icon,
+.repository-root-trigger portal-info-icon .info-icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
 }
 /* z-index alone was not enough: cards are siblings with their own opaque background and no
  * position, so they paint in DOM order and the NEXT card covered the previous card's open menu.
@@ -469,7 +619,7 @@ main {
   grid-template-columns: 1fr !important;
   margin: 4px -10px 0;
   padding: 4px 10px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  background: var(--wash-heading);
   color: var(--dim);
   font-size: var(--text-2xs);
   font-weight: 600;
@@ -479,6 +629,61 @@ main {
 /* The first group heads the bubble, so it needs no separating space above it. It also sits flush
  * against the bubble's rounded top, so it inherits that radius — a square band over a 6px corner
  * shows the tooltip background bleeding through at the corners. */
+/* A checkout tooltip leads with the untruncated identity — the full branch name, then the checkout's
+ * directory — set larger than the labeled fields below it and spanning both columns. */
+.info-tooltip-content > .info-tooltip-heading,
+.info-tooltip-content > .info-tooltip-subheading {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+.info-tooltip-heading portal-icon,
+.info-tooltip-subheading portal-icon {
+  flex: none;
+  color: var(--dim);
+  margin-top: 1px;
+}
+/* Docked as a side panel (wide screens), the checkout tooltip has room to set its identity header
+ * larger and looser, and its group bands stretch to the panel's wider padding. */
+.portal-tooltip--panel .info-tooltip-heading {
+  font-size: var(--text-md);
+  gap: 10px;
+}
+.portal-tooltip--panel .info-tooltip-subheading {
+  font-size: var(--text-sm);
+  gap: 10px;
+  margin: 0 0 6px;
+}
+.portal-tooltip--panel .info-tooltip-heading svg,
+.portal-tooltip--panel .info-tooltip-subheading svg {
+  /* The icon scale's md step, one up from the sm the header ships with. */
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+.portal-tooltip--panel .info-tooltip-content {
+  gap: 8px;
+}
+.portal-tooltip--panel .info-tooltip-group {
+  margin-left: -20px;
+  margin-right: -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+/* A tip that opted into the wide/panel bubble (data-tip-placement="panel") uses the bubble's width
+ * rather than the content's own cap. */
+.portal-tooltip--wide .info-tooltip-content {
+  max-width: none;
+}
+.info-tooltip-heading {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.info-tooltip-subheading {
+  margin-top: -4px;
+  color: var(--dim);
+}
 .info-tooltip-content > .info-tooltip-group:first-child {
   margin-top: -8px;
   padding-top: 8px;
@@ -844,8 +1049,8 @@ dialog::backdrop {
   display: none;
 }
 /* The expand affordance. Used by both the Compose card's own drill-down (no rotation state — a
- * Compose card is always expanded) and each worktree row's own chevron (rotation rule lives on
- * .repository-root[open], further down). */
+ * Compose card is always expanded) and each checkout row's member toggle (rotation rule lives on
+ * .repository-root.is-open, further up). */
 .compose-project-chevron {
   display: inline-flex;
   color: var(--dim);
@@ -875,7 +1080,11 @@ dialog::backdrop {
    * owns its own padding (see .instance-card.is-member). */
   gap: 0;
   padding: 0;
-  background: color-mix(in srgb, var(--ink) 5%, var(--panel));
+  /* The next layer of base.css's surface scale (--surface-sunken), with an inset shadow under the
+   * row it opens from, so an open list reads as the row's contents rather than more rows. The scale
+   * guarantees Compose containers inside it (--surface-inset) stand out more than it does. */
+  background: var(--surface-sunken);
+  box-shadow: inset 0 4px 6px -4px var(--modal-shadow);
   border-top: 1px solid var(--line);
   /* Deliberately NOT overflow:hidden, for the same reason the card itself is not (see
    * .instance-card.repository-card): clipping would round the drawer's bottom corners but also trap
@@ -899,11 +1108,12 @@ dialog::backdrop {
 .repository-roots > :last-child .repository-members > :last-child {
   border-radius: 0 0 6px 6px;
 }
-/* Light theme's --panel is pure white, so mixing toward --ink can only darken it — the opposite of
- * the intent. There is no lighter surface available above white, so the drawer steps *down* to the
- * page background instead: still a visible change of surface, still not a heavier one. */
-:root[data-theme="light"] .repository-members {
-  background: var(--bg);
+/* The innermost layer (--surface-inset): a Compose stack's containers, bordered, and by the surface
+ * scale's rule the most distinct thing on the card. */
+.repository-members .compose-container-row {
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 6px;
 }
 /* A member is subordinate to the repository heading above it: a step down in size, but still bold,
  * since at this size normal weight stopped reading as a title at all. Applies to compose members
@@ -926,6 +1136,12 @@ dialog::backdrop {
   background: none;
   border-radius: 0;
   padding: 10px 16px;
+}
+/* Inside a checkout's list, a member leaves an empty glyph column so its name starts under the
+ * checkout's branch name. */
+.repository-members > .instance-card.is-member,
+.repository-members > .compose-project-card.is-member {
+  padding-left: calc(16px + var(--checkout-glyph-width) + var(--checkout-glyph-gap));
 }
 .instance-card.is-member + .instance-card.is-member,
 .instance-card.is-member + .compose-project-card.is-member,
@@ -1034,31 +1250,45 @@ dialog::backdrop {
 .resource-concern-badge[data-tone="danger"] {
   background: var(--danger);
 }
-/* Lifecycle state, shown only when a repository is NOT running — an active one says so by listing
- * members. Outlined rather than filled: this is a neutral statement of fact competing with the
- * resource badge beside it, which is filled precisely because it wants attention. */
+/* Card-level state badges — lifecycle (idle, stale) and "mock" for dev fixtures — just after the
+ * repository's info icon. Filled with inverted text: an outlined badge was too easy to miss, and
+ * these change how the whole card should be read. */
+.repository-card-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.repository-card-badges:not(:has(> :not([hidden]))) {
+  display: none;
+}
 .repository-state-badge {
-  padding: 0 6px;
-  border: 1px solid var(--line);
+  padding: 1px 7px;
   border-radius: 999px;
   font-size: var(--text-2xs);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
-  color: var(--dim);
+  background: var(--dim);
+  color: var(--panel);
 }
 /* `stale` means every checkout is gone or unreadable — a repository that needs looking at, not just
- * one that happens to be stopped. It is the only state that earns a colour. */
+ * one that happens to be stopped. */
 .repository-state-badge.is-stale {
-  border-color: var(--warn);
-  color: var(--warn);
+  background: var(--warn);
 }
-/* The whole card recedes while nothing runs in it, so a glance down the list separates live work
- * from history without reading a single badge. Text stays at full contrast — this is a de-emphasis,
- * not a disabled control. */
-.repository-card.is-not-running {
-  opacity: 0.82;
+/* An idle card recedes by colour rather than opacity: its text drops to --dim, so a glance down the
+ * list separates live work from history, while its badges and controls keep full contrast — opacity
+ * faded the one badge that says why the card looks different. */
+.repository-card.is-not-running .card-title h3,
+.repository-card.is-not-running .repository-root-branch,
+.repository-card.is-not-running .git-repo-link {
+  color: var(--dim);
+}
+.repository-card.is-not-running .repository-root-glyph,
+.repository-card.is-not-running portal-info-icon {
+  opacity: 0.7;
 }
 .compose-container-head .info-wrap portal-info-icon .info-icon {
   width: var(--icon-sm);
@@ -1123,8 +1353,8 @@ dialog::backdrop {
   background: var(--danger);
 }
 .compose-container-port .info-wrap portal-info-icon .info-icon {
-  width: var(--icon-md);
-  height: var(--icon-md);
+  width: var(--icon-sm);
+  height: var(--icon-sm);
 }
 .compose-container-port-history {
   font-size: var(--text-2xs);

@@ -1,7 +1,7 @@
 ---
 id: zdhivxtb
 priority: high
-next_action: Phase 1 — add the ranking scenarios to scripts/test/developer-runtime-repository-merge-check.mjs and confirm the Storybook and Compose-only ones fail, then add modules/developer-runtime/member-role-presets.mjs and member-role.mjs
+next_action: Review and commit the implementation on claude/localhost-runtime-layout-b3215c, then run a plan review to decide completion
 blocked_by: []
 depends_on: []
 related:
@@ -64,10 +64,12 @@ render; this plan changes only how a row presents it and which member it promote
 
 ## Non-goals
 
-- Changing member cards, beyond two narrow exceptions: the promoted member loses its duplicate
-  Links dropdown, and dimming applies only to `service` members.
-- Changing standalone cards. Shared-service Compose cards and unmatched instance cards keep the
-  shared git row, its branch icon, and the 20-character branch cap.
+- Changing what a member card contains. Member cards changed shape during review (see
+  Implementation notes), but they carry the same facts and actions as before, apart from the promoted
+  member losing its duplicate Links dropdown.
+- Changing standalone cards' layout. Shared-service Compose cards and unmatched instance cards keep
+  the shared git row, its branch icon, and the 20-character branch cap. Unrecognized listeners did
+  lose three actions that no longer applied to them (see Implementation notes).
 - A manual "make primary" override or click-based preference learning.
 - Changing what the Links panel lists for listener apps; only its label and mount point change.
   The one new variant is the discovered-only panel for a promoted Compose container.
@@ -142,20 +144,20 @@ Two facts constrain the new ranking:
 ### Row layout
 
 ```text
-roborepo  GitHub↗  ⓘ                                                           ⋮
- ┃ │ [main branch ⓘ]                                        :4317  [Links ⌄]  [1 ⌄]
- 🌳 │ [codex/telemetry-tokens-conditions-report ⓘ]  ⧉⌄       :56183  [Links ⌄]  [1 ⌄]
+roborepo  GitHub↗  ⓘ                                                                  ⋮
+ ┃ │ main branch ⓘ                                  :4317  [Links ⌄]  ⌄
+ 🌳 │ codex/telemetry…ditions-report ⓘ  ⧉⌄  unhealthy :56183  [Links ⌄]  ⋮
     │ ⚠ 13d behind main (2)
 ```
 
-(`┃` stands in for the new trunk glyph, `🌳` for the new tree glyph.)
+(`┃` stands in for the home glyph, `🌳` for the new tree glyph.)
 
 | Region | Content |
 | --- | --- |
 | Row 1 (card header) | Repository name, provider link, repository info icon, CPU concern badge, lifecycle badge, ⋮ menu. No URL and no `—` separator. |
-| Checkout row, icon column | Trunk glyph for the main checkout, tree glyph for every linked worktree. Replaces the branch icon. |
+| Checkout row, icon column | Home glyph for the main checkout, tree glyph for every linked worktree. Replaces the branch icon. |
 | Checkout row, column 1 | Branch label and info icon as one tooltip trigger, then copy options, then the drift warning. Wraps onto a second line instead of pushing column 2. |
-| Checkout row, column 2 (right-aligned, no wrap) | Promoted `:PORT` link, Links dropdown, member toggle. |
+| Checkout row, column 2 (right-aligned, no wrap) | Health and CPU badges (folded rows only, and only when something is wrong), promoted `:PORT` link, Links dropdown, then either the member toggle or the folded member's ⋮ menu. |
 
 Rules:
 
@@ -163,12 +165,18 @@ Rules:
 - The "WORKTREES" heading is removed; the icon column carries that distinction. The "Shared
   services" heading stays, because shared stacks are not checkouts, and keeps the
   `.repository-worktrees-heading` style it shares today.
-- The member toggle is a bordered button in the same default `button` style as the Links trigger,
-  showing the count and a chevron (`1 ⌄`). Its accessible name states the action, for example
-  "Show 1 member", and it carries `aria-expanded`. It is the only control that opens the member
-  list; clicks elsewhere on the row no longer toggle it.
-- The toggle counts what it reveals: active members, Compose stacks, and departed members. It is
-  absent only when that list is empty, and then column 2 shows nothing: no "Inactive",
+- A checkout whose only member is its promoted app folds that member into the row: no toggle, the
+  member's ⋮ menu at the end of column 2, the member's facts in the checkout tooltip under an "App"
+  group, and a health badge beside the port only when the member is starting, degraded, or
+  unhealthy. Its card would otherwise repeat the row, adding only those parts.
+- Every other checkout with members gets a bare caret toggle — no border, no text — in the same
+  place. Its accessible name and hover title say what it opens: "Show 2 members", "Show 4
+  containers" (a Compose-only checkout), "Show 1 stopped", or combinations such as "Show 2 members ·
+  1 stopped". It carries `aria-expanded`, and it is the only control that opens the member list;
+  clicks elsewhere on the row no longer toggle it.
+- The ⋮ menu and the caret share one fixed-width last cell, present even when empty, so the port
+  and Links columns line up down the card.
+- A checkout with no members shows nothing in column 2: no toggle, and no "Inactive",
   "checkout missing", or "no active members" text.
 - A checkout whose directory is absent or unreadable says so in its tooltip, in a State line,
   instead of in the row.
@@ -178,7 +186,7 @@ Rules:
   (`portal/developer-runtime/app.js`), which today reads `<details>.open` by `data-root-id`, follows
   whichever element now holds the open state.
 - Below the width where both columns fit, column 2 moves under column 1.
-- The branch cap on checkout rows rises from 20 to 40 characters, since the drift warning now
+- The branch cap on checkout rows rises from 20 to 30 characters, since the drift warning now
   wraps rather than competing for the same line.
 
 ### Branch label and tooltip
@@ -239,7 +247,7 @@ entry, so `supabase_db_<project>` matches `db`:
 | Preset | Examples |
 | --- | --- |
 | Service | Names `db`, `postgres`, `redis`, `kong`, `rest`, `realtime`, `auth`, `storage`, `meta`; Supabase API `54321` and database `54322` ports |
-| Tooling | Titles containing Storybook, Supabase Studio, Mailpit, MailHog, Prisma Studio, Drizzle Studio, Swagger UI, ngrok; ports `6006`, `5555`, `8025`, `4040`, `4983`, `54323` |
+| Tooling | Names `storybook`, `studio`, `mailpit`, `mailhog`, `inbucket`, `ngrok`; titles containing Storybook, Supabase Studio, Mailpit, MailHog, Prisma Studio, Drizzle Studio, Swagger UI, ngrok; ports `6006`, `5555`, `8025`, `4040`, `4983`, `54323` |
 
 The presets live in their own module, so adding "Grafana is tooling" is a one-line change.
 
@@ -309,7 +317,7 @@ gets its own empty message for a Compose app with nothing discovered.
 | Row markup | `tpl-repository-root` and `tpl-repository-card` in `portal/developer-runtime/index.html`, still filled through the existing `<template>` + slot-fill convention. `tpl-git-row` is unchanged |
 | Open-state carry-over | `reconcileSection` in `portal/developer-runtime/app.js` |
 | Discovered-only Links panel | `mountRoutesTrigger` in `portal/developer-runtime/app.js`, and the empty message in `buildRoutesDropdown` in `portal/developer-runtime/suggestions-view.js` |
-| Trunk and tree glyphs | `portal/shared/icon.js` |
+| Tree glyph (the home glyph already exists) | `portal/shared/icon.js` |
 | Row styles | `portal/developer-runtime/styles.css` |
 | Layout tests | New `scripts/test/portal-ui/developer-runtime-rows.spec.mjs`. The existing `portal-ui.spec.mjs` is scoped to the Home page acceptance, and the suite's `**/*.spec.mjs` match picks up the new file |
 
@@ -317,58 +325,116 @@ gets its own empty message for a Compose app with nothing discovered.
 
 ### Phase 1 — Member roles and ranking
 
-- [ ] Extend `scripts/test/developer-runtime-repository-merge-check.mjs` with the ranking scenarios
+- [x] Extend `scripts/test/developer-runtime-repository-merge-check.mjs` with the ranking scenarios
       listed under Validation, and confirm the Storybook and Compose-only scenarios fail against the
       current `compareMembers`.
-- [ ] Add `scripts/test/developer-runtime-member-role-check.mjs` covering each classifier branch, the
+- [x] Add `scripts/test/developer-runtime-member-role-check.mjs` covering each classifier branch, the
       name-token match, and each tie-breaker.
-- [ ] Add a `contentType` case to the probe tests in `scripts/test/developer-runtime-check.mjs`, then
+- [x] Add a `contentType` case to the probe tests in `scripts/test/developer-runtime-check.mjs`, then
       record `contentType` in `probeOrigin` and carry it through `toInstance`.
-- [ ] Add `modules/developer-runtime/member-role-presets.mjs` with the preset tables.
-- [ ] Add `modules/developer-runtime/member-role.mjs` with `classifyMemberRole` and the role comparator.
-- [ ] Set `role` in `toMember` and on each Compose container instance record.
-- [ ] Move repository-name resolution in `buildRepositories` ahead of the member sorts.
-- [ ] Replace the body of `compareMembers` with the role comparator.
-- [ ] Compute `root.primaryEntrypoint` in the per-root loop of `buildRepositories`.
-- [ ] Run `node scripts/test/run-checks.mjs --filter developer-runtime` and confirm the existing ordering
+- [x] Add `modules/developer-runtime/member-role-presets.mjs` with the preset tables.
+- [x] Add `modules/developer-runtime/member-role.mjs` with `classifyMemberRole` and the role comparator.
+- [x] Set `role` in `toMember` and on each Compose container instance record.
+- [x] Move repository-name resolution in `buildRepositories` ahead of the member sorts.
+- [x] Replace the body of `compareMembers` with the role comparator.
+- [x] Compute `root.primaryEntrypoint` in the per-root loop of `buildRepositories`.
+- [x] Run `node scripts/test/run-checks.mjs --filter developer-runtime` and confirm the existing ordering
       assertions still pass unchanged.
 
 ### Phase 2 — Checkout row layout
 
-- [ ] Create `scripts/test/portal-ui/developer-runtime-rows.spec.mjs` with the layout scenarios listed
+- [x] Create `scripts/test/portal-ui/developer-runtime-rows.spec.mjs` with the layout scenarios listed
       under Validation, except the Links one, using the stub described under Validation, and
       confirm they fail against the current row.
-- [ ] Add trunk and tree glyphs to `portal/shared/icon.js`.
-- [ ] Move `buildRootSection` and `mountCopyDropdown` into
+- [x] Add the tree glyph to `portal/shared/icon.js`; the main checkout reuses `home`.
+- [x] Move `buildRootSection` and `mountCopyDropdown` into
       `portal/developer-runtime/repository-root-row.js`.
-- [ ] Rework `tpl-repository-root` into icon column, column 1, and column 2, with the row head
+- [x] Rework `tpl-repository-root` into icon column, column 1, and column 2, with the row head
       outside `<summary>` and the branch label built by the row instead of `applyGitBadge`.
-- [ ] Update the open-state carry-over in `reconcileSection` to the new open-state element.
-- [ ] Wrap the branch label and info icon in one tooltip trigger, and add the heading, subheading,
+- [x] Update the open-state carry-over in `reconcileSection` to the new open-state element.
+- [x] Wrap the branch label and info icon in one tooltip trigger, and add the heading, subheading,
       and State lines to the checkout tooltip.
-- [ ] Render the promoted `:PORT` link in column 2 for every checkout, main included, from
+- [x] Render the promoted `:PORT` link in column 2 for every checkout, main included, from
       `root.primaryEntrypoint`.
-- [ ] Remove the entrypoint link and `—` separator from `tpl-repository-card` and
+- [x] Remove the entrypoint link and `—` separator from `tpl-repository-card` and
       `repositoryCard`.
-- [ ] Remove the "WORKTREES" heading.
-- [ ] Replace the root meta text with the bordered member toggle, make it the only toggle, and hide
+- [x] Remove the "WORKTREES" heading.
+- [x] Replace the root meta text with the bordered member toggle, make it the only toggle, and hide
       it when the member list is empty.
-- [ ] Apply the 40-character branch cap to checkout rows and let the drift warning wrap within
+- [x] Apply the 30-character branch cap to checkout rows and let the drift warning wrap within
       column 1.
-- [ ] Apply `is-support` to `service`-role members only.
-- [ ] Stack column 2 under column 1 at narrow widths.
+- [x] Apply `is-support` to `service`-role members only.
+- [x] Stack column 2 under column 1 at narrow widths.
 
 ### Phase 3 — Links dropdown
 
-- [ ] Rename "Pages/Routes" to "Links" in `portal/developer-runtime/app.js`, and update the "Pages &
+- [x] Rename "Pages/Routes" to "Links" in `portal/developer-runtime/app.js`, and update the "Pages &
       Routes panel" comments in `portal/developer-runtime/index.html` and
       `portal/developer-runtime/templates.js`.
-- [ ] Add the Links scenario listed under Validation to
+- [x] Add the Links scenario listed under Validation to
       `scripts/test/portal-ui/developer-runtime-rows.spec.mjs` and confirm it fails before the move.
-- [ ] Mount the full Links dropdown in the checkout row when the promoted link is a listener
+- [x] Mount the full Links dropdown in the checkout row when the promoted link is a listener
       member, and omit it from that member's card.
-- [ ] Mount the discovered-only Links dropdown when the promoted link is a Compose container, with
+- [x] Mount the discovered-only Links dropdown when the promoted link is a Compose container, with
       its own empty message.
+
+## Implementation notes
+
+Implemented on branch `claude/localhost-runtime-layout-b3215c`, based on `main`, starting from
+commit `d51cf4f`. The primary checkout (`main`) does not have this plan yet, so status updates live
+only in this branch's copy until it merges.
+
+Decisions made during implementation:
+
+| Decision | Why |
+| --- | --- |
+| Tooling presets also match names (`storybook`, `studio`, `mailpit`, `mailhog`, `inbucket`, `ngrok`) | Supabase CLI containers carry only a container name, so `supabase_studio_<project>` needs a name match; the ngrok process is named, not titled |
+| The comparator's last tie-breaker is the port alone; alphabetical member-name order is gone | Ports are unique within a checkout, and the old name ordering is exactly what let `node` outrank `Python` |
+| The checkout row is a `<div>` with an `is-open` class; `isCheckoutRowOpen` and `setCheckoutRowOpen` in `repository-root-row.js` are what `reconcileSection` uses | A plain element avoids a button nested in `<summary>`; exporting the two helpers keeps the open-state rules in one module |
+| `repository-root-row.js` and `templates.js` import each other | Only functions cross the boundary, called at render time, so the cycle is safe; moving the shared git-row helpers out as well would have widened the change |
+| The branch label falls back to the checkout directory name when git is unavailable | A row with a glyph and no text identified nothing |
+| The glyph carries an accessible name, "Main checkout" or "Linked worktree" | It replaces the "Worktrees" heading, so it now carries that meaning for screen readers too |
+| `applyGitBadge` lost its `hideWorktreeSuffix` option | Checkout rows were its only caller |
+| A folded row builds the member's card without showing it, moves the card's visible tooltip lines into the checkout tooltip, and mounts the card's ⋮ menu through `mountMemberMenu` (templates.js), which reuses `wireCardActions` | One source for a member's facts and actions, so a folded row and a member card can never disagree |
+| Info icons on the Runtime page use the `sm` icon size; the branch label is regular weight | Review feedback: at `md` the icons competed with the names they annotate |
+| Member cards take the checkout row's shape: name and info icon as one tooltip trigger, then port, Links, and ⋮ in the same fixed-width right-hand cells as the row (`checkout-actions`, `checkout-links-cell` at the Links trigger's measured 84px, `checkout-control-cell` at 28px) | Review feedback: every port on a card, row or member, now ends in one column |
+| Surfaces come from named per-theme tokens in `portal/shared/base.css` rather than one-off `color-mix()` tints: `--surface-band` (checkout rows), `--surface-sunken` (an open member list), `--surface-inset` (Compose containers inside it), `--wash-control` / `--wash-control-strong` (soft control fills), and `--wash-heading` (tooltip section bands). `scripts/test/portal-surface-layers-check.mjs` checks, in both themes, that each layer differs visibly (CIELAB L* ≥ 2.8) from the one it sits on, that containers contrast with their list more than the list contrasts with its rows, and that tooltip bands stand out (L* ≥ 5.6) | Review feedback: tweaking individual tints kept producing layers that matched each other in one theme (light rows matched the page; dark tooltip bands nearly vanished). Named layers plus a check make the hierarchy something the page can depend on |
+| Members inside a checkout's list indent by the row's glyph column (`--checkout-glyph-width` plus `--checkout-glyph-gap`), so a member's name starts under its checkout's branch name | Review feedback |
+| The Links trigger in rows and member cards, and the member caret while its list is open, use the `--wash-control` fill (no border), deepening to `--wash-control-strong` on hover. A collapsed caret is bare, filled only on hover. The caret matches the Links trigger's height (`--checkout-control-height`) | Review feedback: the fill marks an open list, and the two fills beside each other should be the same height |
+| Inside a combined name-and-icon trigger, the info icon has no hover state of its own; the tooltip appearing is the feedback | Review feedback: the icon's own highlight implied a separate control |
+| Tooltips wait 500ms on hover before showing, site-wide (portal/shared/tooltip.js); keyboard focus still shows immediately | Review feedback: sweeping the pointer across rows flashed a tooltip on each |
+| The checkout tooltip opts into `data-tip-placement="panel"`: 460px wide, and docked to the right edge with a 24px gutter on screens 1100px and wider, where it uses 16px/20px padding and a larger header (`--text-md` branch, `--text-sm` directory, `md` icons). Its heading lines carry the git-branch and home/tree glyphs | Review feedback: it is too large to float over the row being read |
+| The list orders running real repositories, then dev fixtures (running or not), then idle and stale repositories. A fixture is any repository under `git:github.com/example/`, the unfetchable remote the fixtures in local/dev-fixtures use, and is badged "mock" in the same grey as "idle" | Review feedback; the remote convention already existed, so no registry flag was needed |
+| Lifecycle and "mock" badges are filled with inverted text and sit right after the repository's info icon; an idle card dims its text to `--dim` instead of fading the whole card | Review feedback: the outlined badge was too subtle, opacity also faded the badge that explains the dimming, and a right-aligned badge broke the header's alignment with the column of row controls below it |
+| Unrecognized listeners lose Links, Change association, and Confirm alias, keeping Copy PID, View history, and Hide | They have no app slot for saved links (adding one would create a stray saved app); an association only joins a repository card when another process of that repository is scanned first; an alias never applies to their low-confidence `process:` identity |
+| `local/dev-fixtures/multi-member-fixture.mjs` runs beside the Compose fixture. It generates backdated local history on each start (nothing fetched), so its main checkout sits on `feature/checkout-redesign` and its four checkouts show the four drift warnings: behind main, since main (with the stale-fetch "+"), behind remote, and unpushed | The Compose fixture cannot show several process members, a failing app, an API-only checkout, or any drift state. "Since main" and "unpushed" can only coexist in one repository when the unpushed branch is `main` itself, so `main` lives in a worktree |
+| A checkout with one thing to copy shows the single copy button in the copy dropdown's bare-icon style | The fixture's feature-branch and `main` rows exposed a bordered button beside the borderless dropdown |
+| `portal-copy-menu` passes `Boolean(this._flashing)` to `classList.toggle` | An undefined force argument flips the class, so every idle copy trigger rendered in its green "copied" state |
+| The main checkout uses the existing `home` glyph; the tree glyph is a crown on a stem, both at the `md` icon size | Every drawn trunk read as something else at icon size (a text cursor, a stick figure, a stump nobody recognized) |
+
+## Verification
+
+- `node scripts/test/run-checks.mjs --filter developer-runtime`: 12/12 suites pass, including the
+  new `developer-runtime-member-role-check.mjs`. Each new scenario failed before its implementation.
+- `npm run test:portal-ui`: 24/24 pass, including the 10 scenarios in
+  `scripts/test/portal-ui/developer-runtime-rows.spec.mjs`. Each failed before its implementation.
+- Screenshots of the stubbed page checked dark theme, light theme, a 420px viewport, the checkout
+  tooltip, and a drift warning wrapping under the branch.
+- The live page, served by a portal with a temporary HOME and real discovery, showed the portal's
+  own checkout with its promoted `:PORT` link; opening the row's Links panel listed the real
+  discovered pages and API routes.
+- `npm run check` passed: doctor, 423 CLI tests, the unit check group, package install, the four
+  clean-machine Docker sandboxes, and the portal UI suite. The Windows installer check was skipped
+  because `pwsh` is not installed.
+- `local/dev-fixtures/multi-member-fixture.mjs`, started by `dev fixture start` beside the Compose
+  fixture, runs plain Node servers across one repository and two worktrees. On the live page its
+  main checkout promoted the app over Storybook and the API behind a "3 members" caret, the
+  failing worktree folded into its row with an `unhealthy` badge, and the API-only worktree showed
+  no link and a caret.
+- `node scripts/cli/main.mjs dev start --port 4318` against real repositories: every repository
+  rendered one row per checkout with its promoted port, Links button, and member toggle. The dev
+  fixture's nginx container promoted itself in its checkout row (`kind: "container"`, `:48080`),
+  and its Links panel opened discovered-only, showing the new empty message.
 
 ## Validation
 
@@ -396,6 +462,10 @@ Layout, asserted in Playwright by role and accessible name:
 - A checkout with members exposes a "Show N members" button; activating it reveals the member
   list, and clicking the branch label does not.
 - A checkout with no members exposes no member toggle and no "Inactive" text.
+- A checkout whose only member is its promoted app exposes no toggle, exposes that member's
+  "Actions" menu in the row, shows an "unhealthy" badge when the member is unhealthy, and lists the
+  member's facts under "App" in its tooltip.
+- A Compose-only checkout's toggle is named "Show 1 container".
 - Hovering the branch label opens a tooltip whose first line is the full branch name.
 - The Links button appears in the checkout row, and the promoted member's card has none.
 - A checkout whose promoted link is a Compose container also shows a Links button in its row.
@@ -446,6 +516,7 @@ A manual pass against the live page confirms both themes and a narrow viewport.
 
 | Question | Decision | Why |
 | --- | --- | --- |
+| How should a checkout show its members? | Fold a lone promoted member into the row; otherwise a bare caret named for what it opens, in the same fixed cell as the ⋮ | A bare `N ⌄` did not say what it counted, and for the common single-app checkout the card it opened repeated the row except for its menu and tooltip facts |
 | Should a promoted Compose instance get the Links dropdown? | Yes, with discovered pages and APIs only | Every row with a promoted link gets the same column 2. Discovered routes already resolve by opaque key; saved links would need a settings schema change and wait for their own plan |
 | Should an untitled HTML response count as `app`? | Yes for 2xx `text/html`, ranked below every titled app | Covers app shells that set their title from JavaScript, and is promoted only when nothing titled is running |
 | Where does CI status from `developer-runtime-remote-branch-status` go once the branch icon is gone? | On this plan's checkout glyph, tinted by verdict, with the verdict also written in the checkout tooltip | The glyph is per checkout and always present, and it adds no new element to the row. That plan's Placement section records this |

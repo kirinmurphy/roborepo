@@ -379,7 +379,7 @@
                    replaces the row's separate copy dropdown, whose other two entries (URL, port)
                    were both obtainable from the row itself.
 
-                   Add link / Edit links moved to the Pages & Routes panel, where user-added links
+                   Add link / Edit links moved to the Links panel, where user-added links
                    now sit alongside discovered ones as just another source. -->
               <button type="button" data-action="copy-pid" data-slot="copy-pid" hidden>
                 Copy PID
@@ -502,20 +502,13 @@
             <div class="card-title">
               <h3 data-slot="title"></h3>
               <!-- One GitHub/provider link per repository — root-independent (a repository has
-                   exactly one canonical remote, however many checkouts run it). Sits right after the
-                   name and before any URL, matching how a reader scans identity before location. -->
+                   exactly one canonical remote, however many checkouts run it). -->
               <a class="git-repo-link repository-nested-control" data-slot="provider-link" target="_blank" rel="noreferrer" hidden
                 ><span data-slot="provider-link-label">repo</span
                 ><portal-icon name="external-link" size="sm"></portal-icon
               ></a>
-              <!-- The separator belongs to the URL, not the title: it only earns its space when
-                   there is a second thing to separate, so it is toggled with the entrypoint. -->
-              <span class="title-separator" data-slot="title-separator" hidden>—</span>
-              <!-- The canonical entrypoint's URL, lifted out of its member so opening the app is
-                   one click from page load. -->
-              <a class="repository-entrypoint repository-nested-control" data-slot="entrypoint" target="_blank" rel="noreferrer" hidden></a>
-              <!-- Info trails the URL (or the title when there is no URL) so it annotates the
-                   identity of the thing, rather than floating after the member count. -->
+              <!-- No URL here: every checkout's app link sits in its own row, main checkout included,
+                   so the header names the repository and nothing about where it runs. -->
               <span class="info-wrap repository-nested-control" data-tip-html="template">
                 <portal-info-icon aria-label="Show repository details"></portal-info-icon>
                 <template>
@@ -534,10 +527,15 @@
                   </span>
                 </template>
               </span>
+              <!-- Card-level state, right after the info icon — kept out of the right-hand column so
+                   that column stays reserved for the aligned per-row controls. "mock" marks a dev
+                   fixture; the lifecycle state shows only when the repository is NOT running (an
+                   active one says so by listing its members). -->
+              <span class="repository-card-badges">
+                <span class="repository-state-badge is-mock" data-slot="fixture-badge" hidden>mock</span>
+                <span class="repository-state-badge" data-slot="lifecycle-state" hidden></span>
+              </span>
               <span class="resource-concern-badge" data-slot="resource-concern" hidden></span>
-              <!-- Only present when the repository is NOT running. An active repository says so by
-                   listing its members, so a matching "running" badge would label the default. -->
-              <span class="repository-state-badge" data-slot="lifecycle-state" hidden></span>
             </div>
           </div>
           <!-- Repository-scoped actions only. Pin and hide describe the whole repository,
@@ -568,61 +566,111 @@
         <div class="repository-roots" data-slot="roots"></div>
       </article>
     </template>
-    <!-- One row per checkout, persistently listed (branch/port/entrypoint always visible) with its
-         OWN expand/collapse for its member list — one worktree's members open does not require or
-         affect any other worktree's. The main row always renders (no git-row/members/entrypoint)
-         even with no active listener, so canonical repository identity never appears to depend on
-         which root happens to be running. -->
+    <!-- One row per checkout, persistently listed with its OWN member list — one worktree's members
+         open does not require or affect any other worktree's. The main row always renders, even
+         with nothing running, so canonical repository identity never appears to depend on which
+         root happens to be running.
+
+         Two columns: identity (branch, copy, drift) on the left and actions (promoted link, Links,
+         member toggle) on the right, so every checkout's app link sits in the same place. A plain
+         <div> rather than <details>: the member toggle is a real button, and a button inside a
+         <summary> is interactive content nested in interactive content. See
+         docs/plans/active/developer-runtime-repository-row-layout.md. -->
     <template id="tpl-repository-root">
-      <details class="repository-root">
-        <summary class="repository-root-summary">
-          <div class="repository-root-head">
-            <!-- Branch name and this root's own port share one line — the two facts that actually
-                 distinguish a checkout, without also spelling out the worktree's directory name
-                 (redundant with the branch in the common case: one worktree per branch). -->
-            <div class="card-git-row" data-slot="git-row"></div>
-            <!-- This root's own entrypoint, port-only (":4322", not the full "127.0.0.1:4322") — the
-                 host is already implied (every listener here is loopback) and repeating it on every
-                 row was noise the branch/port pair didn't need. -->
-            <a class="repository-entrypoint" data-slot="root-entrypoint" target="_blank" rel="noreferrer" hidden></a>
-            <!-- Git detail for THIS checkout. Branch, commit, working tree, drift and fetch age are
-                 all per-worktree facts, so they annotate the worktree row rather than the
-                 repository header above (which shows only what every checkout shares). Revealed by
-                 buildRootSection once this root has git to report. -->
-            <span class="info-wrap" data-slot="root-info" data-tip-html="template" hidden>
-              <portal-info-icon aria-label="Show worktree details"></portal-info-icon>
-              <template>
-                <span class="info-tooltip-content">
-                  <span class="info-tooltip-group">Worktree</span>
-                  <span data-slot="root-path-detail" hidden
-                    ><strong>Path</strong><span data-slot="root-path-text"></span
-                  ></span>
-                  <span><strong>Members</strong><span data-slot="root-members-detail"></span></span>
-                  <span class="info-tooltip-group">Git</span>
-                  <span data-slot="git-detail" hidden
-                    ><strong>Tracking</strong><span data-slot="git-detail-text"></span
-                  ></span>
-                  <span data-slot="git-commit-detail" hidden
-                    ><strong>Commit</strong><span data-slot="git-commit-text"></span
-                  ></span>
-                  <span data-slot="git-status-detail" hidden
-                    ><strong>Working tree</strong><span data-slot="git-status-text"></span
-                  ></span>
-                  <span data-slot="git-drift-detail" hidden
-                    ><strong>Drift</strong><span data-slot="git-drift-text"></span
-                  ></span>
-                  <span data-slot="git-fetch-detail" hidden
-                    ><strong>Fetched</strong><span data-slot="git-fetch-text"></span
-                  ></span>
-                </span>
-              </template>
-            </span>
-            <span class="repository-root-meta" data-slot="root-meta"></span>
-            <portal-icon name="chevron" size="sm" class="compose-project-chevron"></portal-icon>
+      <div class="repository-root">
+        <div class="repository-root-head">
+          <!-- Home for the main checkout, tree for a linked worktree. One element, so a later
+               status tint (developer-runtime-remote-branch-status) recolours it as a whole. -->
+          <portal-icon class="repository-root-glyph" data-slot="root-glyph" name="home" size="md"></portal-icon>
+          <div class="repository-root-identity">
+            <div class="repository-root-identity-line">
+              <!-- Branch label and info icon are ONE tooltip trigger: hovering either part (or
+                   focusing the icon) opens this checkout's details. Revealed by buildRootSection
+                   once the checkout has git or a path to report. -->
+              <span class="info-wrap repository-root-trigger" data-slot="root-info" data-tip-html="template" data-tip-placement="panel" hidden>
+                <span class="repository-root-branch" data-slot="root-branch"></span>
+                <portal-info-icon aria-label="Show checkout details"></portal-info-icon>
+                <template>
+                  <span class="info-tooltip-content">
+                    <!-- Untruncated identity first: the row caps the branch name, the tooltip never
+                         does. -->
+                    <!-- Two identities, each marked by what it is: the branch (the git-branch glyph
+                         checkout rows used to lead with) and the checkout directory (the row's own
+                         home or tree glyph). -->
+                    <span class="info-tooltip-heading"
+                      ><portal-icon name="git-branch" size="sm"></portal-icon
+                      ><span data-slot="root-heading"></span
+                    ></span>
+                    <span class="info-tooltip-subheading" data-slot="root-subheading-line" hidden
+                      ><portal-icon data-slot="root-subheading-icon" name="home" size="sm"></portal-icon
+                      ><span data-slot="root-subheading"></span
+                    ></span>
+                    <span data-slot="root-state-detail" hidden
+                      ><strong>State</strong><span data-slot="root-state-text"></span
+                    ></span>
+                    <!-- A row that folds in its only member inserts that member's own facts
+                         (health, process, resources) as an "App" group just before this one. -->
+                    <span class="info-tooltip-group" data-slot="root-checkout-group">Checkout</span>
+                    <span data-slot="root-path-detail" hidden
+                      ><strong>Path</strong><span data-slot="root-path-text"></span
+                    ></span>
+                    <span><strong>Members</strong><span data-slot="root-members-detail"></span></span>
+                    <span class="info-tooltip-group">Git</span>
+                    <span data-slot="git-detail" hidden
+                      ><strong>Tracking</strong><span data-slot="git-detail-text"></span
+                    ></span>
+                    <span data-slot="git-commit-detail" hidden
+                      ><strong>Commit</strong><span data-slot="git-commit-text"></span
+                    ></span>
+                    <span data-slot="git-status-detail" hidden
+                      ><strong>Working tree</strong><span data-slot="git-status-text"></span
+                    ></span>
+                    <span data-slot="git-drift-detail" hidden
+                      ><strong>Drift</strong><span data-slot="git-drift-text"></span
+                    ></span>
+                    <span data-slot="git-fetch-detail" hidden
+                      ><strong>Fetched</strong><span data-slot="git-fetch-text"></span
+                    ></span>
+                  </span>
+                </template>
+              </span>
+              <!-- Copy branch / copy worktree path — mounted by mountCopyDropdown, outside the
+                   tooltip trigger so copying never opens the tooltip. -->
+              <span class="repository-root-copy" data-slot="root-copy"></span>
+            </div>
+            <!-- Wraps under the branch rather than pushing the actions column over. -->
+            <span class="git-drift" data-slot="git-drift" hidden></span>
           </div>
-        </summary>
-        <div class="repository-members" data-slot="members"></div>
-      </details>
+          <!-- checkout-actions / checkout-links-cell / checkout-control-cell are shared with member
+               cards (instanceCard), so a row's port and its members' ports line up. -->
+          <div class="repository-root-actions checkout-actions">
+            <!-- Only when the row has folded in its only member, and only when something is wrong:
+                 silence is the healthy state. -->
+            <span class="port-health-badge" data-slot="root-health" hidden></span>
+            <span class="resource-concern-badge" data-slot="resource-concern" hidden></span>
+            <!-- The promoted link, port-only (":4322"): every listener here is loopback, so the
+                 host is implied. The full origin stays on href and title. -->
+            <a class="repository-entrypoint" data-slot="root-entrypoint" target="_blank" rel="noreferrer" hidden></a>
+            <!-- The promoted member's Links dropdown, mounted by app.js. A fixed-width cell, present
+                 even when empty, so the port before it keeps its column. -->
+            <span class="checkout-links-cell"><span data-slot="root-links" hidden></span></span>
+            <!-- The last cell is the same width on every row — present even when empty — so the
+                 port and Links columns before it line up down the card. It holds one of two
+                 controls, never both: -->
+            <span class="repository-root-control checkout-control-cell">
+              <!-- A row with exactly one member, which is the promoted app, shows that member's ⋮
+                   menu instead of a toggle opening onto a card that would repeat the row. -->
+              <span class="repository-root-menu" data-slot="root-menu" hidden></span>
+              <!-- Every other row with members: a bare caret. Its accessible name and title say
+                   what it opens ("Show 2 members", "Show 4 containers", "Show 1 stopped"). -->
+              <button type="button" class="repository-root-toggle" data-action="toggle-members" aria-expanded="false" hidden>
+                <portal-icon name="chevron" size="md" class="compose-project-chevron"></portal-icon>
+              </button>
+            </span>
+          </div>
+        </div>
+        <div class="repository-members" data-slot="members" hidden></div>
+      </div>
     </template>
     <!-- One row per container (not per published port) — a single container publishing several
          host ports lists them as nested port rows underneath, instead of repeating the container.

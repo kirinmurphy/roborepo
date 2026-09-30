@@ -19,6 +19,7 @@ import {
   resolveProjectIdentity,
   resolveProjectAlias,
   settingsPathFor,
+  toInstance,
   updateSettings,
   validateSettings,
 } from "../../modules/developer-runtime/index.mjs";
@@ -463,6 +464,11 @@ try {
       res.end();
       return;
     }
+    if (req.url === "/api") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end("{\"ok\":true}");
+      return;
+    }
     if (req.url === "/huge") {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(`${"x".repeat(70 * 1024)}<title>Too Late</title>`);
@@ -479,6 +485,19 @@ try {
     assert.equal(probe.status, 200);
     assert.equal(probe.title, "Local App");
     assert.equal(probe.favicon, `http://127.0.0.1:${port}/favicon.ico`);
+    // The content type separates an untitled HTML app shell from an API, so the probe keeps it.
+    assert.equal(probe.contentType, "text/html");
+    const api = await probeHttpCandidate({ origin: `http://127.0.0.1:${port}/api` });
+    assert.equal(api.title, null);
+    assert.equal(api.contentType, "application/json; charset=utf-8");
+    const shaped = toInstance({
+      listener: { pid: 1, address: "127.0.0.1", port, bindScope: "loopback", command: "node" },
+      identity: { identity: "path:/tmp/app", identityKind: "path", confidence: "high", projectRoot: "/tmp/app" },
+      candidates: [{ origin: `http://127.0.0.1:${port}/api` }],
+      probe: api,
+      cwd: "/tmp/app",
+    });
+    assert.equal(shaped.contentType, "application/json; charset=utf-8");
     const redirect = await probeHttpCandidate({ origin: `http://127.0.0.1:${port}/external` });
     assert.equal(redirect.redirectExternal, true);
     const sameOriginRedirect = await probeHttpCandidate({ origin: `http://127.0.0.1:${port}/same` });

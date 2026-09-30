@@ -136,7 +136,7 @@ new rung on that ladder.
 
 Git is per checkout: each repository card has one row per checkout (main, then each linked
 worktree), and each row shows its own branch. The Repository Rows plan (`zdhivxtb`) removes the
-branch icon from those rows and gives each row an icon column instead: a trunk glyph for the main
+branch icon from those rows and gives each row an icon column instead: a home glyph for the main
 checkout and a tree glyph for each linked worktree. CI status tints that glyph:
 
 - Each row shows the verdict for its own branch. How several checkouts' branches share the
@@ -145,7 +145,7 @@ checkout and a tree glyph for each linked worktree. CI status tints that glyph:
   feature at all".
 - Color is never the only signal. The checkout tooltip gains a CI line stating the verdict in
   words, and the glyph's accessible name includes it.
-- Base-branch status, if kept, tints the main checkout's trunk glyph when the main checkout is on the
+- Base-branch status, if kept, tints the main checkout's home glyph when the main checkout is on the
   base branch; otherwise it is a tooltip line only.
 
 Standalone cards (shared-service Compose cards and unmatched instance cards) keep the shared git row

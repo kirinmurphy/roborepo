@@ -10,7 +10,7 @@ const LOCAL = "local:616846d49a69fc81";
 const LOCAL_PATH = "path:/tmp/thing";
 
 // Discovery-shaped instance, as buildDeveloperRuntimeSnapshot expects it (pre-snapshot, so no opaqueKey).
-function instance({ pid, port, command, identity, repositoryId, docker = null, status = null, title = null, cpu = null, rootId = null, git = null }) {
+function instance({ pid, port, command, identity, repositoryId, docker = null, status = null, title = null, contentType = null, tls = null, cpu = null, rootId = null, git = null }) {
   return {
     key: `${pid}:127.0.0.1:${port}`,
     associationKey: `a${pid}${port}`,
@@ -21,8 +21,9 @@ function instance({ pid, port, command, identity, repositoryId, docker = null, s
     status,
     latencyMs: null,
     protocol: "http",
-    tls: null,
+    tls,
     title,
+    contentType,
     health: null,
     docker,
     processMetrics: { cpuPercent: cpu, cpuPercentOfHost: cpu, residentMemoryKb: 1000 },
@@ -453,5 +454,128 @@ assert.equal(doubled.repositories[0].lifecycle.state, "active", "the running vie
 // Absent the field entirely, the snapshot is exactly what it was before Phase 3 — persistence being
 // unavailable costs the idle repositories and nothing else.
 assert.equal(snapshot.repositories.every((r) => r.lifecycle.state === "active"), true);
+
+// --- Fixtures and display order (repository-row-layout) ---
+// Dev fixtures (local/dev-fixtures) use deliberately unfetchable github.com/example remotes. They are
+// flagged, and the list reads: active projects, then fixtures (running or not), then idle projects.
+const FIXTURE = "git:github.com/example/multi-member-fixture";
+const IDLE_FIXTURE = "git:github.com/example/shared-stack-fixture";
+const ordered = buildDeveloperRuntimeSnapshot({
+  discovery: {
+    capabilities: { discovery: "supported" },
+    warnings: [],
+    composeProjectGit: new Map(),
+    instances: [
+      instance({ pid: 850, port: 48101, command: "node", identity: FIXTURE, repositoryId: FIXTURE, status: 200, title: "Fixture" }),
+      instance({ pid: 851, port: 8300, command: "node", identity: MENUGOATS, repositoryId: MENUGOATS, status: 200, title: "Real" }),
+    ],
+  },
+  settings: defaultSettings(),
+  now: new Date("2026-08-02T00:00:00.000Z"),
+  persistedRepositories: [
+    { repositoryId: IDLE, name: "idle-one", lifecycle: { state: "idle", reason: null }, lastSeenAt: "2026-08-01T00:00:00.000Z", checkouts: [] },
+    { repositoryId: IDLE_FIXTURE, name: "shared-stack-fixture", lifecycle: { state: "idle", reason: null }, lastSeenAt: "2026-08-01T00:00:00.000Z", checkouts: [] },
+  ],
+});
+assert.deepEqual(ordered.repositories.map((r) => r.repositoryId), [MENUGOATS, FIXTURE, IDLE_FIXTURE, IDLE]);
+assert.deepEqual(ordered.repositories.map((r) => r.fixture), [false, true, true, false]);
+
+// --- Role ranking and the promoted link (repository-row-layout) ---
+// Each scenario builds one checkout of MENUGOATS and reads back that checkout's root, so the
+// assertions are about which member a row would promote rather than about snapshot plumbing.
+const RANK_ROOT = "root-rank";
+function rankedRoot(instances, { composeProjectGit = new Map() } = {}) {
+  const built = buildDeveloperRuntimeSnapshot({
+    discovery: { capabilities: { discovery: "supported" }, warnings: [], composeProjectGit, instances },
+    settings: defaultSettings(),
+    now: new Date("2026-08-02T00:00:00.000Z"),
+  });
+  return built.repositories.find((entry) => entry.repositoryId === MENUGOATS).roots.find((root) => root.rootId === RANK_ROOT);
+}
+const rankListener = (fields) => instance({ command: "node", identity: MENUGOATS, repositoryId: MENUGOATS, status: 200, rootId: RANK_ROOT, ...fields });
+
+// A Python app and a Node Storybook both answer with a title. Sorting by process command put `node`
+// first, so Storybook took the slot; the tooling preset has to demote it whatever the names say.
+const storybook = rankedRoot([
+  rankListener({ pid: 900, port: 5000, command: "Python", title: "Recipes" }),
+  rankListener({ pid: 901, port: 6006, command: "node", title: "Storybook" }),
+]);
+assert.equal(storybook.primaryEntrypoint?.port, 5000);
+assert.equal(storybook.primaryEntrypoint.kind, "listener");
+assert.equal(storybook.members.find((member) => member.port === 6006).role, "tooling");
+assert.equal(storybook.members[0].port, 5000, "the app sorts ahead of tooling");
+
+// Nothing user-facing is running, so the row promotes nothing rather than an API.
+const apiOnly = rankedRoot([rankListener({ pid: 902, port: 5001, contentType: "application/json" })]);
+assert.equal(apiOnly.members[0].role, "api");
+assert.equal(apiOnly.primaryEntrypoint, null);
+
+// Compose containers live in composeGroups, not members, so a Compose-only checkout previously had
+// nothing to promote even when its `web` service was the app.
+const composeGit = new Map([["menugoats", {
+  git: null,
+  repositoryId: MENUGOATS,
+  resolvedFrom: "auto",
+  rootId: RANK_ROOT,
+  ownership: "owned",
+  ownershipEvidence: { kind: "bind-mount", checkoutPaths: ["/tmp/menugoats"] },
+}]]);
+const composeContainer = ({ pid, port, service, name = `menugoats-${service}-1`, status = null, title = null, contentType = null }) => instance({
+  pid,
+  port,
+  command: "com.docker.backend",
+  identity: `process:/tmp/c:${pid}`,
+  repositoryId: null,
+  status,
+  title,
+  contentType,
+  docker: { containerId: `c${pid}`, name, composeService: service, composeProject: "menugoats", image: service, state: "running" },
+});
+const composeOnly = rankedRoot([
+  composeContainer({ pid: 910, port: 8080, service: "web", status: 200, title: "Shop", contentType: "text/html" }),
+  composeContainer({ pid: 911, port: 5432, service: "postgres" }),
+  composeContainer({ pid: 912, port: 6379, service: "redis" }),
+  // Supabase CLI sets no Compose service label: only the container name says what this is.
+  composeContainer({ pid: 913, port: 54321, service: null, name: "supabase_kong_menugoats", status: 404, contentType: "application/json" }),
+], { composeProjectGit: composeGit });
+assert.equal(composeOnly.members.length, 0);
+assert.equal(composeOnly.primaryEntrypoint?.port, 8080);
+assert.equal(composeOnly.primaryEntrypoint.kind, "container");
+assert.ok(composeOnly.primaryEntrypoint.opaqueKey, "a promoted container carries the key the Links panel fetches by");
+const containerRole = (port) => composeOnly.composeGroups[0].containers
+  .flatMap((container) => container.instances)
+  .find((item) => item.bind.port === port).role;
+assert.equal(containerRole(8080), "app");
+assert.equal(containerRole(5432), "service");
+assert.equal(containerRole(6379), "service");
+assert.equal(containerRole(54321), "service");
+
+// With no name or title hint and neither on a common app port, the lower port wins.
+const noHints = rankedRoot([
+  rankListener({ pid: 920, port: 7002, title: "Beta" }),
+  rankListener({ pid: 921, port: 7001, title: "Alpha" }),
+]);
+assert.equal(noHints.primaryEntrypoint.port, 7001);
+
+// A title naming the repository outranks a merely conventional port.
+const namedTitle = rankedRoot([
+  rankListener({ pid: 930, port: 3000, title: "Dashboard" }),
+  rankListener({ pid: 931, port: 7005, title: "Menugoats admin" }),
+]);
+assert.equal(namedTitle.primaryEntrypoint.port, 7005);
+
+// An app shell that sets its title from JavaScript still answers 2xx text/html: it counts as an app,
+// but only takes the slot when nothing titled is running.
+const shellOnly = rankedRoot([rankListener({ pid: 940, port: 7010, contentType: "text/html; charset=utf-8" })]);
+assert.equal(shellOnly.members[0].role, "app");
+assert.equal(shellOnly.primaryEntrypoint.port, 7010);
+const shellBesideTitled = rankedRoot([
+  rankListener({ pid: 941, port: 7010, contentType: "text/html; charset=utf-8" }),
+  rankListener({ pid: 942, port: 7011, title: "Dash" }),
+]);
+assert.equal(shellBesideTitled.primaryEntrypoint.port, 7011);
+const htmlNotFound = rankedRoot([rankListener({ pid: 943, port: 7012, status: 404, contentType: "text/html" })]);
+assert.equal(htmlNotFound.members[0].role, "api");
+assert.equal(htmlNotFound.primaryEntrypoint, null);
 
 console.log("developer-runtime repository merge check passed");

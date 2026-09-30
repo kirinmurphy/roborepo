@@ -71,6 +71,12 @@ export async function buildRoutesDropdown(project, instance, {
 
   const { pages, apis } = mergeSavedLinks(discoveredPages, discoveredApis, userLinks);
 
+  // A discovered-only panel (a promoted Compose container, which cannot hold saved links) has no Add
+  // to fall back on, so an empty discovery would otherwise open onto a blank panel.
+  if (!pages.length && !apis.length && !onAddLink) {
+    return message("No pages or API routes discovered for this app.");
+  }
+
   // The panel now has a reason to exist even with nothing discovered: it is where links are added.
   const list = document.createElement("div");
   list.className = "routes-dropdown-list";
