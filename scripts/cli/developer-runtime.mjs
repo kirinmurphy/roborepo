@@ -178,7 +178,7 @@ export function updateDeveloperRuntimeSettings(input) {
 
 // Bring a hidden repository back, or hide one by hand. Same response contract as
 // updateDeveloperRuntimeSettings so the portal's mutate-then-apply path is identical, but the write lands
-// in the repository registry rather than in Developer-runtime's settings.
+// in the repository registry rather than in Runtime's settings.
 //
 // No revision check: repository visibility is a single boolean per record with no cross-field
 // invariant, so a concurrent write can only ever agree or be the user's own later decision. The
@@ -316,7 +316,7 @@ export function printDeveloperRuntimeTable(snapshot) {
 
 // Register repositories owning running processes into the shared registry (localhost tracking only
 // — NEVER enables Plans, per the discovery/enrollment separation). Best-effort: a registry failure
-// must never break Developer-runtime discovery, so each write is guarded and errors are swallowed.
+// must never break Runtime discovery, so each write is guarded and errors are swallowed.
 function recordDiscoveredRepositories(instances, composeProjectGit = null) {
   const seen = new Set();
   // A Compose stack resolves a repository and a checkout just as a listener does — from a manual
@@ -367,7 +367,7 @@ function recordDiscoveredRepositories(instances, composeProjectGit = null) {
         stateRoot,
       });
     } catch {
-      // Registry unavailable/corrupt — Developer-runtime keeps working; the failure surfaces elsewhere
+      // Registry unavailable/corrupt — Runtime keeps working; the failure surfaces elsewhere
       // (Phase 4 reports registry errors as a structured health finding).
     }
   }

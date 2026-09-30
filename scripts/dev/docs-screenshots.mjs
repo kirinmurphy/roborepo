@@ -11,7 +11,7 @@
 //     set, and telemetry enabled.
 //   - Tokens: the repo's own mock spool (portal/tokens2/mock-spool.jsonl).
 //   - Plans: this repository's docs/plans (public content).
-//   - Developer-runtime: two demo apps in throwaway git repos with example remotes (acme/*). Discovery
+//   - Runtime: two demo apps in throwaway git repos with example remotes (acme/*). Discovery
 //     scans the real machine's listeners, so the page's snapshot is filtered to the demo apps
 //     before it renders.
 // Each shot is one page section (an element screenshot), not a full page.
@@ -92,7 +92,7 @@ function setUpHome() {
   fs.copyFileSync(path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl"), path.join(spoolDir, "claude.jsonl"));
 }
 
-// ── Demo apps for Developer-runtime ──
+// ── Demo apps for Runtime ──
 function git(cwd, ...gitArgs) {
   spawnSync("git", ["-c", "user.name=Demo", "-c", "user.email=demo@example.com", ...gitArgs], { cwd });
 }
@@ -122,7 +122,7 @@ http.createServer((req, res) => {
 
 const DEMO_PREFIX = "git:github.com/acme/";
 
-// Keeps only the demo apps in a Developer-runtime snapshot and replaces the disposable HOME path.
+// Keeps only the demo apps in a Runtime snapshot and replaces the disposable HOME path.
 function filterDeveloperRuntime(snapshot) {
   const demo = (id) => typeof id === "string" && id.startsWith(DEMO_PREFIX);
   const filtered = {
@@ -267,7 +267,7 @@ await context.route("**/api/developer-runtime", async (route) => {
 const page = await context.newPage();
 page.setDefaultTimeout(20_000);
 
-// Opens a page and waits for it to settle. Developer-runtime discovers listeners asynchronously, so its
+// Opens a page and waits for it to settle. Runtime discovers listeners asynchronously, so its
 // page is refreshed until the demo apps appear.
 async function openPage(pagePath) {
   log(`open ${pagePath}`);

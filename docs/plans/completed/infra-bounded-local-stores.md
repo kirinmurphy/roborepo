@@ -38,7 +38,7 @@ Retention only makes sense once it is clear what each store holds and how long t
 | Telemetry markers | "What changed, and when?" — user-authored annotations that give telemetry its before/after |
 | Telemetry snapshots | "What was the configuration at that moment?" — content-addressed, referenced by markers |
 | Telemetry experiments | "Did that change help?" — live records pairing a start and end marker |
-| Developer-runtime history | "Why did this app go unhealthy on Tuesday?" — transition events only, not a registry |
+| Runtime history | "Why did this app go unhealthy on Tuesday?" — transition events only, not a registry |
 | Dense bash log | "Which command patterns are worth an allowlist entry or a script?" — a corpus to mine |
 | Usage snapshots | "What is my token headroom right now?" — one current reading per harness |
 
@@ -91,7 +91,7 @@ Verified at commit `ea84711`.
 
 | Store | Path | Shape | Bound today |
 | --- | --- | --- | --- |
-| Developer-runtime history | `<stateRoot>/developer-runtime/history.jsonl` | Append-only JSONL | 14 days, then 2MB |
+| Runtime history | `<stateRoot>/developer-runtime/history.jsonl` | Append-only JSONL | 14 days, then 2MB |
 | Telemetry spool | `<stateRoot>/telemetry/spool/<harness>.jsonl` | Append-only JSONL | 25MB per harness |
 | Telemetry markers | `<stateRoot>/telemetry/events/markers.jsonl` | Append-only JSONL | none |
 | Telemetry snapshots | `<stateRoot>/telemetry/snapshots/<id>.json` | One file per id, immutable | none |
@@ -229,7 +229,7 @@ magnitude, not a population.
 
 | Store | Measured now | maxAgeDays | maxBytes | Basis |
 | --- | --- | --- | --- | --- |
-| Developer-runtime history | 456KB / 1,589 events / 14 days | 14 (user-set, 1–365) | 2MB | unchanged; steady state sits well under cap |
+| Runtime history | 456KB / 1,589 events / 14 days | 14 (user-set, 1–365) | 2MB | unchanged; steady state sits well under cap |
 | Telemetry spool (claude) | 17.6MB | none | 25MB | unchanged; drain buffer, age is meaningless |
 | Telemetry spool (codex) | 21.4MB | none | 25MB | unchanged |
 | Telemetry markers | 671B / 3 records | none | 5MB | ~224B/record, user-authored; cap is a runaway guard only |

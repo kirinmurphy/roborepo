@@ -144,7 +144,7 @@ function removeFiles(files) {
   return removed;
 }
 
-// Developer-runtime's window is a user preference, so the displayed and applied bound must be the live
+// Runtime's window is a user preference, so the displayed and applied bound must be the live
 // value rather than the registry's default. Every other store's policy is its literal.
 function policyFor(store) {
   if (!store.preferenceKey) return store.policy;

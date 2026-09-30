@@ -12,16 +12,16 @@ reviewed_commit:
 
 ## Purpose
 
-Add a dedicated portal homepage at `/` that summarizes current work and actionable problems without replacing the full Config, Developer-runtime, Plans, or Telemetry pages.
+Add a dedicated portal homepage at `/` that summarizes current work and actionable problems without replacing the full Config, Runtime, Plans, or Telemetry pages.
 
-Keep `/runtime` as its own management page. The homepage receives a compact active-app view rather than inheriting Developer-runtime's editing, alias, hidden-item, inactive-project, and settings controls.
+Keep `/runtime` as its own management page. The homepage receives a compact active-app view rather than inheriting Runtime's editing, alias, hidden-item, inactive-project, and settings controls.
 
 Repository identity plumbing is specified separately in `../completed/canonical-repository-identity-plan-v2.md` (delivered). This first homepage iteration may consume canonical repository IDs where available, but it must not introduce repository-centric cards or broader cross-domain UI yet.
 
 ## Confirmed Product Decisions
 
 - `/` becomes the portal homepage.
-- `/runtime` remains the full Developer-runtime page.
+- `/runtime` remains the full Runtime page.
 - Recent plans are determined from timestamps and use a trailing seven-day window.
 - All warnings appear in one widget, divided into domain sections with one shared warning theme.
 - The homepage uses the same cumulative safe-token threshold already represented by the telemetry chart.
@@ -81,13 +81,13 @@ Each section remains visible when empty and displays a concise healthy state. A 
 
 ### 2. Active Apps Widget
 
-- Reuse the Developer-runtime snapshot rather than running separate discovery.
+- Reuse the Runtime snapshot rather than running separate discovery.
 - Show active, non-hidden projects and their active HTTP apps.
 - Include project/app name, origin, status, and saved quick links when present.
 - Link the widget header to `/runtime`.
-- Open apps using their current Developer-runtime origin.
+- Open apps using their current Runtime origin.
 - Exclude inactive projects, unmatched management details, alias controls, and settings from the homepage.
-- Preserve Developer-runtime's unsupported-platform and refresh-failure states.
+- Preserve Runtime's unsupported-platform and refresh-failure states.
 
 ### 3. Plans Summary Widget
 
@@ -228,7 +228,7 @@ Use `portal/shared/base.css`, shared chrome, theme variables, loading behavior, 
 Refresh behavior:
 
 - Poll the aggregate endpoint at a modest interval, such as 10 seconds.
-- Allow Developer-runtime's established cache/refresh policy to govern discovery freshness.
+- Allow Runtime's established cache/refresh policy to govern discovery freshness.
 - Do not trigger doctor on every poll.
 - Update only changed sections when practical, but correctness is more important than incremental DOM optimization in the first iteration.
 
@@ -237,10 +237,10 @@ Refresh behavior:
 During this work:
 
 - Adopt the shared repository identity resolver described in the companion plan.
-- Add `repositoryId` to eligible Developer-runtime, Plans, and Telemetry summaries.
+- Add `repositoryId` to eligible Runtime, Plans, and Telemetry summaries.
 - Preserve global and unresolved items.
 - Do not group the homepage by repository.
-- Do not add chat/plan counts to Developer-runtime cards yet.
+- Do not add chat/plan counts to Runtime cards yet.
 - Do not hide records that cannot be associated.
 
 ## Implementation Sequence
@@ -248,7 +248,7 @@ During this work:
 1. Add shared portal policy and refactor the telemetry cumulative-concern calculation.
 2. Add canonical repository identity plumbing required by the companion plan.
 3. Extract structured doctor checks and implement caching.
-4. Add server-side homepage selectors for warnings, Developer-runtime, and Plans.
+4. Add server-side homepage selectors for warnings, Runtime, and Plans.
 5. Add `GET /api/home` and doctor refresh handling.
 6. Register `/`, update default portal opening behavior, and add navigation.
 7. Build the homepage widgets and states.
@@ -266,13 +266,13 @@ Add focused tests for:
 - Config resource-warning reuse.
 - Doctor cache freshness, refresh failure, and concurrent refresh deduplication.
 - Recently changed plan timestamp precedence.
-- Active-app filtering and partial Developer-runtime failures.
+- Active-app filtering and partial Runtime failures.
 - Partial homepage responses when individual domains fail.
 - `/` routing, navigation state, and default open behavior.
 - Origin/token protection for doctor refresh.
 - No absolute paths or sensitive telemetry content in the homepage payload.
 
-Run existing targeted suites for Telemetry, Developer-runtime, Plans, Config/context cost, doctor, and the portal, followed by `npm test`.
+Run existing targeted suites for Telemetry, Runtime, Plans, Config/context cost, doctor, and the portal, followed by `npm test`.
 
 ## Acceptance Criteria
 
@@ -290,7 +290,7 @@ Run existing targeted suites for Telemetry, Developer-runtime, Plans, Config/con
 ## Deferred Work
 
 - Repository cards that combine localhost apps, chats, plans, config warnings, and health.
-- Identity-management UI beyond Developer-runtime's current explicit alias workflow.
+- Identity-management UI beyond Runtime's current explicit alias workflow.
 - User-editable portal policy thresholds.
 - Full verify execution or background repair from the homepage.
 - Notifications outside the portal.

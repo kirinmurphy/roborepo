@@ -224,7 +224,7 @@ try {
   assert.equal(enrollUncovered.covered, false);
   assert.equal(enrollUncovered.suggestedSource, path.resolve(child), "narrow default is the exact repo root, never a parent");
 
-  // ---- Developer-runtime alias import: idempotent, canonical mapping, skips non-repo targets ----
+  // ---- Runtime alias import: idempotent, canonical mapping, skips non-repo targets ----
   assert.equal(canonicalizeDeveloperRuntimeIdentity("git:github.com/kirinmurphy/roborepo").id, "git:github.com/kirinmurphy/roborepo");
   assert.equal(canonicalizeDeveloperRuntimeIdentity("path:/tmp/robo").kind, "local");
   assert.ok(!canonicalizeDeveloperRuntimeIdentity("path:/tmp/robo").id.includes("/tmp"), "path import must not leak path");

@@ -196,7 +196,7 @@ function repoMetadata(cwd) {
   // repository_id — the correlation the legacy raw remote_hash could never provide. repository_id
   // is credential- and path-free (git: id, or an opaque local: id derived from the root), so it is
   // safe to store in the clear. Legacy git_root_hash/remote_hash stay for the migration window.
-  // The local: id realpaths the root so it agrees with resolveProjectIdentity (Developer-runtime/Plans)
+  // The local: id realpaths the root so it agrees with resolveProjectIdentity (Runtime/Plans)
   // for symlinked repos. The legacy git_root_hash below stays on the RAW toplevel for back-compat.
   const normalizedRemote = remote ? normalizeGitRemote(remote) : null;
   const repositoryId = normalizedRemote || (root ? localRepositoryIdForRoot(root) : null);

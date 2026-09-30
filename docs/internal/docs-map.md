@@ -58,7 +58,7 @@ Each user reference below has a maintainer companion for module maps, routes, an
 | Portal pages | [Portal Architecture](portal-architecture.md) |
 | [Plans Portal Reference](../user/reference/plans-portal.md) | [Plans Portal Internals](plans-portal-internals.md) |
 | [Config Control Panel](../user/reference/config-control-panel.md) | [Config Control Panel Internals](config-panel-internals.md) |
-| [Developer-runtime](../user/reference/runtime.md) | [Developer-runtime Internals](developer-runtime-internals.md) |
+| [Runtime](../user/reference/runtime.md) | [Runtime Internals](developer-runtime-internals.md) |
 | [Config Collision Handling](../user/reference/config-collision-handling.md) | [Config Collision Internals](config-collision-internals.md) |
 | [Telemetry](../user/reference/telemetry.md) | [Telemetry Internals](telemetry-internals.md) |
 | [Claude Hooks](../user/reference/claude-hooks.md), [Codex Hooks](../user/reference/codex-hooks.md) | [Hooks Internals](hooks-internals.md) |

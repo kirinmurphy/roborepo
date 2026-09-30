@@ -21,12 +21,12 @@ This is a deliberately small precursor to `docs/plans/backlog/portal-repository-
 
 - Make `/` a stable Home page instead of loading Agents.
 - Welcome a new user with a short introduction to RoboRepo.
-- Provide four obvious entry points: Agents, Plans, Tokens, and Developer-runtime.
+- Provide four obvious entry points: Agents, Plans, Tokens, and Runtime.
 - Give each entry point an icon, title, and no more than two lines of explanatory copy.
 - Make the entry points visually prominent without inventing one-off page colors.
 - Establish a reusable highlight treatment based on the portal's shared theme tokens.
-- Update global navigation to: Home, Agents, Plans, Tokens, Developer-runtime.
-- Keep the page useful when no harnesses, plans, telemetry, or Developer-runtime processes exist.
+- Update global navigation to: Home, Agents, Plans, Tokens, Runtime.
+- Keep the page useful when no harnesses, plans, telemetry, or Runtime processes exist.
 
 ## Non-goals
 
@@ -35,7 +35,7 @@ This is a deliberately small precursor to `docs/plans/backlog/portal-repository-
 - Attention summaries, health warnings, or cross-domain aggregation.
 - Harness installation from Home.
 - Dynamic onboarding progress or first-run state tracking.
-- Changing the behavior of the existing Agents, Plans, Tokens, or Developer-runtime pages.
+- Changing the behavior of the existing Agents, Plans, Tokens, or Runtime pages.
 - Adding a new UI framework.
 
 ## Current State
@@ -48,7 +48,7 @@ The portal page manifest in `scripts/cli/portal-server.mjs` currently exposes:
 | `/config` | Agents alias |
 | `/plans` | Plans |
 | `/tokens` | Tokens |
-| `/runtime` | Developer-runtime |
+| `/runtime` | Runtime |
 
 `portal/shared/theme.js` builds global navigation from that manifest and contains special handling that treats `/` and `/config` as the same Agents page.
 
@@ -73,7 +73,7 @@ Change the canonical page map to:
 | 2 | `/config` | Agents |
 | 3 | `/plans` | Plans |
 | 4 | `/tokens` | Tokens |
-| 5 | `/runtime` | Developer-runtime |
+| 5 | `/runtime` | Runtime |
 
 `/` becomes a dedicated `home` page and remains the default portal destination.
 
@@ -92,7 +92,7 @@ Welcome to RoboRepo
 Manage your local agent configuration, plans, token activity, and development servers from one portal.
 
 [ Agents ]      [ Plans ]
-[ Tokens ]      [ Developer-runtime ]
+[ Tokens ]      [ Runtime ]
 ```
 
 The welcome description should remain no more than two visual lines at the normal desktop content width.
@@ -104,7 +104,7 @@ Each destination card contains:
 | Agents | Manage agent harness configuration, shared packages, rules, permissions, and related setup. |
 | Plans | View and manage implementation plans and their lifecycle. |
 | Tokens | Inspect agent-session token usage and telemetry. |
-| Developer-runtime | See local development servers and developer-runtime activity discovered by RoboRepo. |
+| Runtime | See local development servers and developer-runtime activity discovered by RoboRepo. |
 
 Card descriptions should stay to one or two lines. The whole card should be a link so the four destinations read as primary navigation choices, not informational panels with small nested actions.
 
@@ -133,7 +133,7 @@ panel card
 
 If future portal work wants persistent section-specific colors, define semantic shared tokens in `portal/shared/base.css` first and reuse them globally. Do not introduce card-local hex values.
 
-Add any missing Home/Agents/Plans/Tokens/Developer-runtime glyphs to the existing `ICONS` registry in `portal/shared/icon.js`. Keep them monochrome, `currentColor`, and on the existing icon size scale. Do not add a separate icon library for this page.
+Add any missing Home/Agents/Plans/Tokens/Runtime glyphs to the existing `ICONS` registry in `portal/shared/icon.js`. Keep them monochrome, `currentColor`, and on the existing icon size scale. Do not add a separate icon library for this page.
 
 ### 4. Browser structure
 
@@ -169,7 +169,7 @@ When `portal-repository-home-and-detail.md` is implemented later:
 
 - [x] Add `{ path: "/", id: "home", title: "Home", dir: "home", default: true }` to `PAGES` in `scripts/cli/portal-server.mjs`.
 - [x] Change Agents to canonical `{ path: "/config", id: "config", title: "Agents", dir: "config" }`.
-- [x] Order `PAGES` as Home, Agents, Plans, Tokens, Developer-runtime so the generated global nav follows the requested order.
+- [x] Order `PAGES` as Home, Agents, Plans, Tokens, Runtime so the generated global nav follows the requested order.
 - [x] Remove the `/`/`/config` Agents alias special case from `PAGE_BY_PATH`.
 - [x] Remove the `/`/`/config` active-nav special case from `portal/shared/theme.js`; active state should match the canonical page path.
 - [x] Confirm `roborepo web` continues opening the default page and now lands on Home.
@@ -179,7 +179,7 @@ When `portal-repository-home-and-detail.md` is implemented later:
 - [x] Add `portal/home/index.html`.
 - [x] Add `portal/home/styles.css`.
 - [x] Add the short welcome heading and description.
-- [x] Add four full-card links for Agents, Plans, Tokens, and Developer-runtime.
+- [x] Add four full-card links for Agents, Plans, Tokens, and Runtime.
 - [x] Keep each card description to no more than two lines in the intended desktop layout.
 - [x] Use semantic HTML and keyboard-visible focus states.
 
@@ -216,7 +216,7 @@ Manual browser validation:
 
 1. Run `roborepo web`.
 2. Confirm the browser opens `/`.
-3. Confirm the nav order is Home, Agents, Plans, Tokens, Developer-runtime.
+3. Confirm the nav order is Home, Agents, Plans, Tokens, Runtime.
 4. Confirm each Home card opens the expected route.
 5. Confirm `/config`, `/plans`, `/tokens`, and `/runtime` still load directly.
 6. Confirm Home remains complete and understandable on a machine with no installed harnesses.
@@ -237,9 +237,9 @@ The plan was completed against the merged main (`roborepo-homepage` → main via
 
 - `/` renders a dedicated Home page.
 - The first visible content welcomes the user and explains RoboRepo in no more than two lines.
-- Home presents exactly four prominent entry points: Agents, Plans, Tokens, and Developer-runtime.
+- Home presents exactly four prominent entry points: Agents, Plans, Tokens, and Runtime.
 - Every entry point has an icon, title, short description, and full-card link.
-- The global nav is ordered Home, Agents, Plans, Tokens, Developer-runtime.
+- The global nav is ordered Home, Agents, Plans, Tokens, Runtime.
 - Agents is canonical at `/config`.
 - The Home page works without any harness installed and does not require API data to render.
 - Home uses the existing shared palette and icon system; it introduces no one-off decorative hex colors or separate icon dependency.

@@ -1,6 +1,6 @@
-# Developer-runtime Container Support
+# Runtime Container Support
 
-Developer-runtime discovers what is running on a developer's machine and presents it as a set of
+Runtime discovers what is running on a developer's machine and presents it as a set of
 repository cards. Containers complicate that in a way host processes do not: a container's host-side
 process is never its real process, and the thing a reader wants to act on — a stack, a service, an
 app — is rarely one container.

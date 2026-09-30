@@ -1854,7 +1854,7 @@ assert "repositories: idle git cache invalidates on checkout change" \
 assert "repositories: branch sync facts" \
   node "${repo_root}/scripts/test/repositories-branch-sync-check.mjs"
 
-# Developer-runtime module suite. Note: developer-runtime-check.mjs existed as an npm script but was never wired
+# Runtime module suite. Note: developer-runtime-check.mjs existed as an npm script but was never wired
 # into this file, so it had not been running in CI at all — added here alongside the new checks.
 assert "developer-runtime: discovery, settings schema, snapshot shaping" \
   node "${repo_root}/scripts/test/developer-runtime-check.mjs"

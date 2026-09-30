@@ -9,11 +9,11 @@ related: []
 reviewed_commit:
 ---
 
-# Developer-runtime: Final Iteration Implementation Plan
+# Runtime: Final Iteration Implementation Plan
 
 ## Summary
 
-Evolve the first Developer-runtime iteration into RoboRepo's complete local application index: a durable catalog of projects, app roles, and current instances; curated navigation; operational health; process and Git context; Docker-aware identity; availability history; and useful diagnostics.
+Evolve the first Runtime iteration into RoboRepo's complete local application index: a durable catalog of projects, app roles, and current instances; curated navigation; operational health; process and Git context; Docker-aware identity; availability history; and useful diagnostics.
 
 The final iteration retains the core V1 rule: project repositories require no RoboRepo-specific file. Automatic evidence identifies projects, app roles, and instances; machine-local settings hold curated names, associations, health paths, and jump links. Optional repository metadata may enrich results, but it is never required and never outranks an explicit local override.
 
@@ -36,7 +36,7 @@ V1 is completed in `docs/plans/completed/roborepo-developer-runtime-v1-plan.md`.
 - project friendly-name mutation, app name/origin mutation, and quick-link add/edit/delete/reorder worked through the portal API.
 - saved Git-backed links followed a restarted app to a new port and rebuilt against the new origin.
 - wildcard-bound listeners produced the expected network-exposure warning.
-- the Developer-runtime reference document was served by the portal.
+- the Runtime reference document was served by the portal.
 
 Final phase 1 has started with the V1 identity/settings/snapshot contracts as its base.
 
@@ -75,7 +75,7 @@ contract:
 
 On 2026-07-20, the remaining “final iteration” scope was split because Docker/process/Git/history/
 metadata/provider-cadence/UI-drawer work is too large to complete safely in one implementation
-without risking the stable V1/V2 Developer-runtime contracts. This plan now closes when the final
+without risking the stable V1/V2 Runtime contracts. This plan now closes when the final
 foundation is complete and the rest of the original product target is captured in smaller backlog
 plans.
 
@@ -108,7 +108,7 @@ Deferred scope and rationale:
 
 Decisions made now because reversal cost is low or the current architecture already points one way:
 
-- **Keep one Developer-runtime page and API namespace.** Extend `/runtime` and `/api/developer-runtime`; do not create a second final dashboard.
+- **Keep one Runtime page and API namespace.** Extend `/runtime` and `/api/developer-runtime`; do not create a second final dashboard.
 - **Retain machine-local settings as source of user intent.** No project repo config is required; optional metadata only suggests improvements.
 - **Migrate settings in place to version 2.** Preserve V1 project/app/link IDs, create a backup before first migration, and keep event history outside settings in `events.jsonl`.
 - **Use narrow mutation endpoints.** Continue explicit `links`, `association`, and `project` mutations; add history and metadata reads. Do not accept arbitrary nested settings patches.
@@ -272,7 +272,7 @@ Retain the V1 macOS `lsof` adapter and introduce explicit provider interfaces so
 
 ### Platform capability model
 
-Every provider reports `supported`, `limited`, or `unsupported` independently. The aggregate snapshot lists what is available instead of reducing platform support to one boolean. The Developer-runtime page must distinguish:
+Every provider reports `supported`, `limited`, or `unsupported` independently. The aggregate snapshot lists what is available instead of reducing platform support to one boolean. The Runtime page must distinguish:
 
 - **No active apps found**: discovery ran successfully and found none.
 - **Limited discovery**: some providers work, but results may be incomplete.
@@ -595,8 +595,8 @@ Expand `scripts/test/developer-runtime-check.mjs` and split fixtures by provider
 ## Documentation Updates
 
 - Expand `docs/user/reference/runtime.md` with the final concept model, providers, identity scoring, history, API, privacy, and troubleshooting.
-- Keep `docs/user/reference/portal.md` focused on shared architecture; mention only the Developer-runtime page and API dispatcher there.
-- Update `README.md` and the CLI reference with Developer-runtime capabilities.
+- Keep `docs/user/reference/portal.md` focused on shared architecture; mention only the Runtime page and API dispatcher there.
+- Update `README.md` and the CLI reference with Runtime capabilities.
 - Add a short user guide explaining quick links, manual associations, inactive projects, health paths, and network-exposure warnings.
 - Include troubleshooting for hostname-sensitive apps, self-signed HTTPS, Docker Desktop, identity conflicts, stale snapshots, and platform limitations.
 - Document settings schema versions and recovery from a corrupt settings/history file.
@@ -631,7 +631,7 @@ Close these during final phase 1 if they naturally share code with V2 migration:
 8. **Add metadata suggestions.** Fetch manifest, favicon, robots/sitemap, and OpenAPI only under documented same-origin and size limits. Present suggestions as "Add as quick link".
 9. **Expand portal workflows.** Add filters, favorites, hidden/unmatched settings, project/app menus, evidence/history drawer, diagnostics copy, compact/detail modes, and accessible focus-preserving renders.
 10. **Finalize API surface.** Add `/history` and `/metadata`, tighten opaque-key validation, and cover all mutation security boundaries.
-11. **Document and validate.** Update reference/user docs, CLI docs, README, and run targeted Developer-runtime, portal smoke, broad RoboRepo, and manual macOS scenario validation before completion.
+11. **Document and validate.** Update reference/user docs, CLI docs, README, and run targeted Runtime, portal smoke, broad RoboRepo, and manual macOS scenario validation before completion.
 
 ## Acceptance Criteria
 

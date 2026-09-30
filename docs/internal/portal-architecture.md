@@ -3,7 +3,7 @@
 ## Purpose
 
 The portal is the local `roborepo web` UI: Home (`/`), Config (`/config`), Plans (`/plans`),
-Developer-runtime (`/runtime`), and Tokens (`/tokens`). It is static HTML/CSS/browser JavaScript
+Runtime (`/runtime`), and Tokens (`/tokens`). It is static HTML/CSS/browser JavaScript
 served by a loopback-only Node HTTP server — no build step, no framework, no bundler. This doc
 covers the shared architecture (page manifest, browser API helpers, server route dispatch) that
 every page relies on. Page-specific behavior lives in
@@ -255,7 +255,7 @@ loaded a portal page fails the token check. `portalPostJson` always attaches the
 - `npm test` (`scripts/test/test-cli.sh`) — starts the portal server, asserts
   `/api/portal/status`, token exposure, mutating POST success/400/403 responses, and that each
   served `app.js` parses (`node --check`).
-- `roborepo web` — click through Home → Agents → Plans → Developer-runtime → Tokens, confirm nav highlighting, and
+- `roborepo web` — click through Home → Agents → Plans → Runtime → Tokens, confirm nav highlighting, and
   exercise each page's mutations (Config toggles, Plans refresh/discovery-root edits, Telemetry
   "turn on telemetry").
 - `node --input-type=module --check < portal/<page>/app.js` for a quick module-syntax check on a

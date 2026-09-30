@@ -12,11 +12,11 @@ related:
 reviewed_commit: e07f832
 ---
 
-# Developer-runtime Metadata Suggestions
+# Runtime Metadata Suggestions
 
 ## Summary
 
-Fetch safe conventional same-origin metadata for current Developer-runtime apps and present discovered
+Fetch safe conventional same-origin metadata for current Runtime apps and present discovered
 routes as suggestions, never as automatic quick links.
 
 ## Current State
@@ -409,7 +409,7 @@ Verification after this review:
 
 ## Completion Summary
 
-Developer-runtime metadata suggestions now ship end to end:
+Runtime metadata suggestions now ship end to end:
 
 - same-origin metadata discovery from manifest, sitemap/robots, and OpenAPI;
 - safe route classification and deduplication;
@@ -432,4 +432,4 @@ Developer-runtime metadata suggestions now ship end to end:
   API modal open, no page errors.
 - Headless Google Chrome CDP verification against isolated temp-state
   `http://127.0.0.1:3061/runtime`: click-to-capture changed `/plans` from unsaved to saved and
-  wrote `/plans` to the isolated Developer-runtime settings.
+  wrote `/plans` to the isolated Runtime settings.

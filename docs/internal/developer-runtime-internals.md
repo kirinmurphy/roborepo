@@ -1,7 +1,7 @@
-# Developer-runtime Internals
+# Runtime Internals
 
-How Developer-runtime is built, for people changing it. User-facing behavior is in
-[Developer-runtime](../user/reference/runtime.md).
+How Runtime is built, for people changing it. User-facing behavior is in
+[Runtime](../user/reference/runtime.md).
 
 ## Modules
 
@@ -97,7 +97,7 @@ check:
 - `POST /api/developer-runtime/project`
 - `POST /api/developer-runtime/alias`
 - `POST /api/developer-runtime/repository-visibility` — hides or restores a whole repository. Unlike the
-  routes above it writes the repository registry, not Developer-runtime's settings, so it carries no
+  routes above it writes the repository registry, not Runtime's settings, so it carries no
   settings revision: visibility is one boolean per record with no cross-field invariant to protect.
 - `POST /api/developer-runtime/repository-pinned` — pins or unpins a whole repository in the repository
   registry so its order is stable across running and idle snapshots.

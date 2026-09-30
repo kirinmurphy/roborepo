@@ -9,7 +9,7 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime Repository Card Merge
+# Runtime Repository Card Merge
 
 ## Summary
 

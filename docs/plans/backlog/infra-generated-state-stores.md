@@ -50,7 +50,7 @@ long-lived install filling the disk) rather than against a requirement (how far 
 reach), and those produce very different numbers: at this usage rate, six months of history would
 cost roughly 500 MB — still small on a modern disk.
 
-**Retention is per-store and inconsistent by accident, not by decision.** Developer-runtime history has a
+**Retention is per-store and inconsistent by accident, not by decision.** Runtime history has a
 carefully built two-stage policy (age, then size). The telemetry collector, which accumulates one
 file per session forever, has nothing. The difference does not reflect a judgment about the two
 stores; it reflects which one someone happened to build a policy for.
@@ -100,8 +100,8 @@ Each store owns its own path helper, read/write pair, and policy:
 
 | Store | Module | Retention constant |
 | --- | --- | --- |
-| Developer-runtime history | `modules/developer-runtime/history.mjs` | `DEFAULT_RETENTION_DAYS = 14`, `HISTORY_MAX_BYTES = 2MB` |
-| Developer-runtime settings | `modules/developer-runtime/settings.mjs` | None (user-authored) |
+| Runtime history | `modules/developer-runtime/history.mjs` | `DEFAULT_RETENTION_DAYS = 14`, `HISTORY_MAX_BYTES = 2MB` |
+| Runtime settings | `modules/developer-runtime/settings.mjs` | None (user-authored) |
 | Repository registry | `modules/repositories/registry.mjs` | None |
 | Telemetry spool | `scripts/cli/telemetry-capture.mjs` | `SPOOL_MAX_BYTES = 25MB` per harness |
 | Telemetry collector | `scripts/cli/telemetry-capture.mjs` (session cursors) | None |
@@ -246,7 +246,7 @@ Thresholds are shares, not byte counts, and live in the inventory rather than in
 
 - **Bottom of the Tokens page** (`portal/telemetry/`) — the receipt, scoped to the page whose data
   it describes. Deliberately not the shared portal footer: storage is a telemetry concern, and a
-  readout on every page would put it in front of users looking at Plans or Developer-runtime, where it is
+  readout on every page would put it in front of users looking at Plans or Runtime, where it is
   noise.
 - **`roborepo doctor`** — a finding at `warning` and above, plus a line for any store actively
   discarding data. Follows doctor's existing check conventions.

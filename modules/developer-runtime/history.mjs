@@ -1,4 +1,4 @@
-// Bounded append-only JSONL of Developer-runtime transition events.
+// Bounded append-only JSONL of Runtime transition events.
 //
 // Events are written only when something CHANGES, not once per scan, so volume is tiny — a busy
 // machine produces a few dozen lines a day. That is why this is one shared file rather than a file

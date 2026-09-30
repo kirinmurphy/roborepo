@@ -322,7 +322,7 @@ function candidateRepository(dir) {
   const root = fs.realpathSync(dir);
   if (hasGit && isLinkedWorktree(root)) return null;
   const git = gitInfo(root);
-  // Canonical repository identity shared with Developer-runtime/Telemetry. git repos resolve to their
+  // Canonical repository identity shared with Runtime/Telemetry. git repos resolve to their
   // portable git: id; non-git plan roots get an opaque local: id. The existing content-hash `id`
   // is retained for back-compat during the migration window (browser filters still key on it until
   // Phase 4's global scope lands).

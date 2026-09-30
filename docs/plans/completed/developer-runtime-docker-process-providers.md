@@ -12,11 +12,11 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime Docker And Process Providers
+# Runtime Docker And Process Providers
 
 ## Summary
 
-Add Docker/Compose enrichment and current process metrics to the Developer-runtime provider model without
+Add Docker/Compose enrichment and current process metrics to the Runtime provider model without
 changing the existing settings, quick-link, or portal mutation contracts.
 
 ## Current State
@@ -32,7 +32,7 @@ Docker/process observations feed the shared repository registry rather than a pa
 path. A container or process working directory that resolves to a Git root is another local root
 of a canonical repository; multiple processes and published endpoints for one repository should
 associate with one `repositoryId`. Keep the "merge Docker/listener observations by normalized host
-endpoint" logic Developer-runtime-internal — that is endpoint deduplication, not repository identity.
+endpoint" logic Runtime-internal — that is endpoint deduplication, not repository identity.
 Include `repositoryId` (and local `rootId` where relevant) on merged provider observations.
 
 ## Goals

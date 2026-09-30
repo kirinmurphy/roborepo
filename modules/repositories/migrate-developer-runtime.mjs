@@ -1,12 +1,12 @@
 import { localRepositoryId } from "./identity.mjs";
 import { setAlias, upsertRepository } from "./registry.mjs";
 
-// Import user-confirmed Developer-runtime aliases into the shared registry so a confirmed association like
+// Import user-confirmed Runtime aliases into the shared registry so a confirmed association like
 // path:/tmp/robo -> git:host/owner/repo survives the resolver extraction. Idempotent: re-running
 // never duplicates aliases or repositories, and the caller records a marker so it need not run
 // twice. Pure — operates on a registry clone (call inside updateRegistry).
 //
-// Developer-runtime identities can be git:/path:/process:/roborepo:. Only git: and path: map to a
+// Runtime identities can be git:/path:/process:/roborepo:. Only git: and path: map to a
 // canonical repository; process:/roborepo: aliases are skipped (there is no canonical repository to
 // point them at yet) and reported so nothing is silently dropped.
 export function importDeveloperRuntimeAliases(registry, developerRuntimeSettings, { now = new Date().toISOString() } = {}) {
@@ -35,7 +35,7 @@ export function importDeveloperRuntimeAliases(registry, developerRuntimeSettings
   return { changed, imported, skipped };
 }
 
-// Map a Developer-runtime identity string to a canonical repository descriptor, or null when it cannot be
+// Map a Runtime identity string to a canonical repository descriptor, or null when it cannot be
 // a canonical repository. path: identities become opaque local: ids (the realpath is never exposed
 // outward — only its hash).
 export function canonicalizeDeveloperRuntimeIdentity(identity) {

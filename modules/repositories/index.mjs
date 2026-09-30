@@ -1,4 +1,4 @@
-// Domain-neutral canonical repository identity. Developer-runtime, Plans, Telemetry, Agent Config, and
+// Domain-neutral canonical repository identity. Runtime, Plans, Telemetry, Agent Config, and
 // Doctor all import from here rather than owning their own resolver. Barrel re-export (mirrors
 // modules/developer-runtime/index.mjs).
 

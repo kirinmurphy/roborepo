@@ -1,4 +1,4 @@
-// Pure parsers for the Git plumbing files Developer-runtime reads directly. No filesystem access and no
+// Pure parsers for the Git plumbing files Runtime reads directly. No filesystem access and no
 // subprocesses — every function here is string in, value out, so they are testable without a fixture
 // repository at all. The fs orchestration lives in git.mjs.
 

@@ -12,11 +12,11 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime Compose-Project Grouping
+# Runtime Compose-Project Grouping
 
 ## Summary
 
-Group Developer-runtime instances that belong to the same Docker Compose project under one project
+Group Runtime instances that belong to the same Docker Compose project under one project
 card, instead of one card per listener/port. A Compose stack (app, db, nginx, mailhog, etc.) is
 one logical project with several supporting containers, not several unrelated projects.
 
@@ -174,7 +174,7 @@ Proposed shape:
   overload, red for overload — at whatever level the metric lives (port-level for latency/health,
   container-level for CPU/RSS/uptime, matching the project/container/port split this plan
   established).
-- Add a warning panel at the top of the Developer-runtime page (parallel to the existing
+- Add a warning panel at the top of the Runtime page (parallel to the existing
   `renderWarnings`/`#warnings` mechanism in `portal/developer-runtime/app.js`) that aggregates and
   highlights every item currently in warn or alert state, so a problem doesn't require expanding
   every card to notice.
@@ -193,7 +193,7 @@ repo's own `origin` remote was found still pointing at `github.com/kirinmurphy/h
 (the project's old name) after the GitHub repo itself had been renamed to `roborepo`. Git never
 auto-syncs a local remote URL on a GitHub-side rename; GitHub keeps the old URL working via
 redirect, so `fetch`/`push` silently kept succeeding through the redirect and the mismatch went
-unnoticed. In Developer-runtime specifically, this caused the same running server/repo to resolve to two
+unnoticed. In Runtime specifically, this caused the same running server/repo to resolve to two
 different identities depending on when discovery ran, appearing as a separate "harness_configs"
 entry that would show up and disappear.
 
@@ -210,7 +210,7 @@ Proposed shape:
 - Natural fit for the canonical-repository-registry work already planned in
   `docs/plans/backlog/portal-homepage-repository-section.md` — `repositoryId`/`urlKey` resolution
   is exactly the layer that should catch and normalize a renamed remote, rather than building a
-  parallel one-off check inside Developer-runtime.
+  parallel one-off check inside Runtime.
 - Not scoped or prioritized yet — revisit when picking up either `roborepo doctor` work or the
   repository-registry plan.
 

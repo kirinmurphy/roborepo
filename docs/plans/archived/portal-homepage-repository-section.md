@@ -48,7 +48,7 @@ The canonical repository registry is complete and is not a blocker for this work
 ## Goals
 
 - Give users one consistent way to enter, see, change, copy, and navigate with repository context.
-- Let Plans, Sessions, Tokens, Developer-runtime, Agent Config, and the homepage resolve the same selected repository.
+- Let Plans, Sessions, Tokens, Runtime, Agent Config, and the homepage resolve the same selected repository.
 - Keep URLs short, readable, bookmarkable, and stable.
 - Preserve domain-specific filtering and semantics rather than applying one implicit server filter to every response.
 - Make the homepage useful before and after a repository is selected.
@@ -61,7 +61,7 @@ The canonical repository registry is complete and is not a blocker for this work
 - Adding a repository management CLI.
 - Making every page support repository scope in the first implementation phase.
 - Hiding global configuration, health, or installation warnings under repository scope.
-- Treating a display name, folder name, telemetry label, or Developer-runtime identity as canonical identity.
+- Treating a display name, folder name, telemetry label, or Runtime identity as canonical identity.
 - Adding persistent user preference storage for the selected repository.
 - Adding a separate repository-detail page.
 
@@ -123,7 +123,7 @@ flowchart LR
   Domain --> View["Page-specific view"]
 ```
 
-Domain data continues to store and compare `repositoryId`. Do not persist `urlKey` into Plans, telemetry events, Developer-runtime records, sessions, or configuration findings as their relationship key.
+Domain data continues to store and compare `repositoryId`. Do not persist `urlKey` into Plans, telemetry events, Runtime records, sessions, or configuration findings as their relationship key.
 
 ## Information Architecture
 
@@ -197,7 +197,7 @@ Repository context is not one automatic filter injected into every API. Each pag
 | Plans | Plans across monitored repositories | Plans associated by canonical `repositoryId` |
 | Sessions | Sessions across repositories | Sessions associated with the repository |
 | Tokens | All eligible telemetry | Telemetry associated with the repository |
-| Developer-runtime | All discovered environments | Environments associated with the repository |
+| Runtime | All discovered environments | Environments associated with the repository |
 | Agent Config | Global overview | Repository-local config plus separately labeled global config |
 | Global health | Always visible | Still visible and clearly global |
 
@@ -219,7 +219,7 @@ Show:
   - recent token activity when available;
   - repository-local configuration warnings when available.
 
-Each repository card or row selects its `urlKey` and opens `/?repository=<urlKey>`. It may also expose direct links to scoped Plans, Tokens, Developer-runtime, Sessions, and Agent Config when data exists.
+Each repository card or row selects its `urlKey` and opens `/?repository=<urlKey>`. It may also expose direct links to scoped Plans, Tokens, Runtime, Sessions, and Agent Config when data exists.
 
 Do not show the current generic homepage widgets as if they describe one repository before a repository is selected. Global warnings remain valid in the unscoped view.
 
@@ -227,7 +227,7 @@ Do not show the current generic homepage widgets as if they describe one reposit
 
 Show repository-specific summaries and entry points for:
 
-- Developer-runtime environments.
+- Runtime environments.
 - Sessions.
 - Plans.
 - Token usage.
@@ -389,7 +389,7 @@ The reviewed checkout predates the completed registry implementation. Reconcile 
 - `portal/telemetry/api.js`, `portal/telemetry/modals.js`, `portal/telemetry/renders.js`
   - Preserve event/session repository metadata without confusing it with shared selection.
 
-### Developer-runtime
+### Runtime
 
 - `modules/developer-runtime/identity.mjs`
   - The reviewed checkout owns identity locally; the completed registry should have replaced or delegated this logic.
@@ -502,7 +502,7 @@ Exit criterion: `/` is a repository entry point and `/?repository=<urlKey>` is t
 
 ### Phase 7 — Extend remaining pages
 
-- [ ] Scope Developer-runtime by canonical repository association.
+- [ ] Scope Runtime by canonical repository association.
 - [ ] Add repository-local Agent Config projection while retaining global configuration.
 - [ ] Add Sessions scope when the Sessions page exists.
 - [ ] Ensure unsupported pages communicate scope limitations.
@@ -534,7 +534,7 @@ Required automated coverage:
 - Tokens shared/local parameter composition.
 - Tokens canonical filtering and legacy telemetry fallback.
 - Analysis cache separation by canonical repository.
-- Developer-runtime canonical association.
+- Runtime canonical association.
 - Homepage scoped and unscoped projections.
 - Browser payload privacy.
 

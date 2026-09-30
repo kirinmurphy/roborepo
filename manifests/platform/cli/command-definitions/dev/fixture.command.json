@@ -1,8 +1,8 @@
 {
   "path": ["dev", "fixture"],
   "kind": "command",
-  "title": "Developer-runtime fixture",
-  "description": "Shared-stack fixture behind Developer-runtime's shared-ownership verdict",
+  "title": "Runtime fixture",
+  "description": "Shared-stack fixture behind Runtime's shared-ownership verdict",
   "order": 10,
   "usage": "roborepo dev fixture <start|stop|status>",
   "execution": {

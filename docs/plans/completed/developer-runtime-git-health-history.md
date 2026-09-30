@@ -13,11 +13,11 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime Git Health And History
+# Runtime Git Health And History
 
 ## Summary
 
-Local Git context, health-state normalization, and bounded transition history for Developer-runtime apps,
+Local Git context, health-state normalization, and bounded transition history for Runtime apps,
 with no repository configuration required. Delivered.
 
 ## Current State
@@ -74,7 +74,7 @@ plan's dependency section forbids.
 
 | Decision | Rationale |
 | --- | --- |
-| Scan cache in `modules/repositories/`, not Developer-runtime | Root-keyed metadata is not a Developer-runtime concept; a local copy is the duplicate the dependency section forbids |
+| Scan cache in `modules/repositories/`, not Runtime | Root-keyed metadata is not a Runtime concept; a local copy is the duplicate the dependency section forbids |
 | Hybrid filesystem/subprocess Git collection | Dirty state and ahead/behind cannot be read correctly from the filesystem; a wrong "clean" is worse than no answer |
 | Poll Git every refresh | User decision. `--no-optional-locks` guarantees the user's index is never written |
 | `dirty`/`ahead`/`behind` are `null`, never `false`/`0`, on failure | Correct-or-absent; the portal renders nothing rather than implying clean |
@@ -107,7 +107,7 @@ plan's dependency section forbids.
       key and 404 for a bogus one, and all portal assets serving and parsing.
 
 **Note on test coverage wiring:** `test:developer-runtime` existed as an npm script but was never invoked
-by `scripts/test/test-roborepo.sh`, so the entire existing Developer-runtime suite had not been running in
+by `scripts/test/test-roborepo.sh`, so the entire existing Runtime suite had not been running in
 CI. It is now wired in alongside the three new checks.
 
 ## Known Limits

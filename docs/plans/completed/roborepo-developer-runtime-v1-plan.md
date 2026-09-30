@@ -9,11 +9,11 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime: First Iteration Implementation Plan
+# Runtime: First Iteration Implementation Plan
 
 ## Summary
 
-Add a **Developer-runtime** page to RoboRepo's existing loopback portal. It automatically discovers active HTTP applications on macOS, associates each application with a stable local project identity, and lets the user save project-specific jump links such as `/resume` or `/admin`.
+Add a **Runtime** page to RoboRepo's existing loopback portal. It automatically discovers active HTTP applications on macOS, associates each application with a stable local project identity, and lets the user save project-specific jump links such as `/resume` or `/admin`.
 
 The first iteration intentionally does not require configuration inside project repositories. Runtime discovery supplies the current port; machine-local RoboRepo settings supply curated names and routes. When an app restarts on another port, saved routes follow it because they are attached to the project identity rather than the port.
 
@@ -32,7 +32,7 @@ Implemented and verified:
 - [x] `npm run test:developer-runtime` and `npm test` passed.
 - [x] Link management supports individual edit/update/remove/reorder through the existing ordered links mutation.
 - [x] Project friendly-name editing is separate from app naming and association changes.
-- [x] Unsupported discovery notice links to the Developer-runtime docs served by the portal.
+- [x] Unsupported discovery notice links to the Runtime docs served by the portal.
 - [x] Path-to-Git alias migration is deliberately deferred to the final V2 alias workflow, where confirmation and cycle-safe storage exist.
 - [x] Stale/refreshing/failed UI paths retain the last successful snapshot; failed-refresh retention has fixture coverage.
 - [x] Active discovery uses documented bounded probe concurrency.
@@ -84,7 +84,7 @@ Domain behavior is kept out of `portal-server.mjs`. The server receives function
 
 ## User Experience
 
-Add a navigation item named **Developer-runtime** at `/runtime`.
+Add a navigation item named **Runtime** at `/runtime`.
 
 The page contains:
 
@@ -103,7 +103,7 @@ Automatic localhost discovery is not yet supported on Windows.
 Saved projects and links remain available, but RoboRepo cannot currently detect their active ports.
 ```
 
-The notice should identify the detected platform, link to the Developer-runtime documentation, and avoid suggesting that no applications are running. The API should remain functional so saved configuration can still be viewed and edited. If a future platform adapter provides partial results, the notice should say **Limited discovery** and enumerate unavailable capabilities.
+The notice should identify the detected platform, link to the Runtime documentation, and avoid suggesting that no applications are running. The API should remain functional so saved configuration can still be viewed and edited. If a future platform adapter provides partial results, the notice should say **Limited discovery** and enumerate unavailable capabilities.
 
 An identified instance card should display:
 
@@ -258,7 +258,7 @@ Add `scripts/cli/developer-runtime.mjs` to bridge state paths, discovery, settin
 
 Maintain an in-process snapshot manager with a short freshness window. Discovery and HTTP probing must be asynchronous and must never block the Node HTTP server. `GET /api/developer-runtime` returns the current snapshot immediately and may schedule a background refresh. The explicit refresh endpoint awaits or reports one shared in-flight refresh; concurrent callers must not start duplicate scans.
 
-This matters for RoboRepo's own listener: a synchronous probe back into the same portal process can deadlock. Represent the running portal as a built-in instance using its known PID and bound port rather than probing recursively. Give it stable identity `roborepo:portal` and built-in links for Config, Developer-runtime, Plans, and Telemetry.
+This matters for RoboRepo's own listener: a synchronous probe back into the same portal process can deadlock. Represent the running portal as a built-in instance using its known PID and bound port rather than probing recursively. Give it stable identity `roborepo:portal` and built-in links for Config, Runtime, Plans, and Telemetry.
 
 Add a read-only CLI view backed by the same snapshot formatter:
 
@@ -276,7 +276,7 @@ Wire these functions into the `handlers` object passed by the existing `serveCom
 
 Follow `docs/user/reference/portal.md` exactly:
 
-1. Add `{ path: "/runtime", id: "developer-runtime", title: "Developer-runtime", dir: "developer-runtime" }` to `PAGES` in `scripts/cli/portal-server.mjs`.
+1. Add `{ path: "/runtime", id: "developer-runtime", title: "Runtime", dir: "developer-runtime" }` to `PAGES` in `scripts/cli/portal-server.mjs`.
 2. Do not manually edit navigation. `portal/shared/theme.js` will render the new page from the injected manifest.
 3. Create:
 
@@ -294,7 +294,7 @@ portal/developer-runtime/templates.js
 6. Keep filtering, grouping, URL construction, and sorting pure in `state.js`.
 7. Keep dynamic markup in HTML templates and `templates.js`; use `portalTpl()` and `portalEl()` rather than string-built HTML in `app.js`.
 8. Let `app.js` own DOM references, events, polling, snapshot application, and `portalHideLoading()` after the first request settles.
-9. Reuse variables and common chrome from `portal/shared/base.css`; keep only Developer-runtime-specific layout in `styles.css`.
+9. Reuse variables and common chrome from `portal/shared/base.css`; keep only Runtime-specific layout in `styles.css`.
 
 Add `handleDeveloperRuntimeApi(req, res, urlPath, qs, handlers)` to the flat dispatch chain in `portal-server.mjs`.
 
@@ -385,7 +385,7 @@ Add `scripts/test/developer-runtime-check.mjs` with injected command and HTTP fi
 
 Extend the portal smoke checks in `scripts/test/test-roborepo.sh` to verify:
 
-- `/api/portal/status` includes Developer-runtime.
+- `/api/portal/status` includes Runtime.
 - `/runtime` serves the injected manifest and token.
 - `/portal/developer-runtime/app.js` parses.
 - GET snapshot works without a token.
@@ -406,7 +406,7 @@ Extend the portal smoke checks in `scripts/test/test-roborepo.sh` to verify:
 1. Implement and fixture-test listener parsing, origin-safe HTTP probing, project-root resolution, and identity normalization.
 2. Implement the project/app/instance model, versioned settings, revision-safe mutations, and snapshot composition.
 3. Add the asynchronous snapshot manager, CLI formatter, and portal-facing bridge; wire handlers into `serveCommand()`.
-4. Add Developer-runtime API dispatch to `portal-server.mjs`.
+4. Add Runtime API dispatch to `portal-server.mjs`.
 5. Register `/runtime` in `PAGES` and build the page with shared portal modules.
 6. Add saved-link and manual-association interactions.
 7. Extend smoke and security tests.
@@ -415,7 +415,7 @@ Extend the portal smoke checks in `scripts/test/test-roborepo.sh` to verify:
 
 ## Acceptance Criteria
 
-- Opening `roborepo serve` exposes a Developer-runtime navigation item and `/runtime` page.
+- Opening `roborepo serve` exposes a Runtime navigation item and `/runtime` page.
 - Active localhost HTTP applications appear without project-level configuration.
 - Known Git projects and app roles retain their names and saved links after PID or port changes.
 - `/resume`, `/dev`, `/admin`, and other curated paths are stored without origins and rebuild against the matching app's current origin.

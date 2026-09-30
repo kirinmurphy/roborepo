@@ -8,7 +8,7 @@
 // at all. So those two facts come from a subprocess, and everything else stays pure fs reads in
 // modules/repositories/identity.mjs.
 //
-// Callers get { ok, stdout, code, error } and never an exception, mirroring how Developer-runtime's
+// Callers get { ok, stdout, code, error } and never an exception, mirroring how Runtime's
 // listener discovery treats `lsof` (modules/developer-runtime/listeners.mjs): a missing or slow tool
 // degrades one field to null rather than failing the scan.
 //

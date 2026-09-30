@@ -115,7 +115,7 @@ function isUnconfigured4xx(status, config) {
 //
 // NOTE: config.path is intentionally not consulted here. Honoring it means a second probe per app,
 // which touches the origin-candidate loop in discovery.mjs — a separate concern from normalization.
-// The field is stored and validated today but not yet probed; see the Developer-runtime reference doc.
+// The field is stored and validated today but not yet probed; see the Runtime reference doc.
 function statusAccepted(status, config) {
   if (typeof status !== "number") return false;
   const accepted = config?.acceptedStatuses;

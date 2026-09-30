@@ -25,7 +25,7 @@ import { updatePlanSettings as updatePlanSettingsDefault, refreshPlans as refres
 // one discovery into a single registry write. `localRoot` (an opaque rootId) is optional and, when
 // present, records the specific clone/worktree the discovery came from. Enrollment is NEVER enabled
 // here — discovery and enrollment are separate concerns (doc §"Discovery Sources and Provenance":
-// Developer-runtime discovery must not silently enable Plans).
+// Runtime discovery must not silently enable Plans).
 export function recordRepositoryDiscovery({
   repositoryId,
   kind,
@@ -67,8 +67,8 @@ export function recordRepositoryDiscovery({
   });
 }
 
-// Server-side "Include plans" enrollment for a repository discovered elsewhere (e.g. by Developer-runtime).
-// Steps (doc §"Enrollment from Developer-runtime"):
+// Server-side "Include plans" enrollment for a repository discovered elsewhere (e.g. by Runtime).
+// Steps (doc §"Enrollment from Runtime"):
 //   1. resolve the exact repo root (caller supplies it — it is machine-local and never leaves here)
 //   2. determine whether an existing Plans source already covers it
 //   3. if covered: refresh, add no duplicate source

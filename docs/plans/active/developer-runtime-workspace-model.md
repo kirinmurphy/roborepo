@@ -12,16 +12,16 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime Workspace Model: Persistent Repositories and Their Checkouts
+# Runtime Workspace Model: Persistent Repositories and Their Checkouts
 
 ## Summary
 
-Make a repository a durable entity on the Developer-runtime page rather than a view over whatever happens
+Make a repository a durable entity on the Runtime page rather than a view over whatever happens
 to be running, and place each thing the page shows at the level it actually belongs to.
 
 Three changes, in dependency order:
 
-1. **Persistence.** The first time Developer-runtime resolves a running app to a repository, record that
+1. **Persistence.** The first time Runtime resolves a running app to a repository, record that
    repository and the checkout it ran from. The record survives every process stopping.
 2. **Lifecycle.** A repository whose checkouts have gone stale stays listed and marked; one the
    ageing sweep retires is hidden from the default list and can be restored from hidden records.
@@ -54,16 +54,16 @@ not "what do these containers depend on".
 
 `pljvmyh` (Unify Repository Discovery and Portal Scope) owns the portal-wide canonical repository
 registry: global repository sources, `urlKey` allocation, shared scope, and the migration of Plans
-and Tokens onto it. Its §3 already specifies Developer-runtime as the zero-configuration discovery producer,
+and Tokens onto it. Its §3 already specifies Runtime as the zero-configuration discovery producer,
 and its Phase 1 includes persisting resolved checkout roots.
 
-This plan implements **that persistence step only**, and only as far as the Developer-runtime page needs it,
+This plan implements **that persistence step only**, and only as far as the Runtime page needs it,
 so the workspace model can be settled where it is visible before global surfaces are built on it.
 The division:
 
 | Concern | Owner |
 | --- | --- |
-| Developer-runtime discovery persists repository + checkout roots | This plan |
+| Runtime discovery persists repository + checkout roots | This plan |
 | Stale/damaged checkout lifecycle and visibility-based hiding | This plan |
 | Container placement across checkouts | This plan |
 | User-configured repository/folder sources | `pljvmyh` |
@@ -118,7 +118,7 @@ every other checkout is using.
   owns configured sources.
 - `urlKey`, the shared `?repository=` scope, or the repository selector — all `pljvmyh`.
 - Migrating Plans or Tokens onto the registry, and the Home/detail surfaces (`jqi1dof`).
-- Filtering Developer-runtime to a single repository. It stays an operational list of all repositories.
+- Filtering Runtime to a single repository. It stays an operational list of all repositories.
 - Changing how containers are discovered, how ports correlate, or how stacks are grouped into
   projects. `developer-runtime-compose-project-grouping` owns that and stays as-is.
 - Managing containers (start/stop/restart) from the portal.
@@ -148,7 +148,7 @@ Two consequences visible on the page today:
   stored identity string.
 
 The canonical registry under `modules/repositories/` already persists provenance, opaque `rootId`
-values, visibility, and activity — but Developer-runtime does not currently write to it, and the registry
+values, visibility, and activity — but Runtime does not currently write to it, and the registry
 has no `rootId -> path` mapping to write.
 
 ### Container placement
@@ -341,7 +341,7 @@ new settings surface, and it keeps `validateComposeProjects`
 
 - [x] Add the private `rootId -> absolute path` index to `modules/repositories/`, per the shape in
       "Persisting the repository record". This is the `pljvmyh` §2 local-root index; build it there
-      so that plan consumes it rather than a Developer-runtime-local copy.
+      so that plan consumes it rather than a Runtime-local copy.
       Built as `registry.localRootPaths` — a top-level key in the registry file, keyed by `rootId`
       alone, with `registerLocalRootPath`/`localRootPath`/`checkoutRootsFor` in
       `modules/repositories/registry.mjs`. It lives in the registry file rather than a sibling one
@@ -349,7 +349,7 @@ new settings surface, and it keeps `validateComposeProjects`
       already a single read-mutate-write with a revision bump; two files could not be committed
       atomically against a concurrent writer. Paths are kept out of the browser by the payload
       builders, which whitelist fields explicitly.
-- [x] Write through the registry from Developer-runtime discovery when a scan resolves a repository and
+- [x] Write through the registry from Runtime discovery when a scan resolves a repository and
       checkout, recording provenance and advancing `lastSeenAt`.
       `recordDiscoveredRepositories` now passes `project.projectRoot` as `localRootPath`; `rootId` is
       derived from exactly that path, so the two cannot disagree.
@@ -410,7 +410,7 @@ new settings surface, and it keeps `validateComposeProjects`
 - [x] Add a "Show hidden" affordance so a hidden repository is one click from returning.
       A "Hidden repositories" section in the settings dialog, each row a Show button. Kept separate
       from the existing "Hidden" section rather than merged into it: that one holds projects and apps
-      the user hid by hand in Developer-runtime's settings, this one holds whole repositories the ageing
+      the user hid by hand in Runtime's settings, this one holds whole repositories the ageing
       sweep retired from the registry — different store, different actor, different thing to restore.
       Two things had to be built underneath it. **The sweep had no caller**: `ageOutCandidates` was
       covered by tests but nothing ever acted on it, so no record was ever hidden and there was

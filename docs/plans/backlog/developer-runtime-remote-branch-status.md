@@ -10,7 +10,7 @@ related:
 reviewed_commit:
 ---
 
-# Developer-runtime Remote Branch Status
+# Runtime Remote Branch Status
 
 ## Summary
 
@@ -19,12 +19,12 @@ commit passed CI — sourced from the hosting forge rather than local Git state.
 
 ## Context
 
-Developer-runtime's git row currently answers "where am I relative to what I have on disk": branch,
+Runtime's git row currently answers "where am I relative to what I have on disk": branch,
 uncommitted state, ahead/behind, and drift from the base branch. Every one of those is measured
 against local refs.
 
 The questions this plan adds cannot be answered that way. "Did this branch build?" and "is there a
-PR open for it?" exist only on the forge's servers. That makes this the first Developer-runtime feature
+PR open for it?" exist only on the forge's servers. That makes this the first Runtime feature
 that requires a network call on the scan path, which is why it is a plan rather than an increment.
 
 ## Current State

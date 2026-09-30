@@ -17,15 +17,15 @@ reviewed_commit: 643f198bdc1091863bd27dbed8ffe748cf4e3b3f
 
 Make the canonical repository registry the portal-wide source of truth for which repositories RoboRepo knows about and which repository the user is viewing.
 
-RoboRepo should work with no repository setup when Developer-runtime discovers a running project, then let the user add exact repositories or folders containing repositories when they want broader coverage. Plans should consume that global repository set instead of owning a separate "Project Folders" universe.
+RoboRepo should work with no repository setup when Runtime discovers a running project, then let the user add exact repositories or folders containing repositories when they want broader coverage. Plans should consume that global repository set instead of owning a separate "Project Folders" universe.
 
-This story also adds one shared browser repository scope for pages where selecting a repository creates a meaningful alternate view. Plans and Tokens replace their page-local repository filters with that scope. Agents accepts the scope but shows a repository-level configuration placeholder until its dedicated story lands. Developer-runtime remains an operational repository list and does not filter down to one selected repository.
+This story also adds one shared browser repository scope for pages where selecting a repository creates a meaningful alternate view. Plans and Tokens replace their page-local repository filters with that scope. Agents accepts the scope but shows a repository-level configuration placeholder until its dedicated story lands. Runtime remains an operational repository list and does not filter down to one selected repository.
 
 The current `/` Agents route remains in place during this story. Scoped Agents links should use the stable `/config` alias so the follow-up homepage story can claim `/` without changing repository-scoped URLs.
 
 ## Scope Handoff
 
-`h4tqm2wz` (Developer-runtime Workspace Model) implements the Developer-runtime half of this story's Phase 1 —
+`h4tqm2wz` (Runtime Workspace Model) implements the Runtime half of this story's Phase 1 —
 persisting repositories and their checkout roots from runtime discovery, plus the private
 `rootId -> path` index in §2 — so the workspace model can be settled on the page where it is
 visible. It also adds a repository lifecycle (`active`/`idle`/`stale`) and visibility-based hiding,
@@ -36,7 +36,7 @@ user-configured repository sources, `urlKey`, shared scope, and the Plans/Tokens
 
 ## Goals
 
-- Make Developer-runtime discovery the zero-configuration baseline for recognizing repositories.
+- Make Runtime discovery the zero-configuration baseline for recognizing repositories.
 - Let users add one exact repository or a folder containing many repositories from a global repository-management surface.
 - Remember a discovered local checkout after its process stops so Plans and later repository features can continue using it.
 - Make known local repositories automatically eligible for plan discovery; do not require a second Plans enrollment step.
@@ -44,7 +44,7 @@ user-configured repository sources, `urlKey`, shared scope, and the Plans/Tokens
 - Add stable, readable `repository=<urlKey>` browser scope.
 - Replace the Plans and Tokens repository selectors with the shared scope.
 - Preserve page-local filters and browser history.
-- Keep Developer-runtime unscoped.
+- Keep Runtime unscoped.
 - Give Agents a truthful repository-scoped placeholder until repository-level agent configuration is implemented.
 - Preserve privacy: normal repository list/detail/scope payloads and URLs must not expose absolute local paths; only the protected local repository-management settings surface may read or display configured source paths.
 
@@ -52,7 +52,7 @@ user-configured repository sources, `urlKey`, shared scope, and the Plans/Tokens
 
 - Building the repository-first homepage or repository detail page; `jqi1dof` owns those surfaces.
 - Implementing repository-level agent configuration.
-- Filtering Developer-runtime to a single repository.
+- Filtering Runtime to a single repository.
 - Making every repository-discovery source user configurable.
 - Removing the general enrollment concept from the registry for domains that may still need explicit opt-in.
 - Reworking canonical Git identity, alias resolution, or cross-domain `repositoryId` joins already delivered by `canonical-repository-identity-plan-v2`.
@@ -65,7 +65,7 @@ The repository registry remains the identity layer. This story changes how repos
 | Concept | Meaning | Source of truth |
 | --- | --- | --- |
 | Canonical repository | One logical repository known to RoboRepo | Repository registry `repositoryId` |
-| Automatic discovery | Repository observed from developer-runtime activity | Developer-runtime discovery provenance |
+| Automatic discovery | Repository observed from developer-runtime activity | Runtime discovery provenance |
 | Repository source | User-configured exact repo or parent folder used to find additional repositories | New global repository-source settings |
 | Local root | One checkout/worktree path for a canonical repository | Private local-root store keyed by opaque `rootId` |
 | Repository visibility | Whether a canonical repository participates in normal portal views | Registry `visibility` |
@@ -74,7 +74,7 @@ The repository registry remains the identity layer. This story changes how repos
 
 ```mermaid
 flowchart LR
-  Developer-runtime["Developer-runtime developer-runtime discovery"] -->|registers repository + local root| Registry["Canonical repository registry"]
+  Runtime["Runtime developer-runtime discovery"] -->|registers repository + local root| Registry["Canonical repository registry"]
   Sources["Configured repo / folder sources"] -->|discover repositories + local roots| Registry
   Registry -->|known local repositories| Plans["Plan discovery"]
   Registry -->|urlKey lookup| Scope["Shared portal repository scope"]
@@ -85,7 +85,7 @@ flowchart LR
 
 ### Repository recognition rule
 
-A repository recognized through either automatic Developer-runtime discovery or an explicit repository source becomes globally known. When RoboRepo has a valid local root for that repository, Plans should inspect that repository for `docs/plans` without requiring a separate "Include plans" action.
+A repository recognized through either automatic Runtime discovery or an explicit repository source becomes globally known. When RoboRepo has a valid local root for that repository, Plans should inspect that repository for `docs/plans` without requiring a separate "Include plans" action.
 
 The relationship is intentionally bidirectional:
 
@@ -101,13 +101,13 @@ Current gaps:
 
 - `modules/repositories/schema.mjs` has no stable browser `urlKey`.
 - `registerLocalRoot()` persists only an opaque `rootId`; there is no general reverse mapping from that ID to a checkout path.
-- Developer-runtime can remember offline project metadata, but its normal saved project records do not preserve a canonical-repository checkout path. Docker Compose has a special `repoPath` exception.
+- Runtime can remember offline project metadata, but its normal saved project records do not preserve a canonical-repository checkout path. Docker Compose has a special `repoPath` exception.
 - Plans stores `discoveryRoots` in `~/.roborepo/plan-docs/settings.json` and recursively searches those roots.
 - The Plans UI owns the "Project Folders" form and can accept multiple roots. An exact repository path and a broad parent path can already coexist, but this configuration is Plans-specific.
 - `scripts/cli/repositories.mjs` currently treats Plans enrollment as an explicit operation that may add an exact repository path to Plans discovery roots.
 - Plans has a page-local repository filter.
 - Tokens has a page-local `repo` cohort selector whose semantics must not be mechanically conflated with canonical repository scope.
-- Developer-runtime already renders one operational card per resolved repository and has Developer-runtime-specific hide/favorite behavior.
+- Runtime already renders one operational card per resolved repository and has Runtime-specific hide/favorite behavior.
 - Agents is currently the default `/` page; `/config` is a stable alias.
 - Shared portal navigation does not preserve repository state between pages.
 
@@ -140,7 +140,7 @@ Do not make Plans own these limits after migration. Move reusable repository wal
 
 ### 2. Private local-root path index
 
-**Delivered by `h4tqm2wz`.** The index below, its invariants, and the Developer-runtime writer are built
+**Delivered by `h4tqm2wz`.** The index below, its invariants, and the Runtime writer are built
 there. This section remains the specification both plans work from; configured-source refresh
 (§1) writes to the same index.
 
@@ -162,28 +162,28 @@ The exact file/module shape is an implementation detail, but the following invar
 - absolute paths stay in local server-side state only;
 - a `rootId` resolves to at most one current path;
 - a repository can have multiple clones/worktrees;
-- Developer-runtime discovery updates the mapping whenever it confidently resolves a checkout;
+- Runtime discovery updates the mapping whenever it confidently resolves a checkout;
 - configured repository sources update the same mapping;
 - a process going offline does not delete the mapping;
 - stale/missing paths are detected during refresh and reported without deleting canonical repository history;
 - browser-safe repository summaries continue to expose root counts/kinds only.
 
-Registry and local-root updates must be serialized or committed atomically across Developer-runtime discovery and configured-source refresh. Concurrent writers must merge by `repositoryId` and `rootId`, preserve all known roots and provenance entries, and apply visibility changes through an explicit conflict rule rather than last-writer-wins replacement. The persistence flow must write registry identity and private root mapping as one logical update, or recover to the previous complete state after a failed write. Add a concurrent-refresh regression test that exercises Developer-runtime discovery and configured-source refresh updating the same repository before this state feeds Plans, Tokens, or Home.
+Registry and local-root updates must be serialized or committed atomically across Runtime discovery and configured-source refresh. Concurrent writers must merge by `repositoryId` and `rootId`, preserve all known roots and provenance entries, and apply visibility changes through an explicit conflict rule rather than last-writer-wins replacement. The persistence flow must write registry identity and private root mapping as one logical update, or recover to the previous complete state after a failed write. Add a concurrent-refresh regression test that exercises Runtime discovery and configured-source refresh updating the same repository before this state feeds Plans, Tokens, or Home.
 
-### 3. Developer-runtime as zero-configuration discovery
+### 3. Runtime as zero-configuration discovery
 
 **Delivered by `h4tqm2wz`.** The five-step flow below is implemented there, along with the
 lifecycle that decides when a remembered repository is stale rather than merely inactive.
 
-When Developer-runtime resolves a running app to a repository and checkout root:
+When Runtime resolves a running app to a repository and checkout root:
 
 1. resolve canonical `repositoryId`;
-2. record Developer-runtime discovery provenance;
+2. record Runtime discovery provenance;
 3. register the opaque local root in the registry;
 4. persist the private `rootId -> path` mapping;
 5. make the repository available to other domains immediately.
 
-A repository discovered this way remains known after the app stops. Later Developer-runtime polls can mark activity inactive without removing the repository or its root mapping.
+A repository discovered this way remains known after the app stops. Later Runtime polls can mark activity inactive without removing the repository or its root mapping.
 
 If RoboRepo has no known repositories, the global management surface should be able to explain the two entry paths in plain language: start a local project or add a repository/folder.
 
@@ -221,7 +221,7 @@ The migration must be idempotent. Do not delete or broaden a user's configured p
 
 Environment-based `ROBOREPO_PLAN_ROOTS` compatibility should either migrate through the same source normalization or be explicitly retained as a legacy input that feeds global repository sources. Do not let it create a second ongoing repository universe.
 
-### 6. Global ignore and Developer-runtime hide are different
+### 6. Global ignore and Runtime hide are different
 
 Use canonical registry `visibility: hidden` for the global "Ignore repository" action.
 
@@ -232,9 +232,9 @@ A globally ignored repository:
 - contributes no normal Plans list entries;
 - cannot be selected by normal Tokens/Agents scope;
 - remains in the registry and can be restored;
-- is not silently unhidden by later Developer-runtime discovery.
+- is not silently unhidden by later Runtime discovery.
 
-Developer-runtime's existing per-app/per-compose hide state remains an operational display preference. Rename or label Developer-runtime actions clearly enough that users can distinguish "Hide from Developer-runtime" from global "Ignore repository".
+Runtime's existing per-app/per-compose hide state remains an operational display preference. Rename or label Runtime actions clearly enough that users can distinguish "Hide from Runtime" from global "Ignore repository".
 
 The repository-management surface should include hidden repositories and allow restore.
 
@@ -265,7 +265,7 @@ roborepo
 roborepo-a31f
 ```
 
-Resolve `urlKey` once at the server boundary and pass canonical `repositoryId` to domain loaders. Do not persist `urlKey` as a foreign key in Plans, telemetry, Developer-runtime, or agent-config data.
+Resolve `urlKey` once at the server boundary and pass canonical `repositoryId` to domain loaders. Do not persist `urlKey` as a foreign key in Plans, telemetry, Runtime, or agent-config data.
 
 ### 8. Shared repository selector and URL state
 
@@ -317,7 +317,7 @@ Repository scope is shared infrastructure, but each page explicitly declares whe
 | Plans | Plans across visible known repositories | Plans for canonical `repositoryId` | Replace local repo filter |
 | Tokens | All eligible telemetry | Telemetry for canonical `repositoryId` | Replace local repo selector; preserve legacy metadata handling |
 | Agents | Global agent configuration | Placeholder for repository config | Show "Repository-level agent config coming soon" and link to global config |
-| Developer-runtime | Operational repository/developer-runtime list | Not supported | No selector/filter; scoped navigation drops `repository` |
+| Runtime | Operational repository/developer-runtime list | Not supported | No selector/filter; scoped navigation drops `repository` |
 | `/` | Existing Agents compatibility route | Not a scoped Home yet | Follow-up story claims `/` |
 
 The Agents placeholder should communicate the limitation without pretending mixed/global configuration is repository-specific:
@@ -339,7 +339,7 @@ Shared navigation carries repository scope only to pages that support it.
 | Plans → Tokens while scoped | Preserve `repository` |
 | Plans → Agents while scoped | Preserve `repository`, using `/config` |
 | Tokens → Plans while scoped | Preserve `repository` |
-| Any scoped page → Developer-runtime | Drop `repository` |
+| Any scoped page → Runtime | Drop `repository` |
 | Clear scope | Remove only `repository`; preserve page-local filters |
 | Back/forward | Restore shared scope and page-local state from the URL |
 
@@ -380,11 +380,11 @@ The global configuration view remains unchanged when no repository is selected.
 
 When `repository` is present and resolves successfully, replace the global data presentation with the placeholder state. Do not partially filter resources or imply repository-specific configuration exists before its dedicated implementation story.
 
-### Developer-runtime
+### Runtime
 
 Do not add a repository selector or one-repository filtering.
 
-Developer-runtime continues to render its repository-centric developer-runtime list. It participates in this story as:
+Runtime continues to render its repository-centric developer-runtime list. It participates in this story as:
 
 - an automatic discovery producer;
 - a writer of persisted local-root paths;
@@ -480,13 +480,13 @@ Separate shared canonical scope from legacy telemetry `repo` semantics and prese
 - Add focused shared ESM modules/templates for repository URL state and selector behavior.
   - Follow the repository's framework-less markup convention: reusable multi-element structure belongs in real HTML `<template>` markup, not JS-built nested DOM.
 
-### Agents and Developer-runtime
+### Agents and Runtime
 
 - `portal/config/*`
   - accept shared scope and render the repository-config placeholder.
 - `portal/developer-runtime/*`
   - persist discovered checkout roots through the repository service;
-  - distinguish global Ignore from Developer-runtime-only hide actions;
+  - distinguish global Ignore from Runtime-only hide actions;
   - do not add one-repository scope filtering.
 
 ## Implementation Plan
@@ -508,7 +508,7 @@ reimplementing:
 | Prerequisite | Where |
 | --- | --- |
 | Private `rootId -> absolute path` local-root index | `h4tqm2wz` Phase 1 |
-| Developer-runtime discovery persists resolved checkout roots | `h4tqm2wz` Phase 1 |
+| Runtime discovery persists resolved checkout roots | `h4tqm2wz` Phase 1 |
 | Normal browser repository payloads stay path-free | `h4tqm2wz` Phase 1 |
 | Stale/missing-root detection without deleting canonical history | `h4tqm2wz` Phase 2, extended there into an explicit lifecycle with user-driven visibility |
 
@@ -538,7 +538,7 @@ reimplementing:
 - [ ] Add **Manage repositories…** with source add/remove, refresh, ignore, and restore behavior.
 - [ ] Make `/config` the canonical Agents nav target while `/` remains a temporary compatibility/default route.
 - [ ] Preserve repository scope only between Plans, Tokens, and Agents.
-- [ ] Drop scope when navigating to Developer-runtime.
+- [ ] Drop scope when navigating to Runtime.
 - [ ] Add invalid/unavailable-key handling and `popstate` tests.
 
 ### Phase 5 — Migrate Plans UI
@@ -560,15 +560,15 @@ reimplementing:
 - [ ] Remove the redundant visible repository selector once shared scope is complete.
 - [ ] Expand telemetry URL-state/cohort tests.
 
-### Phase 7 — Agents placeholder and Developer-runtime integration
+### Phase 7 — Agents placeholder and Runtime integration
 
 - [ ] Render global Agents normally with no scope.
 - [ ] Render the repository-level "coming soon" state when a repository is selected.
 - [ ] Provide a clear action that returns to global Agents config.
-- [ ] Keep Developer-runtime unscoped.
-- [ ] Feed Developer-runtime-resolved checkout roots into the global private local-root store.
-- [ ] Reconcile labeling/behavior for Developer-runtime-only hide versus global Ignore.
-- [ ] Ensure later Developer-runtime rediscovery never silently restores a globally ignored repository.
+- [ ] Keep Runtime unscoped.
+- [ ] Feed Runtime-resolved checkout roots into the global private local-root store.
+- [ ] Reconcile labeling/behavior for Runtime-only hide versus global Ignore.
+- [ ] Ensure later Runtime rediscovery never silently restores a globally ignored repository.
 
 ### Phase 8 — Cleanup and docs
 
@@ -580,7 +580,7 @@ reimplementing:
 
 ## Validation
 
-Use focused tests during implementation, then the full suite because this story changes shared repository, portal, Plans, Developer-runtime, and telemetry behavior.
+Use focused tests during implementation, then the full suite because this story changes shared repository, portal, Plans, Runtime, and telemetry behavior.
 
 Existing repo-native checks to preserve and extend:
 
@@ -599,12 +599,12 @@ npm test
 Add focused coverage for:
 
 - migration from multiple Plan Docs roots, including one exact repository plus one parent folder;
-- Developer-runtime-discovered repository remaining usable for Plans after the process goes offline;
+- Runtime-discovered repository remaining usable for Plans after the process goes offline;
 - local-root path privacy and stale-root handling;
 - automatic plan discovery for a known repository without Plans enrollment;
 - global source add/remove/refresh and traversal limits;
-- global ignore/restore surviving Developer-runtime rediscovery;
-- Developer-runtime-only hide remaining distinct from global Ignore;
+- global ignore/restore surviving Runtime rediscovery;
+- Runtime-only hide remaining distinct from global Ignore;
 - stable URL-key allocation/collisions/aliases;
 - shared scope preservation and scope-clearing destinations;
 - invalid/hidden URL keys never broadening silently;
@@ -614,8 +614,8 @@ Add focused coverage for:
 
 ## Acceptance Criteria
 
-- A fresh RoboRepo installation can learn its first repository solely from Developer-runtime activity.
-- A Developer-runtime-discovered repository remains globally known when its developer-runtime goes offline.
+- A fresh RoboRepo installation can learn its first repository solely from Runtime activity.
+- A Runtime-discovered repository remains globally known when its developer-runtime goes offline.
 - RoboRepo privately retains enough local-root information to inspect a known checkout later without exposing that path to the browser.
 - Users can add one exact repository and/or a parent folder containing repositories from a global repository-management surface.
 - Existing Plans discovery roots migrate without losing or broadening coverage.
@@ -625,9 +625,9 @@ Add focused coverage for:
 - Plans, Tokens, and Agents use short URLs such as `?repository=roborepo`.
 - Canonical IDs remain the internal join key; browser URLs use stable `urlKey`.
 - Selecting an invalid or hidden key never silently shows all repositories.
-- Developer-runtime remains a repository-centric operational list rather than a one-repository filtered page.
+- Runtime remains a repository-centric operational list rather than a one-repository filtered page.
 - Agents shows an explicit repository-config placeholder and a path back to global configuration.
-- Global Ignore and Developer-runtime-only hide have distinct behavior and labeling.
+- Global Ignore and Runtime-only hide have distinct behavior and labeling.
 - Repository scope survives refresh/back/forward and preserves compatible page-local filters.
 - Absolute local paths never appear in normal repository browser payloads or scope URLs.
 - Targeted tests and `npm test` pass.
