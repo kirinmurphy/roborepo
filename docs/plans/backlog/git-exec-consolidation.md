@@ -4,7 +4,7 @@ priority: low
 next_action: Migrate the three private git() helpers onto defaultRunGitSync from modules/repositories/git-exec.mjs
 blocked_by: []
 depends_on:
-  - localhoster-git-health-history
+  - developer-runtime-git-health-history
 related: []
 reviewed_commit:
 ---
@@ -14,11 +14,11 @@ reviewed_commit:
 ## Summary
 
 Migrate three duplicated, unhardened `git()` helpers onto the shared `defaultRunGitSync` seam
-introduced by `localhoster-git-health-history`.
+introduced by `developer-runtime-git-health-history`.
 
 ## Current State
 
-`modules/repositories/git-exec.mjs` owns Git subprocess execution for Localhoster, with a read-only
+`modules/repositories/git-exec.mjs` owns Git subprocess execution for Runtime, with a read-only
 subcommand allow-list, hook and lock hardening, an explicit timeout, and `maxBuffer`. It ships both
 `defaultRunGit` (async) and `defaultRunGitSync` (sync), the latter existing specifically so these
 call sites can migrate without restructuring.
@@ -38,7 +38,7 @@ commands.
 ## Why This Was Deferred
 
 The duplicates are synchronous and sit on synchronous call paths. Consolidating them during the
-Localhoster work would have mixed an unrelated regression surface (Plans scanning, telemetry
+Runtime work would have mixed an unrelated regression surface (Plans scanning, telemetry
 capture) into that plan's diff. `defaultRunGitSync` was shipped ready so this becomes mechanical.
 
 ## Goals

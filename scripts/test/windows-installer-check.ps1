@@ -3,7 +3,7 @@
 # in CI would notice if it stopped parsing or drifted from the provider manifests.
 #
 # Scope is deliberately static analysis, not an install: a real install mutates the runner's
-# %APPDATA% and is not what this is guarding. What it guards is the drift that made Gemini
+# home directory and is not what this is guarding. What it guards is the drift that made Gemini
 # invisible on Windows -- $KnownHarnessIds is a hand-maintained literal, so adding a provider to
 # globals/harnesses/ silently leaves Windows behind with no failing check anywhere.
 #
@@ -34,11 +34,10 @@ if (-not (Test-Path $installer)) {
 }
 
 # --- 2. $KnownHarnessIds matches the provider manifests. ---
-# Windows cannot yet DERIVE this list: Claude's Windows home is %APPDATA%\Claude, an
-# environment-variable path the manifest schema's `~/`-only form cannot express (see the comment
-# above $KnownHarnessIds in the installer, and the discoverable-harness-provider-architecture
-# plan's Phase 4 follow-up). Until a platforms.win32 path override lands, the literal stays -- but
-# it must stay in sync, and this check is what forces that.
+# Windows does not yet DERIVE this list from the manifests (see the comment above
+# $KnownHarnessIds in the installer, and the discoverable-harness-provider-architecture plan's
+# Phase 4 follow-up). Until it does, the literal stays -- but it must stay in sync, and this check
+# is what forces that.
 $harnessDir = Join-Path $repoRoot "globals/harnesses"
 $manifestIds = @(
     Get-ChildItem -Path $harnessDir -Directory |

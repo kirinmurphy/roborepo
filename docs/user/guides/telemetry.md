@@ -183,7 +183,6 @@ roborepo telemetry report --conditions
 
 ## Related guides
 
-- [Setup and Daily Use](./setup-and-daily-use.md)
+- [Daily Use](./setup-and-daily-use.md)
 - [Telemetry Service Reference](../reference/telemetry.md) — capture, retention, schemas, and CLI details.
-- [Portal Reference](../reference/portal.md)
 - [Screenshot library](../../images/tokens/README.md) — light/dark assets and regeneration instructions.

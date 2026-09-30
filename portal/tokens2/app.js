@@ -1214,7 +1214,7 @@ function renderAgentPrompt(data) {
   const promptText = lines.join("\n");
   textEl.textContent = promptText;
 
-  // Reusable shared copy button (<portal-copy-button>, same as plans/localhoster) — set the
+  // Reusable shared copy button (<portal-copy-button>, same as plans/developer-runtime) — set the
   // copy source lazily; the element handles the copied-state UI itself.
   const copyBtn = document.getElementById("agent-prompt-copy");
   if (copyBtn) copyBtn.copySource = promptText;

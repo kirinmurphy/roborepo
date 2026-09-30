@@ -87,7 +87,7 @@ node scripts/test/harness-hooks-write-remove-characterization-check.mjs
 node scripts/test/harness-mcp-remove-characterization-check.mjs
 node scripts/test/mcp-package-lifecycle-characterization-check.mjs
 node scripts/test/repositories-check.mjs
-node scripts/test/localhoster-check.mjs
+node scripts/test/developer-runtime-check.mjs
 node scripts/test/usage-domain-check.mjs
 ```
 

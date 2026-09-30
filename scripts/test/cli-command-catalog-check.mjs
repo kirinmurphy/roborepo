@@ -25,6 +25,19 @@ for (const { tokens, node } of executableNodes) {
   assert.ok(node.execution.adapter, `${tokens.join(" ")} has execution adapter`);
 }
 
+// A module-adapter command must point at a file that exists and exports the named function. Without
+// this, renaming a CLI module leaves its manifest dangling and the command fails only when run.
+for (const { tokens, node } of executableNodes) {
+  const { adapter, module: modulePath, export: exportName } = node.execution;
+  if (adapter !== "module") continue;
+  const label = `roborepo ${tokens.join(" ")}`;
+  const file = path.join(repoRoot, modulePath);
+  assert.ok(fs.existsSync(file), `${label}: execution.module does not exist: ${modulePath}`);
+  const source = fs.readFileSync(file, "utf8");
+  const exported = new RegExp(`export\\s+(?:async\\s+)?(?:function\\s*\\*?\\s*|const\\s+|let\\s+|var\\s+|class\\s+)${exportName}\\b|export\\s*\\{[^}]*\\b${exportName}\\b[^}]*\\}`);
+  assert.ok(exported.test(source), `${label}: ${modulePath} does not export ${exportName}`);
+}
+
 const rootHelp = renderHelp(catalog);
 assert.match(rootHelp, /Primary commands:/);
 assert.doesNotMatch(rootHelp, /skill render-commands/);
@@ -238,14 +251,14 @@ assert.ok(catalog.nodes.package.children.dev, "package dev is a separate namespa
 const activeDocPaths = [
   "README.md",
   "docs/user/reference/roborepo-cli.md",
-  "docs/user/reference/roborepo.md",
+  "docs/internal/cli-internals.md",
   "docs/user/guides/setup-and-daily-use.md",
   "docs/user/guides/install-workflows.md",
   "docs/user/guides/first-time-setup.md",
   "docs/user/guides/telemetry.md",
   "docs/user/reference/jcodemunch.md",
   "docs/user/reference/jdocmunch.md",
-  "docs/user/reference/portal.md",
+  "docs/internal/portal-architecture.md",
   "docs/user/reference/plans-portal.md",
   "docs/user/reference/claude-hooks.md",
   "docs/user/reference/codex-hooks.md",

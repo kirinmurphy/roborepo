@@ -13,6 +13,7 @@ pass=0
 fail=0
 quiet=0
 cfg_srv=""
+cfg_guard=""
 
 # --quiet|-q : suppress per-test "ok:" lines; still print every FAIL + the summary.
 for arg in "$@"; do
@@ -34,6 +35,9 @@ cleanup() {
   local status=$?
   if [[ -n "${cfg_srv:-}" ]]; then
     kill "${cfg_srv}" 2>/dev/null || true
+  fi
+  if [[ -n "${cfg_guard:-}" ]]; then
+    kill "${cfg_guard}" 2>/dev/null || true
   fi
   chmod -R u+rwx "${work}" 2>/dev/null || true
   rm -rf "${work}" 2>/dev/null || true
@@ -392,7 +396,7 @@ mkdir -p \
   "${new_harness}/globals/harnesses" \
   "${new_harness}/local/skills"
 cp -R "${repo_root}/scripts/cli/." "${new_harness}/scripts/cli/"
-# modules/ travels with scripts/cli/: maintenance-stores.mjs imports modules/localhoster/settings.mjs
+# modules/ travels with scripts/cli/: maintenance-stores.mjs imports modules/developer-runtime/settings.mjs
 # and modules/retention/, so a fixture without it dies at import time before any assertion runs.
 mkdir -p "${new_harness}/modules"
 cp -R "${repo_root}/modules/." "${new_harness}/modules/"
@@ -776,6 +780,11 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" PORTAL_READY_FILE="${cfg_ready}" \
     node "${cli}" web --no-open --port 0 --allow-zero-port >"${cfg_home}/portal.log" 2>&1 &
   cfg_srv=$!
+  # The EXIT trap stops the server on every exit it gets to run on, but a SIGKILLed suite (the usual
+  # timeout enforcement in CI and agent harnesses) runs no trap and would orphan it. The watchdog
+  # survives the suite and stops the server once this shell is gone.
+  "${repo_root}/scripts/test/lib/kill-when-orphaned.sh" "$$" "${cfg_srv}" </dev/null >/dev/null 2>&1 &
+  cfg_guard=$!
   cfg_port=""
   for _ in $(seq 1 50); do
     if [[ -f "${cfg_ready}" ]]; then
@@ -796,16 +805,60 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
   assert "config: behaviorView sections carry contextCost rollups" \
     bash -c "node -e \"const j=require('${cfg_home}/config-snapshot.json');const secs=j.behaviorView.filter(s=>s.categoryId);const perms=j.behaviorView.find(s=>s.kind==='permissions');const stores=j.behaviorView.find(s=>s.kind==='stores');process.exit(secs.length&&secs.every(s=>s.contextCost&&Number.isFinite(s.contextCost.activeStartupTokens))&&perms.contextCost.label==='not-prompt-context'&&stores.contextCost.label==='not-prompt-context'?0:1)\""
   assert "config: portal status identifies current app" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/portal/status' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.appRoot==='${repo_root}'&&String(j.portalDir).endsWith('/portal')&&Number.isInteger(j.pid)&&j.pages.some(p=>p.id==='localhoster'&&p.path==='/localhoster')?0:1)})\""
-  assert "config: web reuses an existing current portal" \
-    bash -c "${cfg_env} node '${cli}' web --no-open --port '${cfg_port}' >'${cfg_home}/portal-reuse.log' 2>&1 && grep -q 'already running' '${cfg_home}/portal-reuse.log'"
+    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/portal/status' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok&&j.appRoot==='${repo_root}'&&String(j.portalDir).endsWith('/portal')&&Number.isInteger(j.pid)&&j.pages.some(p=>p.id==='developer-runtime'&&p.path==='/runtime')?0:1)})\""
+  # The next two assertions run `web` against cfg_srv and expect it to reuse or adopt that portal and
+  # exit at once. When reuse breaks — or cfg_srv is already gone because a killed suite's watchdog
+  # stopped it — `web` starts its own server instead: in the foreground, where it would block the
+  # suite forever and outlive it. run_web_expecting_exit bounds that and guards it like cfg_srv.
+  run_web_expecting_exit() {
+    local log="$1"; shift
+    env HOME="${cfg_home}" ROBOREPO_STATE_DIR="${cfg_home}/.roborepo" \
+      ROBOREPO_WORKSPACE_ROOT="${cfg_workspace}" SKIP_MCP=1 \
+      node "${cli}" web "$@" >"${log}" 2>&1 &
+    local web_pid=$!
+    "${repo_root}/scripts/test/lib/kill-when-orphaned.sh" "$$" "${web_pid}" </dev/null >/dev/null 2>&1 &
+    local guard_pid=$!
+    local ticks=0 timed_out=0 status=0
+    while kill -0 "${web_pid}" 2>/dev/null; do
+      if (( ticks >= 600 )); then
+        timed_out=1
+        echo "test: web $* did not exit within 60s; stopping it" >>"${log}"
+        kill "${web_pid}" 2>/dev/null || true
+        break
+      fi
+      sleep 0.1
+      ticks=$((ticks + 1))
+    done
+    wait "${web_pid}" 2>/dev/null || status=$?
+    kill "${guard_pid}" 2>/dev/null || true
+    (( timed_out )) && return 124
+    return "${status}"
+  }
+  served_portal_pid() {
+    curl -s "http://127.0.0.1:${cfg_port}/api/portal/status" \
+      | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(String(JSON.parse(s).pid))}catch{}})"
+  }
+  reuse_check() {
+    run_web_expecting_exit "${cfg_home}/portal-reuse.log" --no-open --port "${cfg_port}" \
+      && grep -q 'already running' "${cfg_home}/portal-reuse.log"
+  }
+  adopt_check() {
+    run_web_expecting_exit "${cfg_home}/portal-detach.log" --detach --no-open --port "${cfg_port}" || return 1
+    local served
+    served="$(served_portal_pid)"
+    [[ "${served}" == "${cfg_srv}" ]] && return 0
+    # Adoption failed and a replacement detached server now holds the port. Stop it so the failed
+    # assertion does not also leave a server running.
+    [[ -n "${served}" ]] && kill "${served}" 2>/dev/null
+    return 1
+  }
+  assert "config: web reuses an existing current portal" reuse_check
   # `web --detach` must ADOPT a healthy portal, not replace it. startDetachedPortal used to call
   # killExistingServer BEFORE its reuse check, which made that branch dead code: every detached
   # start SIGTERMed a working server and respawned it (~30s, and it left you with none if the
   # respawn failed). Asserting the PID is unchanged is what catches a regression to kill-first —
   # a plain "does it serve afterwards" check passes either way, which is why the bug went unseen.
-  assert "config: web --detach adopts a healthy portal instead of restarting it" \
-    bash -c "${cfg_env} node '${cli}' web --detach --no-open --port '${cfg_port}' >'${cfg_home}/portal-detach.log' 2>&1 && test \"\$(curl -s 'http://127.0.0.1:${cfg_port}/api/portal/status' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{process.stdout.write(String(JSON.parse(s).pid))})\")\" = '${cfg_srv}'"
+  assert "config: web --detach adopts a healthy portal instead of restarting it" adopt_check
   cfg_token="$(curl -s "http://127.0.0.1:${cfg_port}/config" | sed -n 's/.*name="cli-portal-token" content="\([^"]*\)".*/\1/p' | head -1)"
   assert "config: portal exposes mutation token only in served HTML" \
     bash -c "test -n '${cfg_token}'"
@@ -825,32 +878,32 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
     bash -c "curl -s -X POST 'http://127.0.0.1:${cfg_port}/api/config/skills' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{\"id\":\"zzz\",\"enabled\":true}' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(j.ok===false?0:1)})\""
   assert "config: GET /config still served" \
     bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:${cfg_port}/config')\" = 200 ]"
-  assert "localhoster: GET /localhoster served with token" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/localhoster' | grep -q 'cli-portal-token'"
-  assert "localhoster: notice template includes docs link target" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/localhoster' | grep -q '/docs/user/reference/localhoster.md'"
-  assert "localhoster: docs markdown route is served" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/docs/user/reference/localhoster.md' | grep -q '^# Localhoster'"
-  assert "localhoster: GET snapshot works without token" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/localhoster' >'${cfg_home}/localhoster-get.json' && node -e \"const j=require('${cfg_home}/localhoster-get.json');process.exit(j.capabilities&&Array.isArray(j.projects)&&Array.isArray(j.unmatchedInstances)?0:1)\""
-  assert "localhoster: refresh rejects missing token" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/localhoster/refresh' -H 'Content-Type: application/json' -d '{}')\" = 403 ]"
-  assert "localhoster: mutation rejects cross-origin request" \
-    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/localhoster/project' -H 'Origin: http://example.com' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{}')\" = 403 ]"
-  cfg_lh_rev="$(node -e "const j=require('${cfg_home}/localhoster-get.json');process.stdout.write(String(j.settingsRevision))")"
-  curl -s -X POST "http://127.0.0.1:${cfg_port}/api/localhoster/project" -H 'Content-Type: application/json' -H "X-Cli-Portal-Token: ${cfg_token}" \
-    -d "{\"revision\":${cfg_lh_rev},\"projectIdentity\":\"builtin:portal\",\"name\":\"RoboRepo\",\"appId\":\"web\",\"appName\":\"Portal\",\"originPreference\":\"localhost\"}" > "${cfg_home}/localhoster-project.json"
-  assert "localhoster: valid project mutation returns fresh snapshot" \
-    bash -c "node -e \"const j=require('${cfg_home}/localhoster-project.json');process.exit(j.ok&&j.localhoster?.settingsRevision===${cfg_lh_rev}+1?0:1)\""
-  assert "localhoster: Windows capability shape is explicit" \
-    bash -c "node -e \"import('${repo_root}/modules/localhoster/index.mjs').then(m=>{const c=m.capabilityForPlatform('win32');process.exit(c.discovery==='unsupported'&&/Windows/.test(c.message)?0:1)})\""
+  assert "developer-runtime: GET /runtime served with token" \
+    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/runtime' | grep -q 'cli-portal-token'"
+  assert "developer-runtime: notice template includes docs link target" \
+    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/runtime' | grep -q '/docs/user/reference/runtime.md'"
+  assert "developer-runtime: docs markdown route is served" \
+    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/docs/user/reference/runtime.md' | grep -q '^# Runtime'"
+  assert "developer-runtime: GET snapshot works without token" \
+    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/developer-runtime' >'${cfg_home}/developer-runtime-get.json' && node -e \"const j=require('${cfg_home}/developer-runtime-get.json');process.exit(j.capabilities&&Array.isArray(j.projects)&&Array.isArray(j.unmatchedInstances)?0:1)\""
+  assert "developer-runtime: refresh rejects missing token" \
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/developer-runtime/refresh' -H 'Content-Type: application/json' -d '{}')\" = 403 ]"
+  assert "developer-runtime: mutation rejects cross-origin request" \
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/developer-runtime/project' -H 'Origin: http://example.com' -H 'Content-Type: application/json' -H 'X-Cli-Portal-Token: ${cfg_token}' -d '{}')\" = 403 ]"
+  cfg_lh_rev="$(node -e "const j=require('${cfg_home}/developer-runtime-get.json');process.stdout.write(String(j.settingsRevision))")"
+  curl -s -X POST "http://127.0.0.1:${cfg_port}/api/developer-runtime/project" -H 'Content-Type: application/json' -H "X-Cli-Portal-Token: ${cfg_token}" \
+    -d "{\"revision\":${cfg_lh_rev},\"projectIdentity\":\"builtin:portal\",\"name\":\"RoboRepo\",\"appId\":\"web\",\"appName\":\"Portal\",\"originPreference\":\"localhost\"}" > "${cfg_home}/developer-runtime-project.json"
+  assert "developer-runtime: valid project mutation returns fresh snapshot" \
+    bash -c "node -e \"const j=require('${cfg_home}/developer-runtime-project.json');process.exit(j.ok&&j.developerRuntime?.settingsRevision===${cfg_lh_rev}+1?0:1)\""
+  assert "developer-runtime: Windows capability shape is explicit" \
+    bash -c "node -e \"import('${repo_root}/modules/developer-runtime/index.mjs').then(m=>{const c=m.capabilityForPlatform('win32');process.exit(c.discovery==='unsupported'&&/Windows/.test(c.message)?0:1)})\""
   # The /config page JS must parse — a syntax error there crashes the whole dashboard at load (no
   # panels render) and is invisible to HTTP-status checks. Guards the template-literal trap (a literal
   # newline inside a JS string, etc.).
   assert "config: served /config dashboard JS parses" \
     bash -c "dashjs=\"${cfg_home}/dash.mjs\"; curl -s 'http://127.0.0.1:${cfg_port}/portal/config/app.js' > \"\${dashjs}\" && node --check \"\${dashjs}\""
-  assert "localhoster: served dashboard JS parses" \
-    bash -c "dashjs=\"${cfg_home}/localhoster.mjs\"; curl -s 'http://127.0.0.1:${cfg_port}/portal/localhoster/app.js' > \"\${dashjs}\" && node --check \"\${dashjs}\""
+  assert "developer-runtime: served dashboard JS parses" \
+    bash -c "dashjs=\"${cfg_home}/developer-runtime.mjs\"; curl -s 'http://127.0.0.1:${cfg_port}/portal/developer-runtime/app.js' > \"\${dashjs}\" && node --check \"\${dashjs}\""
 else
   [[ "${quiet}" -eq 0 ]] && echo "skip: config portal HTTP tests (loopback bind unavailable)"
 fi
@@ -1004,8 +1057,10 @@ node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[1], JSON.string
 assert "bundle apply: records root-config writes" \
   bash -c "HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' node '${cli}' bundle apply base >/dev/null && HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' node '${repo_root}/scripts/cli/root-config-state.mjs' check claude '${root_keep_home}/.claude/settings.json' | grep -q '^clean$'"
 printf '{"MANAGED_BY_ROBOREPO":true,"user":"drifted edit"}\n' > "${root_keep_home}/.claude/settings.json"
-assert "bundle apply: local config keep policy merges drift safely" \
-  bash -c "HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' node '${repo_root}/scripts/cli/root-config-state.mjs' check claude '${root_keep_home}/.claude/settings.json' | grep -q '^drifted$' && HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' ROBOREPO_INSTALL_TIMESTAMP=20260615-101500 node '${cli}' bundle apply base >'${root_keep_home}/out' && grep -q 'drifted edit' '${root_keep_home}/.claude/settings.json' && grep -q 'merge: .*local root config preserved' '${root_keep_home}/out' && ! test -f '${root_keep_home}/.claude/settings_update_20260615-101500.json' && HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' node '${repo_root}/scripts/cli/root-config-state.mjs' check claude '${root_keep_home}/.claude/settings.json' | grep -q '^clean$'"
+# keep on a drifted root config leaves the user's edit untouched, stages the repo candidate, and does
+# not record a clean write — the drift must stay visible (8828155 fixed the same bug in bash).
+assert "bundle apply: local config keep policy leaves drift untouched and stages candidate" \
+  bash -c "HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' node '${repo_root}/scripts/cli/root-config-state.mjs' check claude '${root_keep_home}/.claude/settings.json' | grep -q '^drifted$' && HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' ROBOREPO_INSTALL_TIMESTAMP=20260615-101500 node '${cli}' bundle apply base >'${root_keep_home}/out' && grep -q 'drifted edit' '${root_keep_home}/.claude/settings.json' && grep -q 'stage: .*settings_update_20260615-101500.json' '${root_keep_home}/out' && test -f '${root_keep_home}/.claude/settings_update_20260615-101500.json' && HOME='${root_keep_home}' ROBOREPO_STATE_DIR='${root_keep_home}/.roborepo' node '${repo_root}/scripts/cli/root-config-state.mjs' check claude '${root_keep_home}/.claude/settings.json' | grep -q '^drifted$'"
 
 adopt_overwrite_home="${work}/adopt-overwrite-home"
 mkdir -p "${adopt_overwrite_home}/.claude" "${adopt_overwrite_home}/.roborepo"
@@ -1664,10 +1719,10 @@ assert "workspace: built-in conflicts require a typed replace override" \
 assert "harness: provider manifest and schema validation" \
   node "${repo_root}/scripts/test/harness-manifest-check.mjs"
 
-# Harness provider registry, discovery, state, and runtime (Phase 2): zero/one/multi enabled
+# Harness provider registry, discovery, state, and harness-runtime (Phase 2): zero/one/multi enabled
 # provider scenarios, explicit-disable survives refresh, synthetic third provider proves no
 # hardcoded two-provider assumption. See discoverable-harness-provider-architecture-plan.md Phase 2.
-assert "harness: registry, discovery, state, and runtime" \
+assert "harness: registry, discovery, state, and harness-runtime" \
   node "${repo_root}/scripts/test/harness-registry-check.mjs"
 
 # Gemini CLI provider adapter (gemini-cli-provider-integration-plan.md Phase 2): the first real
@@ -1799,60 +1854,60 @@ assert "repositories: idle git cache invalidates on checkout change" \
 assert "repositories: branch sync facts" \
   node "${repo_root}/scripts/test/repositories-branch-sync-check.mjs"
 
-# Localhoster module suite. Note: localhoster-check.mjs existed as an npm script but was never wired
+# Runtime module suite. Note: developer-runtime-check.mjs existed as an npm script but was never wired
 # into this file, so it had not been running in CI at all — added here alongside the new checks.
-assert "localhoster: discovery, settings schema, snapshot shaping" \
-  node "${repo_root}/scripts/test/localhoster-check.mjs"
+assert "developer-runtime: discovery, settings schema, snapshot shaping" \
+  node "${repo_root}/scripts/test/developer-runtime-check.mjs"
 
 # Git context from existing local refs only: branch/detached/packed-refs/worktree resolution, dirty
 # reported as null (never false) when git is unavailable, and the guarantee that no network or
-# hook-invoking subcommand ever runs. See docs/plans/active/localhoster-git-health-history.md.
-assert "localhoster: git context from local refs only" \
-  node "${repo_root}/scripts/test/localhoster-git-check.mjs"
+# hook-invoking subcommand ever runs. See docs/plans/active/developer-runtime-git-health-history.md.
+assert "developer-runtime: git context from local refs only" \
+  node "${repo_root}/scripts/test/developer-runtime-git-check.mjs"
 
 # Health normalization: six states, the starting grace window, failure debouncing, and flap
 # resistance for an app alternating pass/fail.
-assert "localhoster: health normalization and flap resistance" \
-  node "${repo_root}/scripts/test/localhoster-health-check.mjs"
+assert "developer-runtime: health normalization and flap resistance" \
+  node "${repo_root}/scripts/test/developer-runtime-health-check.mjs"
 
 # Bounded JSONL history: snapshot diffing into transition events, truncated-line tolerance,
 # retention, size cap, atomic compaction, and opaque-key route resolution.
-assert "localhoster: bounded JSONL history" \
-  node "${repo_root}/scripts/test/localhoster-history-check.mjs"
+assert "developer-runtime: bounded JSONL history" \
+  node "${repo_root}/scripts/test/developer-runtime-history-check.mjs"
 
 # Per-container CPU/memory via `docker stats`, replacing the host `ps` reading for docker-matched
 # instances (that reading is always the shared VM-proxy PID on macOS, never the real container).
-assert "localhoster: docker stats provider" \
-  node "${repo_root}/scripts/test/localhoster-docker-stats-check.mjs"
+assert "developer-runtime: docker stats provider" \
+  node "${repo_root}/scripts/test/developer-runtime-docker-stats-check.mjs"
 
 # Bind-mount sources per container, the third repo-resolution tier for Compose projects that carry
 # no working_dir label (Supabase CLI and anything else not started via `docker compose up`).
-assert "localhoster: docker mounts provider" \
-  node "${repo_root}/scripts/test/localhoster-docker-mounts-check.mjs"
+assert "developer-runtime: docker mounts provider" \
+  node "${repo_root}/scripts/test/developer-runtime-docker-mounts-check.mjs"
 
 # Compose repo resolution precedence: manual repoPath > working_dir label > bind-mount path, plus
 # the agreement guard that refuses to guess when a project's mounts disagree.
-assert "localhoster: compose project identity resolution" \
-  node "${repo_root}/scripts/test/localhoster-compose-identity-check.mjs"
+assert "developer-runtime: compose project identity resolution" \
+  node "${repo_root}/scripts/test/developer-runtime-compose-identity-check.mjs"
 
 # Repository-keyed card merging: instances sharing a repositoryId collapse onto one card, cwd-only
 # members stay secondary and out of the aggregate CPU, and a Compose stack stays a sub-group.
-assert "localhoster: repository card merge" \
-  node "${repo_root}/scripts/test/localhoster-repository-merge-check.mjs"
+assert "developer-runtime: repository card merge" \
+  node "${repo_root}/scripts/test/developer-runtime-repository-merge-check.mjs"
 
 # Compose-container provider parsing: fixture docker-ps lines, docker-not-found and daemon-down
 # distinguished from a permission failure. No real docker CLI or daemon is invoked.
-assert "localhoster: docker provider parsing" \
-  node "${repo_root}/scripts/test/localhoster-docker-check.mjs"
+assert "developer-runtime: docker provider parsing" \
+  node "${repo_root}/scripts/test/developer-runtime-docker-check.mjs"
 
 # Etime parsing for `ps`-style output: short-form, long-form, and day-qualified durations to seconds.
-assert "localhoster: process etime parsing" \
-  node "${repo_root}/scripts/test/localhoster-process-check.mjs"
+assert "developer-runtime: process etime parsing" \
+  node "${repo_root}/scripts/test/developer-runtime-process-check.mjs"
 
 # Same-origin metadata discovery: manifest/robots/sitemap/OpenAPI sources, the loopback fetch guards
 # (external redirect, body cap, timeout), auth-looking path exclusion, and source-priority dedupe.
-assert "localhoster: metadata suggestion discovery" \
-  node "${repo_root}/scripts/test/localhoster-metadata-check.mjs"
+assert "developer-runtime: metadata suggestion discovery" \
+  node "${repo_root}/scripts/test/developer-runtime-metadata-check.mjs"
 
 # Root config drift VIEW (buildRootConfigView in root-config-view.mjs): the per-harness state the terminal
 # `config root inspect` report and the web /config drift chip both render from — not-installed /

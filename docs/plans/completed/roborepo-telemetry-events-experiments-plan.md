@@ -74,7 +74,7 @@ Spool: one JSONL per harness at `telemetrySpoolDir/<harness>.jsonl` (paths in `s
 
 **Existing test coverage gap (fixed this phase):** `scripts/test/telemetry-correctness-check.mjs` existed but was not wired into `package.json` or `test-roborepo.sh`, unlike every sibling `*-check.mjs`. Added `"test:telemetry"` npm script and an `assert` line in `test-roborepo.sh` (after the hook-composition check) so it now runs in CI. Verified passing via `npm run test:telemetry`.
 
-**Schema/validator precedent for Phase 1:** `modules/localhoster/settings-schema.mjs` (`SETTINGS_VERSION` constant, `validateSettings()` entry point, decomposed `validateX()` field helpers, `validateObjectKeys()` strict allowlisting, throw-based errors) and `scripts/cli/package-catalog.mjs` (`validatePackageCatalog()`, `SUPPORTED_SCHEMA` gate, accumulate-all-errors-then-throw). No zod/ajv/joi in the repo — new marker/snapshot/experiment/capture-v3 schemas should follow this same hand-rolled shape.
+**Schema/validator precedent for Phase 1:** `modules/developer-runtime/settings-schema.mjs` (`SETTINGS_VERSION` constant, `validateSettings()` entry point, decomposed `validateX()` field helpers, `validateObjectKeys()` strict allowlisting, throw-based errors) and `scripts/cli/package-catalog.mjs` (`validatePackageCatalog()`, `SUPPORTED_SCHEMA` gate, accumulate-all-errors-then-throw). No zod/ajv/joi in the repo — new marker/snapshot/experiment/capture-v3 schemas should follow this same hand-rolled shape.
 
 No `fixtures/` directory exists for telemetry; sample data today is inline literals inside `telemetry-correctness-check.mjs` (`writeJsonl`, `baseEvent`, `tool` helpers) and `test-roborepo.sh`. Phase 1's new schema tests should follow the same inline-fixture style for consistency.
 
@@ -213,7 +213,7 @@ Tests: no new pure-module test file this phase (the additions are either DOM-ren
 Recorded 2026-07-22, at plan completion.
 
 **Documentation**: added `docs/user/reference/telemetry.md`, a single consolidated reference doc
-(matching this repo's existing per-service-doc convention — see `localhoster.md` covering settings/
+(matching this repo's existing per-service-doc convention — see `developer-runtime.md` covering settings/
 API/security/limits in one file rather than split guides) covering capture, markers, experiments,
 configuration snapshots, the cohort/metrics/comparison model, package telemetry policies, the CLI
 report, the portal (including every new Phase 6/7 UI piece), the full API surface (read and mutating

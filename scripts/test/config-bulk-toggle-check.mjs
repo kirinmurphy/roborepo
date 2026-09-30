@@ -8,8 +8,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { startHermeticPortal } from "./lib/portal-cleanup.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const cli = path.join(repoRoot, "scripts/cli/main.mjs");
@@ -50,30 +51,12 @@ function registryIds() {
   }
 }
 
-// ── Hermetic portal boot (same recipe as scripts/test/portal-ui/capture.mjs) ──
-const readyFile = path.join(tmp, "portal.ready");
-const bootLog = path.join(tmp, "boot.log");
-const server = spawn("node", [cli, "web", "--no-open", "--port", "0", "--allow-zero-port", "--detach"], {
-  cwd: repoRoot,
+// ── Hermetic portal boot (foreground child, stopped on every exit path) ──
+const { port, stop: stopServer } = await startHermeticPortal({
   env,
-  stdio: ["ignore", "pipe", "pipe"],
+  readyFile: path.join(tmp, "portal.ready"),
+  logFile: path.join(tmp, "boot.log"),
 });
-server.stdout.on("data", (d) => fs.appendFileSync(bootLog, d));
-server.stderr.on("data", (d) => fs.appendFileSync(bootLog, d));
-function stopServer() {
-  try { spawnSync("node", [cli, "web", "stop"], { env, cwd: repoRoot, stdio: "ignore" }); } catch { /* gone */ }
-}
-process.on("exit", stopServer);
-process.on("SIGINT", () => process.exit(1));
-
-let port = null;
-for (let i = 0; i < 60 && !port; i++) {
-  await new Promise((r) => setTimeout(r, 500));
-  try {
-    port = Number(fs.readFileSync(bootLog, "utf8").match(/http:\/\/127\.0\.0\.1:(\d+)/)?.[1]) || null;
-  } catch { /* not written yet */ }
-}
-assert.ok(port, `server never became ready\nboot log:\n${fs.existsSync(bootLog) ? fs.readFileSync(bootLog, "utf8").slice(-2000) : "(none)"}`);
 
 const base = `http://127.0.0.1:${port}`;
 

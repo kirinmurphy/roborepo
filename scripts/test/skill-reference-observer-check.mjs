@@ -5,7 +5,7 @@
 // The hook is a pure stdin -> stdout function, so every case here is deterministic and needs no
 // harness. What it cannot cover is whether injected context survives to the end of a long turn —
 // that assertion requires a live model in a real session and is verified by the manual probe
-// documented in docs/user/reference/skill-reference-observation.md.
+// documented in docs/internal/skill-reference-observation.md.
 //
 // The literal-path case is the one worth reading twice. Agents open references through
 // ~/.claude/skills/..., a symlink into ~/.roborepo/skills/... Resolving that symlink would report a

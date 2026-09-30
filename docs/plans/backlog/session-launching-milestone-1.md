@@ -579,7 +579,7 @@ only commands produced by trusted harness adapters.
 
 ### Phase 6 — Documentation and packaging
 
-- [ ] Update `docs/user/reference/portal.md` page, route, and security tables.
+- [ ] Update `docs/internal/portal-architecture.md` page, route, and security tables.
 - [ ] Update `docs/user/reference/plans-portal.md` with Plan-to-Session integration.
 - [ ] Add `docs/user/reference/sessions.md` as the runtime source of truth.
 - [ ] Update `docs/user/reference/roborepo-cli.md`.

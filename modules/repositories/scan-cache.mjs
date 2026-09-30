@@ -5,9 +5,9 @@
 // report it forever. Making the cache an object the caller creates and drops makes that lifetime a
 // property of the code shape instead of a rule someone has to remember.
 //
-// Domain-neutral on purpose. Localhoster is the first consumer, but "cache work keyed by repository
-// root for the duration of one scan" is not a Localhoster concept — Plans, Telemetry, and Doctor all
-// resolve roots too, and a second copy in modules/localhoster/ is exactly the duplicate resolver
+// Domain-neutral on purpose. Runtime is the first consumer, but "cache work keyed by repository
+// root for the duration of one scan" is not a Runtime concept — Plans, Telemetry, and Doctor all
+// resolve roots too, and a second copy in modules/developer-runtime/ is exactly the duplicate resolver
 // code the canonical-repository-identity migration removed.
 
 export function createScanCache() {

@@ -2,7 +2,7 @@
 //
 // This exists to test the one thing no automated check can: whether injected additionalContext is
 // still in a live agent's context at the end of a long turn. See
-// docs/user/reference/skill-reference-observation.md for the procedure and the dated finding.
+// docs/internal/skill-reference-observation.md for the procedure and the dated finding.
 //
 // Kept deliberately close to globals/packages/skill-visibility/hooks/skill-reference-observer.mjs.
 // It is not that file, because the probe adds a token and a log the shipped hook must never carry —

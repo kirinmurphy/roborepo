@@ -180,7 +180,7 @@ try {
     assert.ok(store.label && store.description, `${store.id} is described for reporting surfaces`);
   }
 
-  assert.equal(findRetentionStore(tempRoot, "localhoster-history")?.policy.maxAgeDays, 14);
+  assert.equal(findRetentionStore(tempRoot, "developer-runtime-history")?.policy.maxAgeDays, 14);
   assert.equal(findRetentionStore(tempRoot, "nope"), null);
 
   // Registered policies must survive validation — a bad literal in the registry fails here, not at

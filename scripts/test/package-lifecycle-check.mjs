@@ -82,18 +82,17 @@ for (const pkgId of packageIds) {
     fs.symlinkSync(staleSkillCache, path.join(tmp, ".claude", "skills", "vanished-package-skill"));
     const staleCommand = writeOwnedCommand(tmp, "claude", "vanished-command", "vanished-package");
     fs.writeFileSync(path.join(tmp, ".claude", "commands", "user-command.md"), "user-authored\n");
-    const staleRuntime = path.join(tmp, ".roborepo", "runtime", "vanished-package", "tool.mjs");
-    fs.mkdirSync(path.dirname(staleRuntime), { recursive: true });
-    fs.writeFileSync(staleRuntime, "owned runtime\n");
+    const stalePackageRuntime = path.join(tmp, ".roborepo", "package-runtime", "vanished-package", "tool.mjs");
+    fs.mkdirSync(path.dirname(stalePackageRuntime), { recursive: true });
+    fs.writeFileSync(stalePackageRuntime, "owned developer-runtime\n");
 
-    const apply = spawnSync(process.execPath, [cli, "config", "apply"], { env, encoding: "utf8" });
+    const apply =spawnSync(process.execPath, [cli, "config", "apply"], { env, encoding: "utf8" });
     assert.equal(apply.status, 0, `config apply should succeed while pruning orphaned projections\n${apply.stdout}${apply.stderr}`);
     assert.ok(!fs.existsSync(staleSkillCache), "config apply removes orphaned managed skill cache entries");
     assert.ok(!fs.existsSync(path.join(tmp, ".claude", "skills", "vanished-package-skill")), "config apply removes orphaned managed skill views");
     assert.ok(!fs.existsSync(staleCommand), "config apply removes orphaned package-owned slash commands");
     assert.ok(fs.existsSync(path.join(tmp, ".claude", "commands", "user-command.md")), "config apply preserves user-authored commands");
-    assert.ok(!fs.existsSync(staleRuntime), "config apply removes orphaned runtime assets");
-  } finally {
+    assert.ok(!fs.existsSync(stalePackageRuntime), "config apply removes orphaned package-runtime assets");  } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }

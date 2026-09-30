@@ -20,7 +20,7 @@ import { resolveHarnessPath } from "../harnesses/paths.mjs";
 // resource delivery iterates these rather than a fixed id list, so registering a new provider
 // delivers its workspace skills/commands without editing this file. Resolving the path through the
 // manifest (not `~/.${id}`) keeps it correct for providers whose home dir is not named after their
-// id — e.g. Claude's %APPDATA%\Claude on Windows.
+// id.
 function providersWith(capability, pathKey) {
   const targets = [];
   for (const provider of listHarnessProviders()) {

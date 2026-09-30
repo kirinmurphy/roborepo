@@ -20,7 +20,7 @@ const EXPERIMENTS_MAX_BYTES = 5 * 1024 * 1024;
 // Markers are append-only JSONL, same shape as the capture spools. Corrections append a
 // superseding marker (marker.supersedes) rather than editing history in place.
 //
-// Trimming rewrites in place. Unlike localhoster history, nothing holds a cursor into this file and
+// Trimming rewrites in place. Unlike developer-runtime history, nothing holds a cursor into this file and
 // nothing reads it incrementally — readMarkers() reads it whole every time — so the simpler write
 // is safe here.
 export function appendMarker(marker) {

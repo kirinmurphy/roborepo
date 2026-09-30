@@ -18,7 +18,7 @@ real zero remains `0%`, and color thresholds obey `NO_COLOR`. Codex gets native
 `tui.status_line` fields only: `model-with-reasoning`, `context-remaining`, `five-hour-limit`,
 `weekly-limit`, and `git-branch`.
 
-The package infrastructure now supports `runtime-asset` and `harness-config` resources, including
+The package infrastructure now supports `package-runtime-asset` and `harness-config` resources, including
 validation, enable/disable application, and live-state probes. Claude `statusLine` singleton
 conflicts preserve unmanaged settings. Codex status-line arrays merge with stable deduplication and
 remove only package-owned items on disable.
@@ -174,7 +174,7 @@ Conceptual generated configuration:
 }
 ```
 
-Use the path and runtime-asset handling defined by the package-development infrastructure. Do not commit machine-specific paths.
+Use the path and package-runtime-asset handling defined by the package-development infrastructure. Do not commit machine-specific paths.
 
 ### Documented input fields
 

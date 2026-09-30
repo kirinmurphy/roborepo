@@ -108,7 +108,7 @@ Known failures or gaps that must not be misreported as merge regressions:
   through CLI, portal, harness renderers, generated artifacts, and the Claude repo-write-scope
   hook.
 - [x] Review shared-state integration for `scripts/cli/state-paths.mjs`, managed uninstall
-  classification, `modules/retention/*`, localhoster, telemetry spool, package catalog labels,
+  classification, `modules/retention/*`, developer-runtime, telemetry spool, package catalog labels,
   capture-dense-bash, usage statusline, and shared rules changes.
 - [x] Check usage-statusline severity thresholds and fix any merge damage where context
   percentage thresholds were accidentally applied to weekly or monthly spend rates.

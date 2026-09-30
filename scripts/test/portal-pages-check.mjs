@@ -2,7 +2,7 @@
 // Portal routing manifest check (docs/plans/active/portal-onboarding-home.md).
 //
 // Phase 1 of portal-onboarding-home: `/` is a dedicated Home page, Agents is canonical at
-// `/config`, and PAGES order defines the global nav (Home, Agents, Plans, Tokens, Localhost).
+// `/config`, and PAGES order defines the global nav (Home, Agents, Plans, Tokens, Runtime).
 // This check pins the manifest invariants that a future routing refactor could silently break:
 // canonical paths, exactly one default page, and the nav order that theme.js renders from
 // window.PORTAL_MANIFEST.
@@ -27,7 +27,7 @@ const EXPECTED = [
   // v2 token report owns /tokens; the v1 dashboard stays served at /tokens_v1, hidden from nav.
   { path: "/tokens", id: "tokens2", title: "Tokens", dir: "tokens2" },
   { path: "/tokens_v1", id: "telemetry", title: "Tokens", dir: "telemetry", hidden: true },
-  { path: "/localhoster", id: "localhoster", title: "Localhost", dir: "localhoster" },
+  { path: "/runtime", id: "developer-runtime", title: "Runtime", dir: "developer-runtime" },
 ];
 
 // The browser-safe manifest must expose exactly the path/id/title triples in PAGES order.

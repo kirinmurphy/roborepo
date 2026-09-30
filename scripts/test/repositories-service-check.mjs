@@ -12,7 +12,7 @@ const stateRoot = path.join(tempRoot, "state");
 try {
   // ---- Discovery recording is idempotent and does not enable enrollment ----
   const id = "git:github.com/kirinmurphy/roborepo";
-  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "localhoster", evidence: "git-remote", confidence: "high", localRoot: "rootaaaa1111", stateRoot });
+  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "developer-runtime", evidence: "git-remote", confidence: "high", localRoot: "rootaaaa1111", stateRoot });
   let reg = loadRegistry({ stateRoot });
   assert.ok(reg.repositories[id], "repository registered");
   assert.equal(reg.repositories[id].enrollments.plans, undefined, "discovery does not enroll Plans");
@@ -21,14 +21,14 @@ try {
   const revAfterFirst = reg.revision;
 
   // Re-recording the same discovery within debounce is a no-op (no revision bump).
-  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "localhoster", evidence: "git-remote", confidence: "high", localRoot: "rootaaaa1111", stateRoot });
+  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "developer-runtime", evidence: "git-remote", confidence: "high", localRoot: "rootaaaa1111", stateRoot });
   reg = loadRegistry({ stateRoot });
   assert.equal(reg.revision, revAfterFirst, "idempotent re-discovery does not write");
 
   // ---- Multiple ports/clones/worktrees associate to one canonical repo ----
   // A second clone (distinct rootId) and a worktree (distinct rootId) of the same remote.
-  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "localhoster", evidence: "git-remote", confidence: "high", localRoot: "rootbbbb2222", stateRoot });
-  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "localhoster", evidence: "worktree-commondir", confidence: "high", localRoot: "rootcccc3333", localRootKind: "worktree", stateRoot });
+  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "developer-runtime", evidence: "git-remote", confidence: "high", localRoot: "rootbbbb2222", stateRoot });
+  recordRepositoryDiscovery({ repositoryId: id, kind: "git", displayName: "roborepo", source: "developer-runtime", evidence: "worktree-commondir", confidence: "high", localRoot: "rootcccc3333", localRootKind: "worktree", stateRoot });
   reg = loadRegistry({ stateRoot });
   assert.equal(Object.keys(reg.repositories).length, 1, "all roots collapse to one canonical repository");
   assert.equal(reg.repositories[id].localRoots.length, 3, "each distinct root retained");
@@ -65,7 +65,7 @@ try {
 
   // ---- Enrollment failure leaves the repository unmonitored ----
   const id2 = "local:1111222233334444";
-  recordRepositoryDiscovery({ repositoryId: id2, kind: "local", displayName: "solo", source: "localhoster", evidence: "cwd-in-git-root", confidence: "medium", stateRoot });
+  recordRepositoryDiscovery({ repositoryId: id2, kind: "local", displayName: "solo", source: "developer-runtime", evidence: "cwd-in-git-root", confidence: "medium", stateRoot });
   assert.throws(() => enrollRepositoryInPlans({ repositoryId: id2, repoRoot: path.join(tempRoot, "solo"), stateRoot,
     readSettings: () => ({ discoveryRoots: [], ignoredDirectories: [] }),
     updatePlanSettings: () => { throw new Error("disk full"); },
@@ -84,7 +84,7 @@ try {
   const mainPath = path.join(tempRoot, "checkouts", "pathed");
   const treePath = path.join(tempRoot, "worktrees", "pathed-feature");
   const recordPathed = (over = {}) => recordRepositoryDiscovery({
-    repositoryId: pathId, kind: "git", displayName: "pathed", source: "localhoster",
+    repositoryId: pathId, kind: "git", displayName: "pathed", source: "developer-runtime",
     evidence: "git-remote", confidence: "high", stateRoot, ...over,
   });
 
@@ -114,7 +114,7 @@ try {
   // A directory that was one repository and became another (this exists in the live registry).
   // The new owner takes the mapping and the old repository stops claiming that root.
   const reuseId = "git:github.com/kirinmurphy/reused";
-  recordRepositoryDiscovery({ repositoryId: reuseId, kind: "git", displayName: "reused", source: "localhoster",
+  recordRepositoryDiscovery({ repositoryId: reuseId, kind: "git", displayName: "reused", source: "developer-runtime",
     evidence: "git-remote", confidence: "high", localRoot: "rootdddd4444", localRootPath: mainPath, stateRoot, now: "2026-08-11T00:02:00.000Z" });
   reg = loadRegistry({ stateRoot });
   assert.equal(reg.localRootPaths.rootdddd4444.repositoryId, reuseId, "reused directory repoints to its new repository");

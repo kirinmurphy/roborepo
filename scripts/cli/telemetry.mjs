@@ -25,15 +25,15 @@ import { readConfigSnapshot, loadConfigSource } from "./config.mjs";
 import { mutatePackage, setSkillInstalled, setBehaviorBucket, setCommandBucket } from "./config-mutate.mjs";
 import { loadPlansSnapshot, loadPlanDocument, buildPlansPrompt, updatePlanSettings, updatePlanPriority, updatePlanLifecycle, refreshPlans } from "./plans.mjs";
 import {
-  loadLocalhosterSnapshot,
-  loadLocalhosterHistory,
-  loadLocalhosterMetadata,
-  refreshLocalhosterSnapshot,
-  updateLocalhosterSettings,
-  setLocalhosterRepositoryVisibility,
-  setLocalhosterRepositoryPinned,
-  setLocalhosterPortalInfo,
-} from "./localhoster.mjs";
+  loadDeveloperRuntimeSnapshot,
+  loadDeveloperRuntimeHistory,
+  loadDeveloperRuntimeMetadata,
+  refreshDeveloperRuntimeSnapshot,
+  updateDeveloperRuntimeSettings,
+  setDeveloperRuntimeRepositoryVisibility,
+  setDeveloperRuntimeRepositoryPinned,
+  setDeveloperRuntimePortalInfo,
+} from "./developer-runtime.mjs";
 import {
   loadRepositoriesPayload,
   loadRepositoryPayload,
@@ -799,13 +799,13 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     updatePlanPriority: (params) => updatePlanPriority(params),
     updatePlanLifecycle: (params) => updatePlanLifecycle(params),
     refreshPlans: () => refreshPlans(),
-    loadLocalhoster: () => loadLocalhosterSnapshot(),
-    refreshLocalhoster: () => refreshLocalhosterSnapshot(),
-    updateLocalhosterSettings: (params) => updateLocalhosterSettings(params),
-    setLocalhosterRepositoryVisibility: (params) => setLocalhosterRepositoryVisibility(params),
-    setLocalhosterRepositoryPinned: (params) => setLocalhosterRepositoryPinned(params),
-    loadLocalhosterHistory: (key) => loadLocalhosterHistory(key),
-    loadLocalhosterMetadata: (key) => loadLocalhosterMetadata(key),
+    loadDeveloperRuntime: () => loadDeveloperRuntimeSnapshot(),
+    refreshDeveloperRuntime: () => refreshDeveloperRuntimeSnapshot(),
+    updateDeveloperRuntimeSettings: (params) => updateDeveloperRuntimeSettings(params),
+    setDeveloperRuntimeRepositoryVisibility: (params) => setDeveloperRuntimeRepositoryVisibility(params),
+    setDeveloperRuntimeRepositoryPinned: (params) => setDeveloperRuntimeRepositoryPinned(params),
+    loadDeveloperRuntimeHistory: (key) => loadDeveloperRuntimeHistory(key),
+    loadDeveloperRuntimeMetadata: (key) => loadDeveloperRuntimeMetadata(key),
     loadRepositories: () => { reconcileTelemetryRepositories(); return loadRepositoriesPayload(); },
     loadRepository: (params) => loadRepositoryPayload(params),
     loadRepositoryAssociations: (params) => loadRepositoryAssociations(params),
@@ -825,7 +825,7 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     uninstallPreview: async () => (await import("./uninstall.mjs")).uninstallPreview(),
     uninstallExecute: async () => (await import("./uninstall.mjs")).uninstallExecute(),
     onListening: (actualPort) => {
-      setLocalhosterPortalInfo({ port: actualPort });
+      setDeveloperRuntimePortalInfo({ port: actualPort });
       if (options.open) openLocalUrl(`${portalUrl(actualPort)}${openPath}`);
       // Deferred to the next tick so the ready-file write and this callback complete first: the
       // warm-up is synchronous and would otherwise block the event loop before the detaching parent
@@ -1961,7 +1961,7 @@ function spawnDetachedServer(port) {
 }
 
 function waitForPortalReady(port, child, readyFile) {
-  // A COLD start is far slower than it looks: the server warms telemetry/localhoster views before
+  // A COLD start is far slower than it looks: the server warms telemetry/developer-runtime views before
   // it binds, which measured ~29s on a normal dev checkout — an order of magnitude past the 3s this
   // used to allow. That made `web --detach` fail on every cold start while leaving the child alive
   // and binding moments later, so the CLI reported failure for a portal that was about to work.

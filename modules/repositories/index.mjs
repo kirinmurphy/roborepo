@@ -1,6 +1,6 @@
-// Domain-neutral canonical repository identity. Localhoster, Plans, Telemetry, Agent Config, and
+// Domain-neutral canonical repository identity. Runtime, Plans, Telemetry, Agent Config, and
 // Doctor all import from here rather than owning their own resolver. Barrel re-export (mirrors
-// modules/localhoster/index.mjs).
+// modules/developer-runtime/index.mjs).
 
 export {
   normalizeGitRemote,
@@ -98,9 +98,9 @@ export {
 } from "./enrollment.mjs";
 
 export {
-  importLocalhosterAliases,
-  canonicalizeLocalhosterIdentity,
-} from "./migrate-localhoster.mjs";
+  importDeveloperRuntimeAliases,
+  canonicalizeDeveloperRuntimeIdentity,
+} from "./migrate-developer-runtime.mjs";
 
 export {
   repositoryScopedFinding,

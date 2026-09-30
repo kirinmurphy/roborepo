@@ -5,7 +5,7 @@ import { repoRoot } from "./paths.mjs";
 
 // Content hash of the portal's served/serving source (portal/ + scripts/cli/, the same tree
 // portal-server.mjs reads from and is itself part of; plus modules/, which portal routes like
-// portal-routes-localhoster.mjs import transitively). A running `roborepo web`/`localhoster`
+// portal-routes-developer-runtime.mjs import transitively). A running `roborepo web`/`runtime`
 // server is detached on purpose so it outlives the CLI invocation that spawned it — but a Node
 // process never re-reads .mjs files after a later git pull/merge changes them on disk, so it can
 // keep serving stale portal code indefinitely with no visible sign anything is wrong. The server

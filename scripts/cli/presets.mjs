@@ -10,7 +10,7 @@ import { mutatePackage, setBehaviorBucket } from "./config-mutate.mjs";
 import { renderHomeRules, removeHomeRules, isRenderedRulesOutput } from "./rules-render.mjs";
 import { listHarnessProviders, getHarnessProvider } from "../harnesses/registry.mjs";
 import { confirmYesNo, makePrompter, selectMenu, wizard } from "./skill-lib.mjs";
-import { pathExists, findSiblingArtifact, copyTree, stageCandidate, backupOriginal } from "./staging-lib.mjs";
+import { pathExists, findSiblingArtifact, copyTree, stageCandidate, backupOriginal, timestampedPath } from "./staging-lib.mjs";
 import { checkDrift, recordWrite } from "./root-config-state.mjs";
 
 const PRESET_MANIFEST = path.join(repoRoot, "manifests", "platform", "presets.json");
@@ -654,10 +654,11 @@ function copyItem(row, policy) {
   // since roborepo's own last write) should be treated as a collision here.
   if (row.kind === "root_config") {
     const drift = checkDrift(row.harness, row.homeAbs);
+    const repoText = fs.readFileSync(source, "utf8");
+    const localText = fs.readFileSync(row.homeAbs, "utf8");
+    const merged = getHarnessProvider(row.harness).adapters.rootConfig.merge(repoText, localText);
     if (drift.status === "clean") {
-      const repoText = fs.readFileSync(source, "utf8");
-      const localText = fs.readFileSync(row.homeAbs, "utf8");
-      fs.writeFileSync(row.homeAbs, getHarnessProvider(row.harness).adapters.rootConfig.merge(repoText, localText));
+      fs.writeFileSync(row.homeAbs, merged);
       console.log(`update: ${row.homeAbs} <- ${source} (baseline changed, no local drift)`);
       // The merge just changed the file's content, so recordWrite must rehash post-write — there's
       // no precomputed hash to thread through here.
@@ -665,17 +666,29 @@ function copyItem(row, policy) {
       return;
     }
     // status is "unwritten" (no prior recorded write) or "drifted" (local edits after roborepo's
-    // last write). Root configs are mutable structured files, so preserve local behavior and layer
-    // repo-only additions through the root-config merge helper instead of treating them like
-    // replaceable managed copies.
-    const repoText = fs.readFileSync(source, "utf8");
-    const localText = fs.readFileSync(row.homeAbs, "utf8");
-    fs.writeFileSync(row.homeAbs, getHarnessProvider(row.harness).adapters.rootConfig.merge(repoText, localText));
+    // last write). Both are real collisions, so abort stops here before anything is written.
+    if (policy.onConflict === "abort" && merged !== localText) abortOnConflict(row, source);
+    if (drift.status === "drifted") {
+      // Mirrors export_user_config in install-lib.sh. keep leaves the user's edits exactly as they
+      // are and records nothing, so the drift stays visible to `config root inspect`; overwrite
+      // backs the drifted file up before merging over it.
+      if (policy.onConflict === "keep") {
+        stageRootConfigCandidate(row, source);
+        return;
+      }
+      const originalPath = timestampedPath(row.homeAbs, "original");
+      fs.copyFileSync(row.homeAbs, originalPath);
+      console.log(`backup: ${row.homeAbs} -> ${originalPath}`);
+    }
+    // An unwritten file is a first adopt: merging preserves local settings and layers repo-only
+    // additions on top, so it applies under keep and overwrite alike.
+    fs.writeFileSync(row.homeAbs, merged);
     console.log(`merge: ${row.homeAbs} <- ${source} (local root config preserved)`);
     recordWrite(row.harness, row.homeAbs);
     return;
   }
 
+  if (policy.onConflict === "abort") abortOnConflict(row, source);
   if (policy.onConflict === "keep") {
     stageUpdate(row);
     printMergePrompt(row);
@@ -792,14 +805,33 @@ function readInstallPolicy() {
   try {
     state = JSON.parse(fs.readFileSync(installStatePath, "utf8"));
   } catch {}
+  const policies = new Set(["keep", "overwrite", "abort"]);
   const envConflict = process.env.ROBOREPO_ON_CONFLICT;
   const stateConflict = state.onConflict;
-  const onConflict = envConflict === "keep" || envConflict === "overwrite"
+  const onConflict = policies.has(envConflict)
     ? envConflict
-    : stateConflict === "keep" || stateConflict === "overwrite"
+    : policies.has(stateConflict)
       ? stateConflict
       : "keep";
   return { onConflict };
+}
+
+// A drifted root config under keep: stage the repo candidate beside the user's file, unless an
+// identical candidate is already staged — repeated updates would otherwise pile up one copy per run.
+function stageRootConfigCandidate(row, source) {
+  const staged = findSiblingArtifact(row.homeAbs, "update");
+  if (staged && fs.readFileSync(staged, "utf8") === fs.readFileSync(source, "utf8")) {
+    console.log(`ok: ${row.homeAbs} (drifted local root config kept; candidate already staged as ${path.basename(staged)})`);
+    return;
+  }
+  stageUpdate(row);
+  printMergePrompt(row);
+}
+
+function abortOnConflict(row, source) {
+  console.error(`abort: install canceled by user (${row.homeAbs} conflicts with ${source}; this file was not changed)`);
+  console.error("Rerun with --on-conflict keep or --on-conflict overwrite to continue.");
+  process.exit(1);
 }
 
 function stageUpdate(row) {

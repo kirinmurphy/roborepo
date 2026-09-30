@@ -2,13 +2,16 @@
 
 ## Purpose
 
-Roborepo materializes global harness config onto a machine by copying owned files, rendering rules, and preserving user-authored root config. There is no managed/adopt mode. The only install-time choice is how to handle collisions for mutable root config and other copied paths.
+This guide covers the checkout installer and its lifecycle: preview, install, update, and uninstall,
+plus moving a verified package to a new Mac. The installer copies RoboRepo-owned files into your
+harness homes, renders rules, and preserves your own config; the one choice it asks you to make is
+the [collision policy](#collision-policy).
 
 ## Workflow Shape
 
 1. Run a dry-run preview when you want to inspect planned paths.
 2. Run the installer.
-3. Choose collision handling only if the installer finds a conflicting local file.
+3. Choose a collision policy when the first run asks.
 4. Let onboarding enable optional packages and skills.
 5. Verify with `roborepo doctor --installed`.
 
@@ -20,6 +23,9 @@ Roborepo materializes global harness config onto a machine by copying owned file
 
 Dry-run reports the shell/PATH actions, install state write, base rule render, and base bundle application it would perform. It does not mutate home config.
 
+For automation, `--no-presets-onboard` or `ROBOREPO_PRESETS_ONBOARD=skip` skips install-time
+onboarding.
+
 ## Install
 
 ```sh
@@ -29,7 +35,7 @@ Dry-run reports the shell/PATH actions, install state write, base rule render, a
 The installer writes:
 
 - rendered base rules to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
-- copied roborepo-owned files such as markers, commands, hooks, and Codex rules
+- copied RoboRepo-owned files such as markers, commands, hooks, and Codex rules
 - copied root config baselines when no local file exists
 - `builtin-support` in each installed harness skill directory
 - `~/.local/bin/roborepo`
@@ -37,48 +43,39 @@ The installer writes:
 
 Then it applies the default `base` bundle. Choosing the optional behaviors is `roborepo init`'s job, not the installer's. On update, that base bundle still re-applies so rendered rules stay fresh even on an already-initialized machine.
 
+## Verification
+
+```sh
+roborepo doctor --installed
+```
+
+`doctor --installed` checks the active machine state, including rendered home rules and base skill copies.
+
 ## Collision Policy
 
-`--on-conflict` controls what happens when an existing local file differs from the repo source:
+The collision policy decides what happens when a file RoboRepo manages already exists locally and
+differs from the repo version. It applies to the checkout installer and to every `roborepo update`
+(or `roborepo config apply`). The first run asks which policy to use and saves your answer:
 
-| Policy | Result |
-| --- | --- |
-| `keep` | Leave the existing file active and stage the repo candidate beside it as `*_update_TIMESTAMP`. |
-| `overwrite` | Move the existing file to `*_original_TIMESTAMP`, then copy the repo file into place. |
-| `abort` | Stop instead of changing the conflicting path. |
+| Policy | Use when | Result |
+| --- | --- | --- |
+| `keep` | You already have local Claude/Codex config you want active. | Leave the existing file active and stage the repo candidate beside it as `*_update_TIMESTAMP`. |
+| `overwrite` | The repo baseline should replace the local file. | Move the existing file to `*_original_TIMESTAMP`, then copy the repo file into place. |
+| `abort` | You want to review conflicts by hand first. | Stop instead of changing the conflicting path. |
 
-Example:
+Root config files (`settings.json`, `config.toml`) are merged rather than replaced, so your
+settings survive; if you edited one since RoboRepo last wrote it, `keep` leaves it untouched. See
+[Root Config Drift Detection](../reference/config-collision-handling.md#root-config-drift-detection).
+
+Pass `--on-conflict keep|overwrite|abort` to choose explicitly:
 
 ```sh
 ./scripts/install/main.sh --on-conflict keep
+roborepo update --on-conflict overwrite
 ```
 
-When no policy is supplied, the installer uses the saved `onConflict` value from `~/.roborepo/install-state.json`. On a first noninteractive run it defaults to `keep`.
-
-## Rules Rendering
-
-Home rules files are generated from base fragments plus enabled package rule fragments. The enabled-package registry lives at:
-
-```text
-~/.roborepo/enabled-packages.json
-```
-
-Commands that change package state update the registry and re-render the home rules files:
-
-```sh
-roborepo package enable jcodemunch
-roborepo package disable jcodemunch
-roborepo rules --check
-```
-
-## Optional Packages
-
-Base install is intentionally minimal. Optional behavior appears only after onboarding or explicit package enablement:
-
-- `jcodemunch` and `jdocmunch` register MCP servers, hooks, permissions, and rule fragments.
-- `telemetry` installs capture state through its service component.
-- packages with skill components materialize skills into `~/.roborepo/skills/<name>` and link the
-  harness skill dirs to that cache.
+Without the flag, RoboRepo reuses your saved choice (`~/.roborepo/install-state.json`); a first
+noninteractive run defaults to `keep`.
 
 ## Update
 
@@ -86,7 +83,7 @@ Base install is intentionally minimal. Optional behavior appears only after onbo
 roborepo update
 ```
 
-`roborepo update` re-runs the installer against the current repo source, refreshes copied files, re-renders rules from the registry, and keeps the saved conflict policy unless `--on-conflict` overrides it.
+`roborepo update` re-runs the installer against the current repo source, refreshes copied files, re-renders rules from the registry, and keeps the saved conflict policy unless `--on-conflict` overrides it. It is safe to re-run.
 
 After a successful update it prints a concise change report, for example:
 
@@ -111,38 +108,30 @@ On current package installs, run:
 roborepo uninstall
 ```
 
-**Removing the npm package alone does not remove your RoboRepo configuration, workspace, or the
+**Removing the npm package alone does not remove your RoboRepo configuration, or the
 files RoboRepo projected into your harnesses.** Those live outside the package directory, so npm
 does not know about them. Development-checkout mode still skips npm removal because npm does not own
 the checkout.
 
-Managed cleanup removes roborepo-owned copied files, rendered rules, managed skill copies, shell
+Managed cleanup removes RoboRepo-owned copied files, rendered rules, managed skill copies, shell
 wiring, package projections, and machine-local state. If a genuine pre-install backup exists under
 `~/.roborepo/backups/pre-install/`, it is restored. Content that has drifted from what RoboRepo
 wrote, and harness files RoboRepo does not own, are left alone and reported.
 
-### Your workspace is preserved
+### What uninstall keeps
 
-By default your workspace survives, including the common case where it sits at
-`~/.roborepo/workspace` inside the state directory:
+By default `~/.roborepo/workspace` survives uninstall:
 
 ```sh
-roborepo uninstall            # workspace preserved
+roborepo uninstall            # ~/.roborepo/workspace preserved
 roborepo uninstall --dry-run  # preview; changes nothing
 ```
 
-To remove it as well, ask explicitly:
+To remove it as well, ask explicitly. Combined with `--dry-run`, it still only previews:
 
 ```sh
 roborepo uninstall --delete-workspace
 ```
-
-Two limits on that flag, both deliberate:
-
-- It applies only to a workspace **inside** the RoboRepo state directory. A workspace you relocated
-  with `roborepo workspace use <path>` is never deleted by RoboRepo, even with the flag — RoboRepo
-  did not create that location, so removing it is yours to do.
-- Combined with `--dry-run` it still previews rather than deletes.
 
 Noninteractive runs refuse to remove anything unless you pass `--yes`, so a script cannot delete
 your configuration by accident:
@@ -155,24 +144,12 @@ The portal exposes the same managed cleanup at `/config` → **Maintenance**, wi
 explicit confirmation. The browser action is preserve-only: there is no workspace-deletion control
 there, because that is a deliberate typed choice rather than a button.
 
-## Verification
-
-```sh
-roborepo doctor --installed
-roborepo doctor --installed
-```
-
-`doctor --installed` checks the active machine state, including rendered home rules and base skill copies.
-
 ## New-Mac Package Install
 
 This is a separate workflow from the checkout-based install above. Use it when you want to get
 `roborepo` running on a new Mac from a real npm package artifact, before that Mac has a clone of
 this repository. Keep the bare `roborepo` command pointing at the packaged snapshot. Use package-mode
 commands such as `roborepo config apply` to materialize live configuration.
-
-Maintainers repeating development-vs-package environment permutations: see
-[Test Scenarios](../../internal/test-scenarios.md).
 
 ### 1. On the old Mac: build and verify a transfer artifact
 
@@ -184,8 +161,7 @@ npm run prepare:new-mac-install -- --output-dir ~/roborepo-transfer
 ```
 
 This packs the real npm tarball, installs it into an isolated prefix and temporary home (nothing
-touches your real `~/.roborepo` or global npm), and runs `version`, `setup`, `workspace status`,
-`config apply`, and `doctor` against it. Only after all of that passes does it write three files
+touches your real `~/.roborepo` or global npm), and runs a package-mode smoke test against it. Only after all of that passes does it write three files
 into `~/roborepo-transfer` (real npm-generated names, e.g. `codethings-roborepo-alpha-0.1.0-beta.0.tgz`):
 
 - `<tarball-name>.tgz` — the tarball that passed every check
@@ -219,23 +195,21 @@ Then set it up for first use:
 roborepo web
 ```
 
-The first `roborepo web` performs the same procedural setup `init` does — it creates the workspace
-and state directories, detects installed harnesses, records initialization, and starts the portal.
+The first `roborepo web` runs one-time setup (see [First-Time Setup](first-time-setup.md#install-the-package)).
 It should succeed with no harness binaries installed and no native harness home/config created yet
-— zero detected harnesses is a valid outcome. `roborepo init` is the explicit alternative that adds
-the browser-or-CLI configuration chooser before opening the portal.
+— zero detected harnesses is a valid outcome.
 
 Confirm the result:
 
 ```sh
 roborepo version
-roborepo workspace status
 roborepo harness list
 roborepo doctor
 ```
 
 The lower-level primitives (`setup`, `harness refresh`, `config apply`) still exist and are what
-the automated package smoke test drives, but a person setting up a machine only needs `init`.
+the automated package smoke test drives, but a person setting up a machine only needs `roborepo web`
+(or `roborepo init` for the terminal chooser).
 
 ### 4. Roll back if needed
 
@@ -243,32 +217,7 @@ the automated package smoke test drives, but a person setting up a machine only 
 npm uninstall -g codethings-roborepo-alpha
 ```
 
-### 5. Observe harness discovery
-
-Use this as an observation sequence for the real new-machine test:
-
-1. Install RoboRepo with no harnesses installed.
-2. Run:
-   ```sh
-   roborepo version
-   roborepo setup
-   roborepo workspace status
-   roborepo harness refresh
-   roborepo harness list
-   roborepo config apply
-   roborepo doctor
-   ```
-3. Install one harness binary, but do not launch it yet.
-4. Run `roborepo harness refresh`, `roborepo harness list`, and `roborepo doctor`; record what
-   RoboRepo sees.
-5. Launch that harness once so it creates its native home/config.
-6. Run `roborepo harness refresh`, `roborepo harness list`, `roborepo config apply`, and
-   `roborepo doctor` again; record the difference.
-
-This is only an observation sequence. It does not expand harness presence signals or implement a
-new provider behavior.
-
-### 6. Clone for development later
+### 5. Clone for development later
 
 Clone the repository only after the packaged baseline works. Do not run the checkout installer just
 to materialize harness config; doing that can replace or shadow the packaged global command with a
@@ -287,3 +236,6 @@ Use:
 
 Both entry points may write the same live `~/.roborepo` and harness config. Check which code path
 ran with `roborepo version` or `./bin/roborepo version` before comparing behavior.
+
+Maintainers repeating development-vs-package environment permutations: see
+[Test Scenarios](../../internal/test-scenarios.md).

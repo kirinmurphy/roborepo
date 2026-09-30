@@ -117,7 +117,7 @@ The portal page manifest currently serves:
 - `/config` → Agents alias
 - `/plans`
 - `/tokens`
-- `/localhoster`
+- `/runtime`
 
 There is no first-run route. `roborepo web` opens the normal portal.
 
