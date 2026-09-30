@@ -19,6 +19,10 @@ export function buildDeveloperRuntimeSnapshot({
   // stays a pure function of its inputs. Empty means "no persistence available", which degrades to
   // the pre-Phase-3 behaviour of listing only what is running.
   persistedRepositories = [],
+  // repositoryId -> { rootId, projectRoot, git, state } for the main checkout of a RUNNING repository
+  // that has nothing running in it. Found and read by the caller for the same reason as
+  // persistedRepositories; it fills the main row, which would otherwise render blank.
+  idleMainCheckouts = new Map(),
   // Repositories the 30-day ageing sweep has hidden. Name and last-seen only — enough for the
   // "Show hidden" affordance to offer them back, without deriving lifecycle or reading git for
   // repositories that are by construction not on the page.
@@ -182,7 +186,7 @@ export function buildDeveloperRuntimeSnapshot({
     // Repository-keyed view over the same instances the three collections above hold. Built
     // alongside them during the migration (developer-runtime-repository-card-merge) so existing consumers
     // keep working while the portal moves over; the legacy three are removed once nothing reads them.
-    repositories: buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames, persistedRepositories, pinnedRepositoryIds }),
+    repositories: buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames, persistedRepositories, idleMainCheckouts, pinnedRepositoryIds }),
     inactiveProjects: inactiveProjects.sort(compareProjects),
     hiddenRepositories,
     hiddenCount,
@@ -232,7 +236,7 @@ function groupByContainer(instances) {
 // Only a real repositoryId groups. `process:` identities resolve to null (canonicalRepositoryId
 // returns null for them — no repository exists to be a member of) and stay unmatched, as do
 // Compose projects whose repo never resolved.
-function buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames = new Map(), persistedRepositories = [], pinnedRepositoryIds = new Set() }) {
+function buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames = new Map(), persistedRepositories = [], idleMainCheckouts = new Map(), pinnedRepositoryIds = new Set() }) {
   const byRepository = new Map();
 
   // A worktree's project-level `name` is commonly its branch or directory name (e.g.
@@ -279,9 +283,10 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
         // fan-out, departed-member tracking). `roots` below is the grouped view the card renders.
         members: [],
         // One entry per checkout (main + every worktree) this repository has an active member or
-        // git identity for. The main checkout (isWorktree: false) is not guaranteed to exist here
-        // if only a worktree is currently running — the portal renders its section as empty rather
-        // than this array being padded with a placeholder.
+        // git identity for. When only worktrees are running, the main checkout is added as an idle
+        // root from idleMainCheckouts; it is still absent when the caller could not find or read it,
+        // and the portal then renders its section empty rather than this array being padded with a
+        // placeholder.
         roots: [],
       });
     }
@@ -357,6 +362,18 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
     const member = toMember(instance, instance.project.identity);
     entry.members.push(member);
     root.members.push(member);
+  }
+
+  // The main checkout of a running repository, when only its worktrees are running. Same idle-row
+  // shape as a persisted checkout (git, path, no members), so the always-rendered main row shows its
+  // branch instead of an empty glyph. Only ever the main checkout, and only when no running member
+  // already supplied one — other stopped worktrees stay off the card.
+  for (const [repositoryId, checkout] of idleMainCheckouts) {
+    const entry = byRepository.get(repositoryId);
+    if (!entry || !checkout?.rootId || entry.roots.some((root) => !root.isWorktree)) continue;
+    const root = ensureRoot(entry, checkout.rootId, checkout.git, checkout.projectRoot);
+    root.checkoutState = checkout.state || "present";
+    root.checkoutReason = null;
   }
 
   for (const entry of byRepository.values()) {

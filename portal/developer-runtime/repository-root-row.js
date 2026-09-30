@@ -19,8 +19,8 @@ import {
   mountMemberMenu,
 } from "./templates.js";
 
-// Checkout rows allow longer branch names than the shared git row: the drift warning wraps onto its
-// own line here instead of competing for the same one, so the branch gets more of the space. Still
+// Checkout rows allow longer branch names than the shared git row: the drift warning wraps onto the
+// next line as a unit when the branch needs the room, instead of squeezing it. Still
 // capped — and middle-truncated, since the tail usually identifies the branch — so a long name never
 // pushes the actions column onto a second line. The full name is the tooltip's heading. Standalone
 // cards keep the shared cap (BRANCH_NAME_MAX_LENGTH in templates.js).

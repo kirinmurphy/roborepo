@@ -1101,7 +1101,6 @@ function applyTechGlyph(node, glyph, source) {
   if (!slot || !glyph) return;
   const icon = document.createElement("portal-icon");
   icon.setAttribute("name", glyph);
-  icon.setAttribute("size", "sm");
   slot.append(icon);
   slot.hidden = false;
   slot.title = source ? `${glyph} — inferred from ${source}` : glyph;

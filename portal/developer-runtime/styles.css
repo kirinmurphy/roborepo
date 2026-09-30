@@ -304,8 +304,8 @@ main {
   display: inline-flex;
   color: var(--dim);
 }
-/* The identity column's two lines join the row grid directly, so the glyph and the actions centre
- * on the branch line and the drift warning takes a second grid row of its own underneath. */
+/* The identity column joins the row grid directly; its one line (branch, copy, drift) sits in grid
+ * row 1 beside the glyph and the actions. */
 .repository-root-identity {
   display: contents;
 }
@@ -351,11 +351,11 @@ main {
   color: var(--ok);
   background: color-mix(in srgb, var(--ok) 12%, transparent);
 }
-/* The shared git row keeps its drift phrase on one line; here it has a line of its own and may wrap
- * rather than push the actions column over. */
+/* The drift phrase follows the branch and copy control on the identity line. Inline-block, so when
+ * the column narrows it drops to the next line whole; only once it is alone on a line too narrow for
+ * it does its own text wrap. */
 .repository-root-identity .git-drift {
-  grid-column: 2;
-  grid-row: 2;
+  display: inline-block;
   white-space: normal;
   font-size: var(--text-xs);
 }
@@ -479,7 +479,7 @@ main {
   }
   .repository-root-actions {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 2;
   }
 }
 /* Aligned to the first text line of column one, not to that column's box. `align-items: center` on
@@ -654,12 +654,6 @@ main {
   font-size: var(--text-sm);
   gap: 10px;
   margin: 0 0 6px;
-}
-.portal-tooltip--panel .info-tooltip-heading svg,
-.portal-tooltip--panel .info-tooltip-subheading svg {
-  /* The icon scale's md step, one up from the sm the header ships with. */
-  width: var(--icon-md);
-  height: var(--icon-md);
 }
 .portal-tooltip--panel .info-tooltip-content {
   gap: 8px;
@@ -1270,13 +1264,15 @@ dialog::backdrop {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   white-space: nowrap;
-  background: var(--dim);
-  color: var(--panel);
+  /* A light tint, not a solid fill: mock and idle label the card without shouting over it. */
+  background: color-mix(in srgb, var(--dim) 16%, transparent);
+  color: var(--dim);
 }
 /* `stale` means every checkout is gone or unreadable — a repository that needs looking at, not just
- * one that happens to be stopped. */
+ * one that happens to be stopped — so it keeps the solid fill. */
 .repository-state-badge.is-stale {
   background: var(--warn);
+  color: var(--panel);
 }
 /* An idle card recedes by colour rather than opacity: its text drops to --dim, so a glance down the
  * list separates live work from history, while its badges and controls keep full contrast — opacity

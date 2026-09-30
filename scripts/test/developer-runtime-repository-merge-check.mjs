@@ -480,6 +480,51 @@ const ordered = buildDeveloperRuntimeSnapshot({
 assert.deepEqual(ordered.repositories.map((r) => r.repositoryId), [MENUGOATS, FIXTURE, IDLE_FIXTURE, IDLE]);
 assert.deepEqual(ordered.repositories.map((r) => r.fixture), [false, true, true, false]);
 
+// --- Idle main checkout of a running repository ---
+// Only a worktree runs, so no running member supplies the main checkout. The caller's
+// idleMainCheckouts fills it as an idle root — branch and path, no members, no link — so the
+// always-rendered main row is never blank.
+const worktreeGitShape = { provider: { ok: true }, branch: "feature/x", isWorktree: true };
+const mainGitShape = { provider: { ok: true }, branch: "main", isWorktree: false };
+const worktreeOnly = (idleMainCheckouts) => buildDeveloperRuntimeSnapshot({
+  discovery: {
+    capabilities: { discovery: "supported" },
+    warnings: [],
+    composeProjectGit: new Map(),
+    instances: [instance({ pid: 860, port: 8400, command: "node", identity: MENUGOATS, repositoryId: MENUGOATS, status: 200, title: "Wt", rootId: "wt-root", git: worktreeGitShape })],
+  },
+  settings: defaultSettings(),
+  now: new Date("2026-08-02T00:00:00.000Z"),
+  idleMainCheckouts,
+}).repositories.find((r) => r.repositoryId === MENUGOATS);
+
+const withIdleMain = worktreeOnly(new Map([[MENUGOATS, { rootId: "main-root", projectRoot: "/tmp/menugoats", git: mainGitShape, state: "present" }]]));
+assert.deepEqual(withIdleMain.roots.map((root) => root.rootId), ["main-root", "wt-root"], "idle main checkout sorts first, beside the running worktree");
+const idleMain = withIdleMain.roots[0];
+assert.equal(idleMain.isWorktree, false);
+assert.equal(idleMain.git.branch, "main");
+assert.equal(idleMain.projectRoot, "/tmp/menugoats");
+assert.equal(idleMain.members.length, 0);
+assert.equal(idleMain.primaryEntrypoint, null);
+assert.equal(withIdleMain.lifecycle.state, "active", "the repository is still running through its worktree");
+
+// Without the fallback the main checkout is simply absent (the portal's empty-row case).
+assert.equal(worktreeOnly(new Map()).roots.some((root) => !root.isWorktree), false);
+
+// A running main checkout always wins: the fallback never adds a second main root beside it.
+const mainRunning = buildDeveloperRuntimeSnapshot({
+  discovery: {
+    capabilities: { discovery: "supported" },
+    warnings: [],
+    composeProjectGit: new Map(),
+    instances: [instance({ pid: 870, port: 8500, command: "node", identity: MENUGOATS, repositoryId: MENUGOATS, status: 200, title: "Main", rootId: "main-live", git: mainGitShape })],
+  },
+  settings: defaultSettings(),
+  now: new Date("2026-08-02T00:00:00.000Z"),
+  idleMainCheckouts: new Map([[MENUGOATS, { rootId: "main-root", projectRoot: "/tmp/menugoats", git: mainGitShape, state: "present" }]]),
+}).repositories.find((r) => r.repositoryId === MENUGOATS);
+assert.deepEqual(mainRunning.roots.map((root) => root.rootId), ["main-live"]);
+
 // --- Role ranking and the promoted link (repository-row-layout) ---
 // Each scenario builds one checkout of MENUGOATS and reads back that checkout's root, so the
 // assertions are about which member a row would promote rather than about snapshot plumbing.

@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="en">
   {{HEAD}}
-  <body>
+  <!-- The page's one icon size. Runtime icons set no `size` of their own and inherit this step
+       (portal/shared/icon.js), so changing it here resizes every icon on the page together. -->
+  <body data-icon-size="md">
     {{CHROME}}
     {{WIDGET_TEMPLATES}}
     <main class="inner">
@@ -223,7 +225,7 @@
     <template id="tpl-toolbar-actions">
       <div class="toolbar-actions">
         <button id="refresh" type="button" class="icon-button" title="Refresh" aria-label="Refresh">
-          <portal-icon name="refresh" size="md"></portal-icon>
+          <portal-icon name="refresh"></portal-icon>
           <span class="spinner" hidden></span>
         </button>
         <button id="settings" type="button">Settings</button>
@@ -250,7 +252,7 @@
          different sizing) before this was extracted. -->
     <template id="tpl-git-row">
       <span class="git-badge" data-slot="git" hidden>
-        <portal-icon name="git-branch" size="sm" class="git-badge-icon"></portal-icon>
+        <portal-icon name="git-branch" class="git-badge-icon"></portal-icon>
         <!-- Label is set from the provider host (see providerHostLabel), so this placeholder text
              is replaced before the row is shown. It exists so firstChild is a text node. -->
         <!-- No provider glyph here: the git row already leads with the branch icon, and a second
@@ -258,14 +260,14 @@
              (set from the provider host) plus the external-link icon carry it. -->
         <a class="git-repo-link" data-slot="git-repo-link" target="_blank" rel="noreferrer" hidden
           ><span data-slot="git-repo-label">repo</span
-          ><portal-icon name="external-link" size="sm"></portal-icon
+          ><portal-icon name="external-link"></portal-icon
         ></a>
         <span class="git-repo-name" data-slot="git-repo-name" hidden></span>
         <span class="git-sep" aria-hidden="true">·</span>
         <button type="button" class="git-branch-button copy-affordance" data-action="copy-branch" aria-label="Copy branch name">
           <span class="copy-affordance-label" data-slot="git-branch"></span>
-          <portal-icon name="copy" size="sm" class="copy-icon-idle"></portal-icon>
-          <portal-icon name="check" size="sm" class="copy-icon-done"></portal-icon>
+          <portal-icon name="copy" class="copy-icon-idle"></portal-icon>
+          <portal-icon name="check" class="copy-icon-done"></portal-icon>
         </button>
         <span class="git-sep" aria-hidden="true">·</span>
         <!-- The single most severe thing worth saying about sync state, or nothing at all. Silence
@@ -292,7 +294,7 @@
                    actually observed this instance; on a repository member that is usually never,
                    since docker data attaches to compose project instances. -->
               <span class="docker-badge" data-slot="docker" hidden>
-                <portal-icon name="docker" size="sm"></portal-icon>
+                <portal-icon name="docker"></portal-icon>
                 <span data-slot="docker-label"></span>
               </span>
               <!-- Other ports held by this same process. Metadata, not links — see
@@ -419,7 +421,7 @@
                      It was previously placed on the member card's docker badge, which never
                      renders: docker data hangs off compose project instances, not repository
                      members, so that badge had no data to show. -->
-                <span class="tech-glyph"><portal-icon name="docker" size="sm"></portal-icon></span>
+                <span class="tech-glyph"><portal-icon name="docker"></portal-icon></span>
                 <h3 data-slot="title"></h3>
                 <span class="title-separator">-</span>
                 <span class="compose-project-meta" data-slot="meta"></span>
@@ -505,7 +507,7 @@
                    exactly one canonical remote, however many checkouts run it). -->
               <a class="git-repo-link repository-nested-control" data-slot="provider-link" target="_blank" rel="noreferrer" hidden
                 ><span data-slot="provider-link-label">repo</span
-                ><portal-icon name="external-link" size="sm"></portal-icon
+                ><portal-icon name="external-link"></portal-icon
               ></a>
               <!-- No URL here: every checkout's app link sits in its own row, main checkout included,
                    so the header names the repository and nothing about where it runs. -->
@@ -581,7 +583,7 @@
         <div class="repository-root-head">
           <!-- Home for the main checkout, tree for a linked worktree. One element, so a later
                status tint (developer-runtime-remote-branch-status) recolours it as a whole. -->
-          <portal-icon class="repository-root-glyph" data-slot="root-glyph" name="home" size="md"></portal-icon>
+          <portal-icon class="repository-root-glyph" data-slot="root-glyph" name="home"></portal-icon>
           <div class="repository-root-identity">
             <div class="repository-root-identity-line">
               <!-- Branch label and info icon are ONE tooltip trigger: hovering either part (or
@@ -598,11 +600,11 @@
                          checkout rows used to lead with) and the checkout directory (the row's own
                          home or tree glyph). -->
                     <span class="info-tooltip-heading"
-                      ><portal-icon name="git-branch" size="sm"></portal-icon
+                      ><portal-icon name="git-branch"></portal-icon
                       ><span data-slot="root-heading"></span
                     ></span>
                     <span class="info-tooltip-subheading" data-slot="root-subheading-line" hidden
-                      ><portal-icon data-slot="root-subheading-icon" name="home" size="sm"></portal-icon
+                      ><portal-icon data-slot="root-subheading-icon" name="home"></portal-icon
                       ><span data-slot="root-subheading"></span
                     ></span>
                     <span data-slot="root-state-detail" hidden
@@ -637,9 +639,10 @@
               <!-- Copy branch / copy worktree path — mounted by mountCopyDropdown, outside the
                    tooltip trigger so copying never opens the tooltip. -->
               <span class="repository-root-copy" data-slot="root-copy"></span>
+              <!-- Same line as the branch while it fits; when the column narrows, the whole phrase
+                   wraps to the next line as one unit rather than pushing the actions column over. -->
+              <span class="git-drift" data-slot="git-drift" hidden></span>
             </div>
-            <!-- Wraps under the branch rather than pushing the actions column over. -->
-            <span class="git-drift" data-slot="git-drift" hidden></span>
           </div>
           <!-- checkout-actions / checkout-links-cell / checkout-control-cell are shared with member
                cards (instanceCard), so a row's port and its members' ports line up. -->
@@ -664,7 +667,7 @@
               <!-- Every other row with members: a bare caret. Its accessible name and title say
                    what it opens ("Show 2 members", "Show 4 containers", "Show 1 stopped"). -->
               <button type="button" class="repository-root-toggle" data-action="toggle-members" aria-expanded="false" hidden>
-                <portal-icon name="chevron" size="md" class="compose-project-chevron"></portal-icon>
+                <portal-icon name="chevron" class="compose-project-chevron"></portal-icon>
               </button>
             </span>
           </div>
@@ -769,16 +772,16 @@
       <a class="route-link-row" data-slot="href" target="_blank" rel="noreferrer">
         <span class="history-type" data-slot="source"></span>
         <span class="history-detail" data-slot="path"></span>
-        <portal-icon name="check" size="sm" data-slot="saved-check" hidden></portal-icon>
+        <portal-icon name="check" data-slot="saved-check" hidden></portal-icon>
         <span class="route-link-actions" data-slot="row-actions" hidden>
           <button type="button" class="route-row-action" data-action="edit-link" aria-label="Edit link">
-            <portal-icon name="pencil" size="sm"></portal-icon>
+            <portal-icon name="pencil"></portal-icon>
           </button>
           <!-- `close` rather than a trash glyph: the icon set has no trash, and close already reads
                as "remove this" everywhere else in the portal. Adding a one-use glyph for parity with
                a convention this UI does not otherwise follow is not worth the surface. -->
           <button type="button" class="route-row-action" data-action="delete-link" aria-label="Delete link">
-            <portal-icon name="close" size="sm"></portal-icon>
+            <portal-icon name="close"></portal-icon>
           </button>
         </span>
       </a>
@@ -803,7 +806,7 @@
         <span class="route-api-path" data-slot="path"></span>
         <!-- A saved API route renders here only, never as a duplicate row under Pages, so this is
              where its saved state has to appear. -->
-        <portal-icon name="check" size="sm" data-slot="saved-check" hidden></portal-icon>
+        <portal-icon name="check" data-slot="saved-check" hidden></portal-icon>
       </button>
     </template>
     <template id="tpl-route-param-table">

@@ -1,3 +1,4 @@
+import path from "node:path";
 import { appRoot, STATE_ROOT as stateRoot } from "./paths.mjs";
 import { collectGitContext } from "../../modules/developer-runtime/git.mjs";
 import {
@@ -91,12 +92,19 @@ export async function refreshDeveloperRuntimeSnapshot() {
       recordDiscoveredRepositories(discovery.instances, discovery.composeProjectGit);
       // After recording, so a repository discovered on THIS scan is already in the registry and is
       // counted as running rather than appearing as idle on the poll that first found it.
-      const { persistedRepositories, registry } = await collectPersistedRepositories(runningRepositoryIds(discovery), { registry: loadRegistrySafe() });
+      const runningIds = runningRepositoryIds(discovery);
+      const registryNow = loadRegistrySafe();
+      const idleMainCheckouts = await collectIdleMainCheckouts(discovery, runningIds, registryNow);
+      const { persistedRepositories, registry } = await collectPersistedRepositories(runningIds, {
+        registry: registryNow,
+        extraLiveRoots: [...idleMainCheckouts.values()].map((checkout) => checkout.projectRoot),
+      });
       lastSnapshot = buildSnapshot({
         discovery,
         settings,
         refresh: { state: "idle", startedAt: null, error: null, generation },
         persistedRepositories,
+        idleMainCheckouts,
         registry,
       });
       // Only refreshes produce events. updateDeveloperRuntimeSettings also rebuilds a snapshot, but from
@@ -406,7 +414,7 @@ function scheduleRefresh() {
   if (!inFlightRefresh) refreshDeveloperRuntimeSnapshot().catch(() => {});
 }
 
-function buildSnapshot({ discovery, settings = loadSettings({ stateRoot }), refresh = { state: "idle", startedAt: null, error: null }, now = new Date(), persistedRepositories = [], registry = loadRegistrySafe() }) {
+function buildSnapshot({ discovery, settings = loadSettings({ stateRoot }), refresh = { state: "idle", startedAt: null, error: null }, now = new Date(), persistedRepositories = [], idleMainCheckouts = new Map(), registry = loadRegistrySafe() }) {
   return buildDeveloperRuntimeSnapshot({
     discovery,
     settings,
@@ -414,6 +422,7 @@ function buildSnapshot({ discovery, settings = loadSettings({ stateRoot }), refr
     now,
     repositoryNames: registryDisplayNames(registry),
     persistedRepositories,
+    idleMainCheckouts,
     hiddenRepositories: collectHiddenRepositories(registry),
     pinnedRepositoryIds: registryPinnedIds(registry),
   });
@@ -434,12 +443,14 @@ const idleGitCache = createIdleGitCache();
 //
 // Best-effort in the same spirit as registryDisplayNames: an unreadable registry costs the idle
 // repositories and nothing else — the running ones come from discovery and are unaffected.
-async function collectPersistedRepositories(runningRepositoryIds, { registry = loadRegistrySafe() } = {}) {
+async function collectPersistedRepositories(runningRepositoryIds, { registry = loadRegistrySafe(), extraLiveRoots = [] } = {}) {
   if (!registry) return { persistedRepositories: [], registry: null };
   registry = applyRenameAliases(registry);
   registry = applyAgeOut(registry);
   const out = [];
-  const liveRoots = [];
+  // Seeded with the idle main checkouts of running repositories (collectIdleMainCheckouts), which
+  // read git through the same cache and would otherwise be evicted on every poll.
+  const liveRoots = [...extraLiveRoots];
   for (const [id, record] of Object.entries(registry.repositories || {})) {
     if (runningRepositoryIds.has(id)) continue;
     // Hidden records are out of the normal list by definition; they return through "Show hidden",
@@ -614,6 +625,71 @@ function runningRepositoryIds(discovery) {
     if (resolved?.repositoryId) ids.add(resolved.repositoryId);
   }
   return ids;
+}
+
+// The main checkout of every running repository that has nothing running in it, with its git read
+// from disk the same way an idle repository's checkouts are. Without it, a repository whose
+// worktrees are running but whose main checkout is not renders the main row blank: the running path
+// only knows checkouts something runs in, and the persisted path skips running repositories.
+//
+// Found through git rather than the registry's root `kind`, which records whichever checkout
+// happened to be seen first and so is not a reliable "main" marker. Every checkout of a repository —
+// main or linked worktree — shares one common git directory, and a non-bare common directory is
+// `<main checkout>/.git`. Any known checkout path is a starting point: a running member's own, or
+// any path the registry recorded for the repository.
+//
+// repositoryId -> { rootId, projectRoot, git, state }. A repository whose main checkout cannot be
+// found, is bare, or no longer resolves to the same repository is absent, leaving the row as it was.
+async function collectIdleMainCheckouts(discovery, runningIds, registry) {
+  const candidatesByRepository = new Map();
+  const runningRootIds = new Set();
+  const addCandidate = (repositoryId, projectRoot) => {
+    if (!repositoryId || !projectRoot || !runningIds.has(repositoryId)) return;
+    if (!candidatesByRepository.has(repositoryId)) candidatesByRepository.set(repositoryId, new Set());
+    candidatesByRepository.get(repositoryId).add(projectRoot);
+  };
+  for (const instance of discovery?.instances || []) {
+    const project = instance?.project;
+    if (project?.rootId) runningRootIds.add(project.rootId);
+    addCandidate(project?.repositoryId, project?.projectRoot);
+  }
+  for (const resolved of (discovery?.composeProjectGit || new Map()).values()) {
+    if (resolved?.rootId) runningRootIds.add(resolved.rootId);
+  }
+  if (registry) {
+    for (const id of runningIds) {
+      for (const root of checkoutRootsFor(registry, id)) addCandidate(id, root.path);
+    }
+  }
+
+  const out = new Map();
+  for (const [repositoryId, candidates] of candidatesByRepository) {
+    const mainRoot = mainCheckoutPath(candidates);
+    if (!mainRoot) continue;
+    const rootId = computeRootId(mainRoot);
+    // Something runs there, so the running path already builds this row, members and all.
+    if (runningRootIds.has(rootId)) continue;
+    // readIdleGit also confirms the path still resolves to this repository. Null means it does not,
+    // or could not be read — and a wrong branch is worse than the empty row.
+    const git = await readIdleGit(mainRoot, repositoryId);
+    if (!git) continue;
+    out.set(repositoryId, { rootId, projectRoot: mainRoot, git, state: "present" });
+  }
+  return out;
+}
+
+// The main checkout shared by any of these checkout paths, or null. Confirmed from both ends: the
+// common directory must be a non-bare `.git`, and the directory holding it must itself resolve to
+// that same git directory as an ordinary (non-worktree) checkout.
+function mainCheckoutPath(checkoutPaths) {
+  for (const checkoutPath of checkoutPaths) {
+    const resolved = resolveGitDir(checkoutPath);
+    if (!resolved || path.basename(resolved.commonDir) !== ".git") continue;
+    const mainRoot = path.dirname(resolved.commonDir);
+    const main = resolveGitDir(mainRoot);
+    if (main && !main.isWorktree && main.gitDir === resolved.commonDir) return mainRoot;
+  }
+  return null;
 }
 
 // Git for a persisted checkout path, but only once that path is confirmed to still BE this

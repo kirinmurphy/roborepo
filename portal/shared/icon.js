@@ -145,7 +145,10 @@ class PortalIcon extends HTMLElement {
       this.replaceChildren();
       return;
     }
-    const size = ICON_SIZES[this.getAttribute("size")] || ICON_SIZES[DEFAULT_ICON_SIZE];
+    // An explicit `size` wins; otherwise the nearest `data-icon-size` ancestor sets the step, so a
+    // page can pick one standard size for its own icons in a single place (<body data-icon-size>).
+    const step = this.getAttribute("size") || this.closest("[data-icon-size]")?.dataset.iconSize;
+    const size = ICON_SIZES[step] || ICON_SIZES[DEFAULT_ICON_SIZE];
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", icon.viewBox);
     svg.setAttribute("width", String(size));
