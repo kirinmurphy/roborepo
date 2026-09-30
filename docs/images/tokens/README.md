@@ -45,6 +45,3 @@ Screenshots capture actual rendered sections/dialogs; they are not generated ill
 This is exhaustive for the stated small-input spaces, not a claim to enumerate all
 possible telemetry records or browser states. Existing integration/cache/boundary suites
 cover larger fixtures and persistence behavior.
-
-Portal introduction image: `docs/images/portal-overview.png`. Regenerate with
-`PORTAL_DOC_SCREENSHOT="$PWD/docs/images/portal-overview.png" npm run test:portal-ui`.

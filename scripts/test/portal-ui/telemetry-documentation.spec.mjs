@@ -53,19 +53,6 @@ for (const theme of ["light", "dark"]) {
 }
 
 
-test("portal introduction screenshot", async ({ page }) => {
-  const target = process.env.PORTAL_DOC_SCREENSHOT;
-  test.skip(!target, "Set PORTAL_DOC_SCREENSHOT to regenerate the canonical portal image");
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  await page.setViewportSize({ width: 1440, height: 760 });
-  await page.addInitScript(() => localStorage.setItem("portal-theme", "light"));
-  await page.goto("/");
-  await expect(page.locator(".home-card")).toHaveCount(4);
-  await expect(page.locator("#nav")).toBeVisible();
-  await page.screenshot({ path: target, fullPage: true, animations: "disabled" });
-});
-
-
 test("Tokens user guide serves its screenshots inside the portal", async ({ page, request }) => {
   const guide = await (await request.get("/api/telemetry/guide")).json();
   expect(guide.ok).toBe(true);
