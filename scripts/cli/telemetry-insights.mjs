@@ -103,20 +103,17 @@ export function deriveInsights(report) {
   }
 
   // --- regression: a group that got more expensive over time -----------------------------------
-  // Trigger stays on per-call cost (a ≥50% jump is unambiguous), but the HEADLINE speaks in share
-  // of tool tokens — the unit the rest of the report uses — with the raw per-call move as detail.
+  // Trigger, worst-pick, headline and detail all speak in per-call cost; mixing in share of tool
+  // tokens could state a direction opposite to the trigger. Share is context only.
   const reg = (report.regression?.groups || []).filter((g) => g.delta_tokens > 0 && g.after_calls >= MIN_CALLS / 2);
   const worstReg = reg.sort((a, b) => b.delta_tokens - a.delta_tokens)[0];
   if (worstReg && worstReg.before_avg_tokens > 0 && worstReg.delta_tokens / worstReg.before_avg_tokens >= 0.5) {
     const beforeShare = Math.round((worstReg.before_share ?? 0) * 100);
     const afterShare = Math.round((worstReg.after_share ?? 0) * 100);
-    let shareDirection = "unchanged from";
-    if (afterShare > beforeShare) shareDirection = "up from";
-    if (afterShare < beforeShare) shareDirection = "down from";
     out.push({
       severity: "warn",
-      headline: `${worstReg.group} now takes ${afterShare}% of tool tokens, ${shareDirection} ${beforeShare}% in the earlier half`,
-      detail: `${fmt(worstReg.before_avg_tokens)} → ${fmt(worstReg.after_avg_tokens)} tok/call — the calls themselves got ${pct(worstReg.delta_tokens / worstReg.before_avg_tokens)}% heavier`,
+      headline: `${worstReg.group} calls got ${pct(worstReg.delta_tokens / worstReg.before_avg_tokens)}% heavier: ${fmt(worstReg.before_avg_tokens)} → ${fmt(worstReg.after_avg_tokens)} tok/call`,
+      detail: `${worstReg.group} is ${afterShare}% of tool tokens in the later half vs ${beforeShare}% in the earlier half`,
       metric: worstReg.delta_tokens,
       kind: "midpoint_regression",
       sample_size: worstReg.before_calls + worstReg.after_calls,

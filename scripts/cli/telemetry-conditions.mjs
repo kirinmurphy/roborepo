@@ -21,11 +21,12 @@ export function buildConditionsReport(events, report, options = {}, normalized =
   const ledger = [];
   const comparisons = [];
   const affectedByKind = new Map();
+  let findingsLostToFallback = 0;
   for (const [kind, rows] of findings) {
     const affected = new Set();
     for (const row of rows ?? []) {
       const observation = sessionIndex.get(JSON.stringify([row.harness, row.session_id]));
-      if (!observation) continue;
+      if (!observation) { findingsLostToFallback++; continue; }
       affected.add(observation.id);
       const context = contextIndex.get(observation.id) ?? { model: observation.model, model_attribution: observation.model_attribution,
         repository_id: observation.repository_id, harness: observation.harness,
@@ -51,13 +52,14 @@ export function buildConditionsReport(events, report, options = {}, normalized =
       ...(affectedByKind.has(kind) ? compareObservationBoundary(normalized.sessions, marker, affectedByKind.get(kind), { condition: options.condition ?? null, snapshots })
         : { state: "can't compare fairly", reason: "Finding has no supported session evidence" }) })) }));
   const ambient = ambientChanges(normalized.sessions, snapshots);
+  const markerOrder = new Map(markers.map((marker, index) => [marker.marker_id, index]));
   for (const row of ambient) ledger.push({ ...row, context: { model: null, model_attribution: "unknown", repository_id: row.repository_id, harness: row.harness, conditions: [] } });
-  for (const marker of activeMarkers) ledger.push({ id: marker.marker_id, kind: "manual-change", ts: marker.effective_at ?? marker.ts, marker,
+  for (const marker of activeMarkers) ledger.push({ id: marker.marker_id, kind: "manual-change", ts: marker.effective_at ?? marker.ts, marker, persisted_order: markerOrder.get(marker.marker_id),
     session_id: marker.session_id, harness: null, context: { model: null, model_attribution: "unknown", repository_id: marker.repository_id, harness: null, conditions: [] } });
-  ledger.sort((a, b) => String(b.ts).localeCompare(String(a.ts)) || String(a.provenance?.source ?? "").localeCompare(String(b.provenance?.source ?? "")) || (b.provenance?.sequence ?? 0) - (a.provenance?.sequence ?? 0) || a.id.localeCompare(b.id));
+  ledger.sort((a, b) => String(b.ts).localeCompare(String(a.ts)) || String(a.provenance?.source ?? "").localeCompare(String(b.provenance?.source ?? "")) || (b.provenance?.sequence ?? 0) - (a.provenance?.sequence ?? 0) || (b.persisted_order ?? 0) - (a.persisted_order ?? 0) || a.id.localeCompare(b.id));
   return { schema: 1, policy: CONDITIONS_POLICY, finding_units: FINDING_UNITS,
     comparisons, changes, ambient_changes: ambient, relative_models: relativeModelMetrics(normalized.sessions), ledger,
-    data_quality: { fallback_flows: normalized.fallback_flows, unidentified_sessions: normalized.unidentified_sessions, sessions: normalized.sessions.length,
+    data_quality: { fallback_flows: normalized.fallback_flows, unidentified_sessions: normalized.unidentified_sessions, findings_lost_to_fallback: findingsLostToFallback, sessions: normalized.sessions.length,
       flows: normalized.flows.length,
       condition_coverage: Object.fromEntries(["model", "repo", "harness", "packages", "skills"].map((dimension) => {
         const requested = conditions.filter((condition) => condition.dimension === dimension);

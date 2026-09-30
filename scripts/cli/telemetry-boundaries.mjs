@@ -38,7 +38,7 @@ export function compareObservationBoundary(observations, marker, affectedIds, { 
     ambiguous_boundary: split.ambiguous.length, spanning_boundary: split.spanning.length,
     state: !scopeKnown ? "can't compare fairly" : !scoped.length ? "recorded" : (!before.observations || !after.observations) && (split.ambiguous.length || split.spanning.length) ? "can't compare fairly" : enough ? "comparison available" : "collecting",
     relative_delta: enough && before.rate > 0 && Math.min(before.affected, after.affected) >= policy.minimum_events ? (after.rate - before.rate) / before.rate : null,
-    condition, correlation_only: true };
+    condition, policy, correlation_only: true };
 }
 
 export function ambientChanges(sessions, snapshots) {
@@ -63,10 +63,12 @@ export function ambientChanges(sessions, snapshots) {
       if (!evidence || !session.first_seen || group[i - 1]?.first_seen === session.first_seen || group[i + 1]?.first_seen === session.first_seen) { previous = null; continue; }
       if (previous && previous.hash !== evidence.hash) changes.push({ id: `ambient:${session.id}`, kind: "ambient-change", ts: session.first_seen,
         session_id: session.session_id, harness: session.harness, repository_id: session.repository_id,
+        provenance: session.rows.find((row) => row.ts === session.first_seen && row.spool_provenance)?.spool_provenance ?? null,
         previous_hash: previous.hash, ambient_hash: evidence.hash, observed_boundary: true,
         label: "Configured ambient package surface first observed changed" });
       previous = evidence;
     }
   }
-  return changes.sort((a, b) => String(b.ts).localeCompare(String(a.ts)) || a.id.localeCompare(b.id));
+  // Equal timestamps fall back to persisted spool order (source, then sequence), newest first.
+  return changes.sort((a, b) => String(b.ts).localeCompare(String(a.ts)) || String(a.provenance?.source ?? "").localeCompare(String(b.provenance?.source ?? "")) || (b.provenance?.sequence ?? 0) - (a.provenance?.sequence ?? 0) || a.id.localeCompare(b.id));
 }

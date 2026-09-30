@@ -660,7 +660,7 @@ function wasteCard(label, waste, total, parts, danger) {
 
   // Column 1: range + big graded % + tokens. Column 2: the waste categories, one per row.
   div.innerHTML = `<span class="waste-range">${esc(label)}</span>
-    <span class="waste-big ${grade}"><span class="waste-pct">${Math.round(share * 10) / 10}%</span><span class="waste-sub">${tokShort(waste)} of ${tokShort(total)} tokens</span></span>
+    <span class="waste-big ${grade}"><span class="waste-pct">${Math.round(share * 10) / 10}%</span><span class="waste-sub" title="Upper-bound estimate: categories can overlap (a runaway loop also counts as spike excess) and use different measurement bases.">${tokShort(waste)} of ${tokShort(total)} tokens · upper bound</span></span>
     <span class="waste-sources">${shown.map((v) => `<span class="waste-source-row">${sourceHtml(v)}</span>`).join("")}${moreHtml}</span>`;
   return div;
 }

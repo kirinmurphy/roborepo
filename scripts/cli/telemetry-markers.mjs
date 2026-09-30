@@ -52,10 +52,20 @@ function resolveConfigSnapshotId() {
   }
 }
 
+// A supersede must retire a real, still-active change marker; anything else would leave both
+// markers active (the conditions superseded-filter silently no-ops on an unknown id).
+export function assertSupersedable(targetId, markers) {
+  const target = markers.find((marker) => marker.marker_id === targetId);
+  if (!target) throw new Error(`cannot supersede unknown marker: ${targetId}`);
+  if (target.type !== "change") throw new Error(`cannot supersede a ${target.type} marker; only change markers can be superseded`);
+  if (markers.some((marker) => marker.supersedes === targetId)) throw new Error(`marker ${targetId} is already superseded`);
+}
+
 // Builds, validates, and persists a marker from CLI-supplied fields. Machine-derived identity
 // (repo/branch/sha/timestamp/snapshot) is always resolved here, never accepted from the caller —
 // per the plan's "automatic metadata is correct" exit criterion.
 export function createMarker(fields, { cwd = process.cwd() } = {}) {
+  if (fields.supersedes != null) assertSupersedable(fields.supersedes, readMarkers());
   const identity = resolveGitIdentity(cwd);
   const marker = {
     schema: 2,

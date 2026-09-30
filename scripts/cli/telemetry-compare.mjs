@@ -169,13 +169,18 @@ export function compareAcrossMarker(allCaptures, marker, metricId, {
   const afterValue = computeMetric(metricId, eqAfter, { markers });
 
   const dataQualityIssues = [];
-  if (beforeSessions < minimumSessionsPerCohort) dataQualityIssues.push(`before cohort has ${beforeSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
-  if (afterSessions < minimumSessionsPerCohort) dataQualityIssues.push(`after cohort has ${afterSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
+  // An unknown scope matches no sessions; report that as an unfair comparison, not as thin data.
+  const scopeUnknown = marker.schema >= 2 && !marker.repository_id && marker.scope !== "all";
+  if (scopeUnknown) dataQualityIssues.push("marker scope is unknown, so no sessions can be compared fairly");
+  else {
+    if (beforeSessions < minimumSessionsPerCohort) dataQualityIssues.push(`before cohort has ${beforeSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
+    if (afterSessions < minimumSessionsPerCohort) dataQualityIssues.push(`after cohort has ${afterSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
+  }
   const dominantBefore = dominantSession(eqBefore);
   const dominantAfter = dominantSession(eqAfter);
   if (dominantBefore) dataQualityIssues.push(`one session dominates the before cohort (${dominantBefore.id.slice(0, 8)})`);
   if (dominantAfter) dataQualityIssues.push(`one session dominates the after cohort (${dominantAfter.id.slice(0, 8)})`);
-  if (beforeValue == null || afterValue == null) dataQualityIssues.push("metric could not be computed for one or both cohorts");
+  if (!scopeUnknown && (beforeValue == null || afterValue == null)) dataQualityIssues.push("metric could not be computed for one or both cohorts");
   if (excluded.length) dataQualityIssues.push(`${excluded.length} session(s) excluded (spanned the marker timestamp)`);
 
   const effectSize = beforeValue != null && afterValue != null ? afterValue - beforeValue : null;
@@ -188,6 +193,7 @@ export function compareAcrossMarker(allCaptures, marker, metricId, {
     dataQualityIssues,
     beforeValue,
     afterValue,
+    scopeUnknown,
   });
 
   return {
@@ -208,7 +214,8 @@ export function compareAcrossMarker(allCaptures, marker, metricId, {
   };
 }
 
-function confidenceLabel({ beforeSessions, afterSessions, minimumSessionsPerCohort, dataQualityIssues, beforeValue, afterValue }) {
+function confidenceLabel({ beforeSessions, afterSessions, minimumSessionsPerCohort, dataQualityIssues, beforeValue, afterValue, scopeUnknown }) {
+  if (scopeUnknown) return "can't compare fairly";
   if (beforeValue == null || afterValue == null) return "insufficient evidence";
   if (beforeSessions < minimumSessionsPerCohort || afterSessions < minimumSessionsPerCohort) return "insufficient evidence";
   const hasSeriousDataQualityIssue = dataQualityIssues.some((issue) => issue.includes("dominates") || issue.includes("excluded"));
