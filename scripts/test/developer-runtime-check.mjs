@@ -23,7 +23,8 @@ import {
   updateSettings,
   validateSettings,
 } from "../../modules/developer-runtime/index.mjs";
-import { markDeveloperRuntimeRefreshFailed } from "../cli/developer-runtime.mjs";
+import { collectIdleMainCheckouts, markDeveloperRuntimeRefreshFailed } from "../cli/developer-runtime.mjs";
+import { canonicalRepositoryId, rootId as computeRootId } from "../../modules/repositories/identity.mjs";
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "developer-runtime-"));
 const cloneJson = (value) => JSON.parse(JSON.stringify(value));
@@ -516,6 +517,58 @@ try {
   }
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
+}
+
+// --- collectIdleMainCheckouts: the idle main row of a repository whose worktrees run ---
+// mainCheckoutPath's git resolution is covered in repositories-lifecycle-check.mjs and the snapshot
+// merge in developer-runtime-repository-merge-check.mjs; this covers the scan's own choices: which
+// repositories it looks at and when it leaves a main checkout to the running path.
+{
+  const { execFileSync } = await import("node:child_process");
+  const git = (...args) => execFileSync("git", args, { stdio: "ignore" });
+  // Real path: git records worktree locations resolved, and macOS tmpdir sits behind /var -> /private/var.
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "developer-runtime-idle-main-")));
+  try {
+    const main = path.join(base, "main");
+    git("init", "-q", "-b", "main", main);
+    git("-C", main, "config", "user.email", "t@example.invalid");
+    git("-C", main, "config", "user.name", "t");
+    // A remote gives every checkout one canonical git id; without it each checkout is its own local id.
+    git("-C", main, "remote", "add", "origin", "https://example.invalid/acme/idle-main.git");
+    git("-C", main, "commit", "-q", "--allow-empty", "-m", "x");
+    const linked = path.join(base, "linked");
+    git("-C", main, "worktree", "add", "-q", "-b", "feature", linked);
+    const repositoryId = canonicalRepositoryId(resolveProjectIdentity(linked));
+    assert.match(repositoryId, /^git:/);
+
+    const running = (...roots) => ({
+      instances: roots.map((projectRoot) => ({ project: { repositoryId, projectRoot, rootId: computeRootId(projectRoot) } })),
+      composeProjectGit: new Map(),
+    });
+
+    const worktreeOnly = await collectIdleMainCheckouts(running(linked), new Set([repositoryId]), null);
+    const idleMain = worktreeOnly.get(repositoryId);
+    assert.equal(idleMain?.projectRoot, main, "a running worktree finds its idle main checkout");
+    assert.equal(idleMain.rootId, computeRootId(main));
+    assert.equal(idleMain.state, "present");
+    assert.equal(idleMain.git?.branch, "main", "git is read from the main checkout, not the worktree");
+
+    const mainAlsoRunning = await collectIdleMainCheckouts(running(linked, main), new Set([repositoryId]), null);
+    assert.equal(mainAlsoRunning.size, 0, "a running main checkout is left to the running path");
+
+    const notRunning = await collectIdleMainCheckouts(running(linked), new Set(), null);
+    assert.equal(notRunning.size, 0, "a repository that is not running is the persisted path's to show");
+
+    // Bare: the worktrees share `<name>.git`, so there is no main checkout to show.
+    const bare = path.join(base, "bare.git");
+    git("clone", "-q", "--bare", main, bare);
+    const bareLinked = path.join(base, "bare-linked");
+    git("-C", bare, "worktree", "add", "-q", "-b", "other", bareLinked);
+    const bareOnly = await collectIdleMainCheckouts(running(bareLinked), new Set([repositoryId]), null);
+    assert.equal(bareOnly.size, 0, "a bare repository's worktree yields no main checkout");
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 }
 
 console.log("ok: developer-runtime core");

@@ -640,7 +640,8 @@ function runningRepositoryIds(discovery) {
 //
 // repositoryId -> { rootId, projectRoot, git, state }. A repository whose main checkout cannot be
 // found, is bare, or no longer resolves to the same repository is absent, leaving the row as it was.
-async function collectIdleMainCheckouts(discovery, runningIds, registry) {
+// Exported for scripts/test/developer-runtime-check.mjs.
+export async function collectIdleMainCheckouts(discovery, runningIds, registry) {
   const candidatesByRepository = new Map();
   const runningRootIds = new Set();
   const addCandidate = (repositoryId, projectRoot) => {

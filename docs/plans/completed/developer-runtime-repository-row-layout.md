@@ -8,7 +8,7 @@ related:
   - h4tqm2wz
   - developer-runtime-repository-card-merge
   - developer-runtime-remote-branch-status
-reviewed_commit: 57bb2eb
+reviewed_commit: a572dd1
 ---
 
 # Scannable Repository Rows with an Automatically Chosen App Link
@@ -445,8 +445,12 @@ Decisions made during implementation:
 - `mainCheckoutPath` (modules/repositories/identity.mjs), which resolves the main checkout on disk,
   is checked against real repositories in `scripts/test/repositories-lifecycle-check.mjs`: an
   ordinary clone, a linked worktree, an unresolvable candidate beside a good one, a bare
-  repository's worktree, and a worktree whose main checkout was deleted. The skip for a main
-  checkout that is already running lives in `collectIdleMainCheckouts` and has no test of its own.
+  repository's worktree, and a worktree whose main checkout was deleted.
+- `collectIdleMainCheckouts` (scripts/cli/developer-runtime.mjs) is checked against real
+  repositories in `scripts/test/developer-runtime-check.mjs`: a running worktree finds its idle main
+  checkout and reads the main checkout's branch, a main checkout that is already running is left
+  to the running path, a repository that is not running is skipped, and a bare repository's
+  worktree yields nothing. The running-main assertion fails with the skip removed.
 - `npm run check` passed again after all of the above: doctor, 423 CLI tests, the unit check
   group, package install, the four clean-machine Docker sandboxes, and the portal UI suite. The
   Windows installer check was skipped because `pwsh` is not installed.
