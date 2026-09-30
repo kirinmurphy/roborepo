@@ -1,14 +1,14 @@
 ---
 id: zdhivxtb
 priority: high
-next_action: Review and commit the implementation on claude/localhost-runtime-layout-b3215c, then run a plan review to decide completion
+next_action:
 blocked_by: []
 depends_on: []
 related:
   - h4tqm2wz
   - developer-runtime-repository-card-merge
   - developer-runtime-remote-branch-status
-reviewed_commit: 2b49179
+reviewed_commit: 57bb2eb
 ---
 
 # Scannable Repository Rows with an Automatically Chosen App Link
@@ -359,7 +359,7 @@ gets its own empty message for a Compose app with nothing discovered.
 - [x] Remove the entrypoint link and `—` separator from `tpl-repository-card` and
       `repositoryCard`.
 - [x] Remove the "WORKTREES" heading.
-- [x] Replace the root meta text with the bordered member toggle, make it the only toggle, and hide
+- [x] Replace the root meta text with the member toggle (a bare caret, per Decisions), make it the only toggle, and hide
       it when the member list is empty.
 - [x] Apply the 30-character branch cap to checkout rows and let the drift warning wrap within
       column 1.
@@ -396,7 +396,7 @@ Decisions made during implementation:
 | The glyph carries an accessible name, "Main checkout" or "Linked worktree" | It replaces the "Worktrees" heading, so it now carries that meaning for screen readers too |
 | `applyGitBadge` lost its `hideWorktreeSuffix` option | Checkout rows were its only caller |
 | A folded row builds the member's card without showing it, moves the card's visible tooltip lines into the checkout tooltip, and mounts the card's ⋮ menu through `mountMemberMenu` (templates.js), which reuses `wireCardActions` | One source for a member's facts and actions, so a folded row and a member card can never disagree |
-| Info icons on the Runtime page use the `sm` icon size; the branch label is regular weight | Review feedback: at `md` the icons competed with the names they annotate |
+| Every icon on the Runtime page takes one size from `<body data-icon-size="md">`; icons there set no `size` of their own, and `portal-icon` (portal/shared/icon.js) falls back to the nearest `data-icon-size` ancestor. The branch label is regular weight | Review feedback moved info icons to `sm` first, then back to one page-wide size, so changing the step in one place resizes every icon together |
 | Member cards take the checkout row's shape: name and info icon as one tooltip trigger, then port, Links, and ⋮ in the same fixed-width right-hand cells as the row (`checkout-actions`, `checkout-links-cell` at the Links trigger's measured 84px, `checkout-control-cell` at 28px) | Review feedback: every port on a card, row or member, now ends in one column |
 | Surfaces come from named per-theme tokens in `portal/shared/base.css` rather than one-off `color-mix()` tints: `--surface-band` (checkout rows), `--surface-sunken` (an open member list), `--surface-inset` (Compose containers inside it), `--wash-control` / `--wash-control-strong` (soft control fills), and `--wash-heading` (tooltip section bands). `scripts/test/portal-surface-layers-check.mjs` checks, in both themes, that each layer differs visibly (CIELAB L* ≥ 2.8) from the one it sits on, that containers contrast with their list more than the list contrasts with its rows, and that tooltip bands stand out (L* ≥ 5.6) | Review feedback: tweaking individual tints kept producing layers that matched each other in one theme (light rows matched the page; dark tooltip bands nearly vanished). Named layers plus a check make the hierarchy something the page can depend on |
 | Members inside a checkout's list indent by the row's glyph column (`--checkout-glyph-width` plus `--checkout-glyph-gap`), so a member's name starts under its checkout's branch name | Review feedback |
@@ -405,7 +405,9 @@ Decisions made during implementation:
 | Tooltips wait 500ms on hover before showing, site-wide (portal/shared/tooltip.js); keyboard focus still shows immediately | Review feedback: sweeping the pointer across rows flashed a tooltip on each |
 | The checkout tooltip opts into `data-tip-placement="panel"`: 460px wide, and docked to the right edge with a 24px gutter on screens 1100px and wider, where it uses 16px/20px padding and a larger header (`--text-md` branch, `--text-sm` directory, `md` icons). Its heading lines carry the git-branch and home/tree glyphs | Review feedback: it is too large to float over the row being read |
 | The list orders running real repositories, then dev fixtures (running or not), then idle and stale repositories. A fixture is any repository under `git:github.com/example/`, the unfetchable remote the fixtures in local/dev-fixtures use, and is badged "mock" in the same grey as "idle" | Review feedback; the remote convention already existed, so no registry flag was needed |
-| Lifecycle and "mock" badges are filled with inverted text and sit right after the repository's info icon; an idle card dims its text to `--dim` instead of fading the whole card | Review feedback: the outlined badge was too subtle, opacity also faded the badge that explains the dimming, and a right-aligned badge broke the header's alignment with the column of row controls below it |
+| Lifecycle and "mock" badges sit right after the repository's info icon, as a light `--dim` tint with `--dim` text; only `stale` keeps a solid `--warn` fill. An idle card dims its text to `--dim` instead of fading the whole card | Review feedback: the outlined badge was too subtle and a solid fill shouted over the card; `stale` needs looking at, so it stays loud. Opacity also faded the badge that explains the dimming, and a right-aligned badge broke the header's alignment with the column of row controls below it |
+| The drift warning sits on the branch line, after the copy control, as an inline block; when the column narrows it drops to the next line whole | Review feedback: a grid row of its own put every drift warning under the branch even when the line had room for it |
+| When only a repository's worktrees run, its main checkout row still shows its branch and tooltip. `collectIdleMainCheckouts` in `scripts/cli/developer-runtime.mjs` finds the main checkout through the git common directory shared by any known checkout path (`mainCheckoutPath` in modules/repositories/identity.mjs, beside `resolveGitDir`), reads its git through the idle-repository cache, and passes it to `buildDeveloperRuntimeSnapshot` as `idleMainCheckouts`; `buildRepositories` adds it as an idle root with no members | The always-rendered main row was otherwise a bare glyph. The registry's root `kind` records whichever checkout was seen first, so git, not the registry, identifies the main checkout; a path that no longer resolves to the repository is skipped, since a wrong branch is worse than an empty row |
 | Unrecognized listeners lose Links, Change association, and Confirm alias, keeping Copy PID, View history, and Hide | They have no app slot for saved links (adding one would create a stray saved app); an association only joins a repository card when another process of that repository is scanned first; an alias never applies to their low-confidence `process:` identity |
 | `local/dev-fixtures/multi-member-fixture.mjs` runs beside the Compose fixture. It generates backdated local history on each start (nothing fetched), so its main checkout sits on `feature/checkout-redesign` and its four checkouts show the four drift warnings: behind main, since main (with the stale-fetch "+"), behind remote, and unpushed | The Compose fixture cannot show several process members, a failing app, an API-only checkout, or any drift state. "Since main" and "unpushed" can only coexist in one repository when the unpushed branch is `main` itself, so `main` lives in a worktree |
 | A checkout with one thing to copy shows the single copy button in the copy dropdown's bare-icon style | The fixture's feature-branch and `main` rows exposed a bordered button beside the borderless dropdown |
@@ -435,6 +437,29 @@ Decisions made during implementation:
   rendered one row per checkout with its promoted port, Links button, and member toggle. The dev
   fixture's nginx container promoted itself in its checkout row (`kind: "container"`, `:48080`),
   and its Links panel opened discovered-only, showing the new empty message.
+- After the follow-up review changes (idle main checkout, page-wide icon size, inline drift warning,
+  tinted badges), `node scripts/test/run-checks.mjs --filter developer-runtime` passed 12/12, with
+  new snapshot assertions for the idle main checkout in
+  `scripts/test/developer-runtime-repository-merge-check.mjs`, and `npm run test:portal-ui` passed
+  24/24.
+- `mainCheckoutPath` (modules/repositories/identity.mjs), which resolves the main checkout on disk,
+  is checked against real repositories in `scripts/test/repositories-lifecycle-check.mjs`: an
+  ordinary clone, a linked worktree, an unresolvable candidate beside a good one, a bare
+  repository's worktree, and a worktree whose main checkout was deleted. The skip for a main
+  checkout that is already running lives in `collectIdleMainCheckouts` and has no test of its own.
+- `npm run check` passed again after all of the above: doctor, 423 CLI tests, the unit check
+  group, package install, the four clean-machine Docker sandboxes, and the portal UI suite. The
+  Windows installer check was skipped because `pwsh` is not installed.
+
+## Completion
+
+Every goal is met and every Validation scenario has a check that failed before its implementation
+and passes now: the ranking scenarios in `scripts/test/developer-runtime-repository-merge-check.mjs`
+and `scripts/test/developer-runtime-member-role-check.mjs`, the probe's `contentType` in
+`scripts/test/developer-runtime-check.mjs`, and the layout scenarios in
+`scripts/test/portal-ui/developer-runtime-rows.spec.mjs`. Saved links for Compose apps remain out
+of scope (they need a settings schema change of their own), and CI status on the checkout glyph
+belongs to `developer-runtime-remote-branch-status`.
 
 ## Validation
 
@@ -510,7 +535,7 @@ A manual pass against the live page confirms both themes and a narrow viewport.
 | An HTTPS dev server with an untrusted certificate has no readable title, so it ranks as `api` and is never promoted | Trusting the certificate locally restores the title; the classifier at least keeps it out of `service` |
 | A server whose root returns an HTML error page with a `<title>` classifies as `app` | Tie-breakers still rank a repository-titled or app-named member above it |
 | The card header no longer shows the full host, so `127.0.0.1` vs `[::1]` is not visible at a glance | The promoted link keeps the full origin in its `href` and `title`, as worktree links do today |
-| The row surface no longer toggles the member list, which changes a learned interaction | The toggle is a visible bordered button with a count, placed at the row end where the old toggle text sat |
+| The row surface no longer toggles the member list, which changes a learned interaction | The toggle is a caret at the row end, where the old toggle text sat; its hover title and accessible name say what it opens ("Show 2 members"), and it takes a fill on hover and while its list is open |
 
 ## Decisions
 
