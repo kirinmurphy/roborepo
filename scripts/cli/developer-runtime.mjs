@@ -347,7 +347,7 @@ function recordDiscoveredRepositories(instances, composeProjectGit = null) {
   for (const project of sources) {
     const repositoryId = project?.repositoryId;
     if (!repositoryId) continue;
-    const rootKey = `${repositoryId} ${project.rootId || project.projectRoot || ""}`;
+    const rootKey = `${repositoryId}\0${project.rootId || project.projectRoot || ""}`;
     if (seen.has(rootKey)) continue;
     seen.add(rootKey);
     try {
