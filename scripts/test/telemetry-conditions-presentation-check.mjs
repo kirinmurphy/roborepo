@@ -28,6 +28,13 @@ assert.match(changePresentation({ ...equal, relative_delta: null, after: { affec
 const records = fs.readFileSync(new URL("../../portal/tokens2/mock-spool.jsonl", import.meta.url), "utf8").trim().split("\n").map(JSON.parse);
 const evidence = conditionDemoEvidence(records);
 const report = analyzeTelemetry(evidence.events, { conditions: true, snapshots: evidence.snapshots });
+// The demo must not confound the intervention with repo or model: both cohorts share them.
+const cohortValues = (baseline, pick) => [...new Set(evidence.events.filter((row) => {
+  const index = Number(row.session_id.match(/^demo-comparison-(\d+)$/)?.[1] ?? NaN);
+  return index < 96 && (index < 48) === baseline;
+}).map(pick).filter(Boolean))].sort();
+for (const pick of [(row) => row.repo?.label, (row) => row.session?.model]) assert.deepEqual(cohortValues(true, pick), cohortValues(false, pick));
+assert.ok(cohortValues(true, (row) => row.repo?.label).length > 1);
 const states = new Set(report.conditions.comparisons.map((row) => comparisonPresentation(row).state));
 assert.ok(states.has("fewer") && states.has("more") && states.has("thin"));
 assert.ok(report.conditions.relative_models.filter((row) => row.meets_sample_floor).length >= 3);

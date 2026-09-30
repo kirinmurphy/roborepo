@@ -5,7 +5,9 @@ import { setText } from "./conditions-dom.js";
 export function createChangeForm(getData, onSaved) {
   const dialog = document.getElementById("condition-change-dialog");
   const form = document.getElementById("condition-change-form");
+  let editing = null;
   const open = (marker = null) => {
+    editing = marker;
     const data = getData();
     form.reset();
     setText(form, "h2", marker ? "Edit change" : "Mark a change");
@@ -39,7 +41,12 @@ export function createChangeForm(getData, onSaved) {
     const submit = form.querySelector('[type="submit"]');
     submit.disabled = true;
     try {
+      const relocates = editing && form.elements.intent.value === "response";
+      // Moving an existing change to "now" rewrites which sessions count as before/after it.
+      if (relocates && !window.confirm("Moving this change to now will change which sessions count as before and after it. Continue?")) return;
       const result = await portalPostJson("/api/telemetry/markers", { type: "change", title: form.elements.title.value,
+        // A correction is a new marker; carry the recorded exposure so it is not silently erased.
+        packages: editing?.packages ?? [], skills: editing?.skills ?? [], tags: editing?.tags ?? [],
         effective_at: form.elements.intent.value === "response" ? new Date().toISOString() : new Date(form.elements.effective_at.value).toISOString(),
         scope: form.elements.repository.value === "all" ? "all" : "repository",
         repository_id: form.elements.repository.value === "all" ? null : form.elements.repository.value,

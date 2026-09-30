@@ -56,33 +56,25 @@ export function splitCohortsByMarker(captures, marker) {
       excluded: [...split.spanning.map((item) => ({ session_id: item.session_id, reason: "session spans the marker timestamp" })),
         ...split.ambiguous.map((item) => ({ session_id: item.session_id, reason: "ambiguous_boundary" }))] };
   }
-  const markerMs = Date.parse(marker.ts);
+  // Legacy markers share the canonical boundary rule: effective_at ?? ts, with sessions touching
+  // the boundary excluded rather than assigned to a side.
   const sessions = new Map();
   for (const event of captures) {
     const id = event.session_id || "unknown";
     const ms = Date.parse(event.ts);
     if (!Number.isFinite(ms)) continue;
-    if (!sessions.has(id)) sessions.set(id, { first: ms, last: ms, events: [] });
+    if (!sessions.has(id)) sessions.set(id, { session_id: id, first: ms, last: ms, events: [] });
     const s = sessions.get(id);
     s.first = Math.min(s.first, ms);
     s.last = Math.max(s.last, ms);
     s.events.push(event);
   }
-
-  const before = [];
-  const after = [];
-  const excluded = [];
-  for (const [id, session] of sessions) {
-    const spansMarker = session.first < markerMs && session.last > markerMs;
-    if (spansMarker) {
-      excluded.push({ session_id: id, reason: "session spans the marker timestamp" });
-    } else if (session.last <= markerMs) {
-      before.push(...session.events);
-    } else {
-      after.push(...session.events);
-    }
-  }
-  return { before, after, excluded };
+  const observations = [...sessions.values()].map((session) => ({ session_id: session.session_id, events: session.events,
+    first_seen: new Date(session.first).toISOString(), last_seen: new Date(session.last).toISOString(), rows: [] }));
+  const split = splitObservationBoundary(observations, marker);
+  return { before: split.before.flatMap((item) => item.events), after: split.after.flatMap((item) => item.events),
+    excluded: [...split.spanning.map((item) => ({ session_id: item.session_id, reason: "session spans the marker timestamp" })),
+      ...split.ambiguous.map((item) => ({ session_id: item.session_id, reason: "ambiguous_boundary" }))] };
 }
 
 // Restrict the larger of two cohorts to an equal-duration or equal-session-count window matching the
@@ -282,6 +274,8 @@ export function describeMarkerComparison(comparison, marker) {
     : null;
   const nextAction = comparison.confidence === "insufficient evidence"
     ? `Collect more comparable sessions before drawing a conclusion (need at least the configured minimum per cohort).`
+    : comparison.confidence !== "strong signal"
+      ? `Early signal only: keep collecting comparable sessions before acting on ${metricLabel.toLowerCase()} moving ${worseningDirection ? "the wrong way" : "this way"}.`
     : worseningDirection
       ? `Investigate why ${metricLabel.toLowerCase()} moved the wrong way and consider a follow-up change or experiment.`
       : `Continue monitoring ${metricLabel.toLowerCase()} across the next eligible sessions.`;

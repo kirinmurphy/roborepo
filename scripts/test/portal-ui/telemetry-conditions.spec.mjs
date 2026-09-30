@@ -74,7 +74,19 @@ test("mark change records backdated scope and keeps editing history", async ({ p
   await page.locator('#condition-change-form [name="title"]').fill("Corrected change title");
   await page.locator('#condition-change-form [type="submit"]').click();
   await expect(page.locator("#condition-change-dialog")).not.toBeVisible();
-  expect(posted[1].supersedes).toBe(demo.conditions.changes[0].marker.marker_id);
+  const original = demo.conditions.changes[0].marker;
+  expect(posted[1].supersedes).toBe(original.marker_id);
+  expect(posted[1].packages).toEqual(original.packages ?? []);
+  expect(posted[1].skills).toEqual(original.skills ?? []);
+  expect(posted[1].tags).toEqual(original.tags ?? []);
+  expect(Date.parse(posted[1].effective_at)).toBe(Date.parse(original.effective_at ?? original.ts));
+  // Relocating an existing change to "now" needs explicit confirmation; declining posts nothing.
+  await page.locator("#condition-changes button").first().click();
+  await page.locator('#condition-change-form [name="intent"]').selectOption("response");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.locator('#condition-change-form [type="submit"]').click();
+  await expect(page.locator("#condition-change-dialog")).toBeVisible();
+  expect(posted).toHaveLength(2);
 });
 
 

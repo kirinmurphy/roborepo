@@ -45,14 +45,16 @@ function comparisonSessions() {
     const unknown = index >= 96;
     const affected = !unknown && position < (after ? 8 : 24);
     const scenario = unknown ? "unknown" : after ? "focused" : "baseline";
-    const repo = after ? "marketing-site" : "payments-api";
+    // Repo and model are balanced across both cohorts so only the intervention differs.
+    const harness = index % 2 ? "codex" : "claude";
+    const repo = Math.floor(index / 2) % 2 ? "marketing-site" : "payments-api";
     const timestamp = Date.UTC(2026, 5, after ? 14 : 10, 0, index * 2);
     for (let call = 0; call < 2; call++) events.push({
-      schema: 3, demo_condition: scenario, harness: index % 2 ? "codex" : "claude",
+      schema: 3, demo_condition: scenario, harness,
       session_id: `demo-comparison-${index}`, event: "PostToolUse",
       ts: new Date(timestamp + call * 1000).toISOString(),
       repo: { label: repo, branch: "main" },
-      session: { model: unknown ? null : after ? "gpt-5-codex" : "claude-opus-4-8" },
+      session: { model: unknown ? null : harness === "codex" ? "gpt-5-codex" : "claude-opus-4-8" },
       tool: { name: call ? "Edit" : "Read", file_ext: call ? ".js" : ".md" },
       last_result: { tool: call ? "Edit" : "Read", chars: !call && affected ? 28000 : 600 },
       tokens: unknown ? null : { input: (after ? 15000 : 44000) + call * 1000, output: 4000, total: (after ? 19000 : 48000) + call * 1000 },
