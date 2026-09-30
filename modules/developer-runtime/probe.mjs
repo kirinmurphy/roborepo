@@ -142,6 +142,9 @@ async function probeOrigin(origin, { timeoutMs, protocol } = {}) {
           latencyMs: Date.now() - started,
           protocol: protocol || url.protocol.replace(":", ""),
           title: titleFromHtml(body),
+          // Kept so an untitled 2xx HTML shell (a page that sets its title from JavaScript) can be
+          // told apart from an API — see classifyMemberRole in member-role.mjs.
+          contentType: res.headers["content-type"] || null,
           favicon: faviconFromHtml(origin, body),
           redirect: location,
           redirectExternal: location ? !isLoopbackUrl(location) : false,
@@ -158,6 +161,7 @@ async function probeOrigin(origin, { timeoutMs, protocol } = {}) {
         latencyMs: Date.now() - started,
         protocol: protocol || url.protocol.replace(":", ""),
         title: null,
+        contentType: null,
         favicon: null,
         tls: isTlsTrustError(err) ? "untrusted" : null,
         errorCode: err.code || null,

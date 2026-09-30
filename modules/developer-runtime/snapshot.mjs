@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { defaultSettings, resolveProjectAlias } from "./settings.mjs";
+import { classifyMemberRole, createRoleComparator } from "./member-role.mjs";
 import { canonicalRepositoryId, providerUrlForRepositoryId } from "../repositories/identity.mjs";
 
 export function buildDeveloperRuntimeSnapshot({
@@ -18,6 +19,10 @@ export function buildDeveloperRuntimeSnapshot({
   // stays a pure function of its inputs. Empty means "no persistence available", which degrades to
   // the pre-Phase-3 behaviour of listing only what is running.
   persistedRepositories = [],
+  // repositoryId -> { rootId, projectRoot, git, state } for the main checkout of a RUNNING repository
+  // that has nothing running in it. Found and read by the caller for the same reason as
+  // persistedRepositories; it fills the main row, which would otherwise render blank.
+  idleMainCheckouts = new Map(),
   // Repositories the 30-day ageing sweep has hidden. Name and last-seen only — enough for the
   // "Show hidden" affordance to offer them back, without deriving lifecycle or reading git for
   // repositories that are by construction not on the page.
@@ -78,7 +83,9 @@ export function buildDeveloperRuntimeSnapshot({
         hiddenCount += 1;
         continue;
       }
-      project.instances.push(withOpaqueKey(instance, `compose:${projectName}`, null));
+      // Classified here rather than in toMember: a container never becomes a member (its stack is
+      // the member), yet one of its ports can still be the checkout's promoted link.
+      project.instances.push(withOpaqueKey({ ...instance, role: classifyMemberRole(instance) }, `compose:${projectName}`, null));
       continue;
     }
     const projectIdentity = resolveProjectAlias(settings, instance.project.identity);
@@ -179,7 +186,7 @@ export function buildDeveloperRuntimeSnapshot({
     // Repository-keyed view over the same instances the three collections above hold. Built
     // alongside them during the migration (developer-runtime-repository-card-merge) so existing consumers
     // keep working while the portal moves over; the legacy three are removed once nothing reads them.
-    repositories: buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames, persistedRepositories, pinnedRepositoryIds }),
+    repositories: buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames, persistedRepositories, idleMainCheckouts, pinnedRepositoryIds }),
     inactiveProjects: inactiveProjects.sort(compareProjects),
     hiddenRepositories,
     hiddenCount,
@@ -229,7 +236,7 @@ function groupByContainer(instances) {
 // Only a real repositoryId groups. `process:` identities resolve to null (canonicalRepositoryId
 // returns null for them — no repository exists to be a member of) and stay unmatched, as do
 // Compose projects whose repo never resolved.
-function buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames = new Map(), persistedRepositories = [], pinnedRepositoryIds = new Set() }) {
+function buildRepositories({ projects, composeProjects, unmatchedInstances, repositoryNames = new Map(), persistedRepositories = [], idleMainCheckouts = new Map(), pinnedRepositoryIds = new Set() }) {
   const byRepository = new Map();
 
   // A worktree's project-level `name` is commonly its branch or directory name (e.g.
@@ -252,6 +259,9 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
         // stable but path-derived, so they stay on this surface only.
         identityKind: repositoryId.startsWith("git:") ? "git" : "local",
         providerUrl: providerUrlForRepositoryId(repositoryId),
+        // A dev fixture (local/dev-fixtures) rather than a real project — badged "mock" and listed
+        // after every real active repository.
+        fixture: isFixtureRepository(repositoryId),
         name: source.name,
         // Read from the repository registry (see pinnedRepositoryIds below), never from the members
         // — a pin has to survive the process exiting, and an idle repository has no members to hold
@@ -273,9 +283,10 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
         // fan-out, departed-member tracking). `roots` below is the grouped view the card renders.
         members: [],
         // One entry per checkout (main + every worktree) this repository has an active member or
-        // git identity for. The main checkout (isWorktree: false) is not guaranteed to exist here
-        // if only a worktree is currently running — the portal renders its section as empty rather
-        // than this array being padded with a placeholder.
+        // git identity for. When only worktrees are running, the main checkout is added as an idle
+        // root from idleMainCheckouts; it is still absent when the caller could not find or read it,
+        // and the portal then renders its section empty rather than this array being padded with a
+        // placeholder.
         roots: [],
       });
     }
@@ -288,7 +299,9 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
   const ensureRoot = (entry, rootId, git, projectRoot) => {
     let root = entry.roots.find((candidate) => candidate.rootId === rootId);
     if (!root) {
-      root = { rootId, isWorktree: Boolean(git?.isWorktree), git: git || null, projectRoot: projectRoot || null, members: [], composeGroups: [] };
+      // primaryEntrypoint is filled once members are ranked (see the per-root loop below); null means
+      // nothing user-facing runs here, which is also the only value an idle checkout ever has.
+      root = { rootId, isWorktree: Boolean(git?.isWorktree), git: git || null, projectRoot: projectRoot || null, members: [], composeGroups: [], primaryEntrypoint: null };
       entry.roots.push(root);
     } else {
       if (!root.git && git) root.git = git;
@@ -351,7 +364,38 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
     root.members.push(member);
   }
 
+  // The main checkout of a running repository, when only its worktrees are running. Same idle-row
+  // shape as a persisted checkout (git, path, no members), so the always-rendered main row shows its
+  // branch instead of an empty glyph. Only ever the main checkout, and only when no running member
+  // already supplied one — other stopped worktrees stay off the card.
+  for (const [repositoryId, checkout] of idleMainCheckouts) {
+    const entry = byRepository.get(repositoryId);
+    if (!entry || !checkout?.rootId || entry.roots.some((root) => !root.isWorktree)) continue;
+    const root = ensureRoot(entry, checkout.rootId, checkout.git, checkout.projectRoot);
+    root.checkoutState = checkout.state || "present";
+    root.checkoutReason = null;
+  }
+
   for (const entry of byRepository.values()) {
+    // A main-checkout name is canonical (a worktree's name is commonly its branch/dir name, not the
+    // repository's real name); only fall back to a worktree's name when no main-checkout name was
+    // ever seen — e.g. only a worktree is currently running.
+    //
+    // The registry's name outranks both. It is the repository-level fact, recorded when the
+    // repository was first resolved and independent of which checkouts happen to be running now —
+    // which is exactly the case the candidate list cannot cover: when only a worktree is up there is
+    // no main-checkout candidate to prefer, and the card would otherwise be titled with the
+    // worktree's branch/directory name (e.g. "developer-runtime-metadata-suggestions" for roborepo).
+    //
+    // Resolved before any sorting: the member ranking prefers a page whose title names the
+    // repository, so it needs the final name, not whichever candidate happened to arrive first.
+    const candidates = nameCandidates.get(entry.repositoryId) || [];
+    const registryName = repositoryNames.get(entry.repositoryId);
+    const mainName = candidates.find((c) => !c.isWorktree)?.name;
+    if (registryName) entry.name = registryName;
+    else if (mainName) entry.name = mainName;
+    else if (candidates.length) entry.name = candidates[0].name;
+    const compareMembers = createRoleComparator({ repositoryName: entry.name });
     entry.members = collapseByPid(entry.members);
     entry.members.sort(compareMembers);
     // Duplicate-listener detection runs per checkout, not repository-wide: a repository legitimately
@@ -364,6 +408,7 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
       entry.duplicateGroups.push(...findStaleDuplicates(root.members));
       root.members.sort(compareMembers);
       root.composeGroups.sort((a, b) => a.name.localeCompare(b.name));
+      root.primaryEntrypoint = primaryEntrypointFor(root, compareMembers);
     }
     // Main checkout first (even if empty — the portal always renders its section), then worktrees
     // alphabetically by branch so the order is stable across polls.
@@ -371,21 +416,6 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
       if (a.isWorktree !== b.isWorktree) return a.isWorktree ? 1 : -1;
       return (a.git?.branch || "").localeCompare(b.git?.branch || "");
     });
-    // A main-checkout name is canonical (a worktree's name is commonly its branch/dir name, not the
-    // repository's real name); only fall back to a worktree's name when no main-checkout name was
-    // ever seen — e.g. only a worktree is currently running.
-    //
-    // The registry's name outranks both. It is the repository-level fact, recorded when the
-    // repository was first resolved and independent of which checkouts happen to be running now —
-    // which is exactly the case the candidate list cannot cover: when only a worktree is up there is
-    // no main-checkout candidate to prefer, and the card would otherwise be titled with the
-    // worktree's branch/directory name (e.g. "developer-runtime-metadata-suggestions" for roborepo).
-    const candidates = nameCandidates.get(entry.repositoryId) || [];
-    const registryName = repositoryNames.get(entry.repositoryId);
-    const mainName = candidates.find((c) => !c.isWorktree)?.name;
-    if (registryName) entry.name = registryName;
-    else if (mainName) entry.name = mainName;
-    else if (candidates.length) entry.name = candidates[0].name;
     entry.composeGroups.sort((a, b) => a.name.localeCompare(b.name));
     entry.sharedComposeGroups.sort((a, b) => a.name.localeCompare(b.name));
     // Every member counts toward the aggregate today. Tool processes that resolve to a repository
@@ -439,20 +469,31 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
   return sortRepositoriesForDisplay([...byRepository.values()]);
 }
 
-// Running repositories first, then idle/stale — a card with something live on it outranks one
-// without, whatever their names. Within each group compareRepositories applies, so pins and
-// alphabetical order still hold where they did before.
+// Three groups (see displayGroup): running real repositories, then dev fixtures, then idle/stale —
+// a card with something live on it outranks one without, whatever their names. Within each group
+// compareRepositories applies, so pins and alphabetical order still hold where they did before.
 //
 // Exported because the pin mutation re-sorts an existing snapshot in place rather than rebuilding
 // it (see setDeveloperRuntimeRepositoryPinned): pinning changes the order, and the order must be derived
 // the same way in both paths or the list would reshuffle on the next poll.
 export function sortRepositoriesForDisplay(repositories) {
-  return [...repositories].sort((a, b) => {
-    const aIdle = a.lifecycle && a.lifecycle.state !== "active";
-    const bIdle = b.lifecycle && b.lifecycle.state !== "active";
-    if (aIdle !== bIdle) return aIdle ? 1 : -1;
-    return compareRepositories(a, b);
-  });
+  return [...repositories].sort((a, b) => displayGroup(a) - displayGroup(b) || compareRepositories(a, b));
+}
+
+// Real repositories with something running, then dev fixtures whether running or not, then idle and
+// stale repositories. Fixtures sit between the two so a running fixture never pushes real work down
+// the page, yet stays above the history that is no longer running at all.
+function displayGroup(repository) {
+  if (repository.fixture) return 1;
+  return repository.lifecycle && repository.lifecycle.state !== "active" ? 2 : 0;
+}
+
+// The dev fixtures give their repositories deliberately unfetchable github.com/example remotes (see
+// local/dev-fixtures), which is what makes them recognizable here without a registry flag.
+const FIXTURE_REPOSITORY_PREFIX = "git:github.com/example/";
+
+function isFixtureRepository(repositoryId) {
+  return typeof repositoryId === "string" && repositoryId.startsWith(FIXTURE_REPOSITORY_PREFIX);
 }
 
 // Last path segment of a git: id, or a generic label for a local: one. Only used when the registry
@@ -544,6 +585,9 @@ function toMember(instance, projectIdentity) {
     // Whether this port is something a user opens (it answered with a page title) or infrastructure
     // behind one. Drives which members get a permanent, always-visible slot on the card.
     entrypoint: Boolean(instance.title),
+    // What the member is for — app, tooling, api, or service (see member-role.mjs). Decides the
+    // member order, which member a checkout row promotes, and which members render dimmed.
+    role: classifyMemberRole(instance),
     // The page title in full. Prose about what the site is, which belongs in a tooltip rather than
     // as the member's name — see memberName.
     description: instance.title || null,
@@ -605,11 +649,27 @@ function sumValues(values) {
   return present.reduce((total, value) => total + value, 0);
 }
 
-// Entrypoints first: the point of the card is that opening the app is one click from page load, so
-// the ports a user actually visits must never sort below infrastructure.
-function compareMembers(a, b) {
-  if (a.entrypoint !== b.entrypoint) return a.entrypoint ? -1 : 1;
-  return a.name.localeCompare(b.name) || a.port - b.port;
+// The one link a checkout row shows: its best-ranked `app`, whether that is a dev server member or a
+// port of a Compose container in this checkout. Containers are candidates here even though they are
+// never members, because a Compose-only checkout's `web` service is exactly the app a user opens.
+// Null when nothing user-facing runs — the row then shows no link rather than promoting an API.
+function primaryEntrypointFor(root, compareMembers) {
+  const containerCandidates = root.composeGroups.flatMap((group) =>
+    group.containers.flatMap((container) =>
+      container.instances.map((instance) => ({ role: instance.role, instance, kind: "container" }))));
+  const best = [
+    ...root.members.map((member) => ({ role: member.role, instance: member.instance, kind: "listener" })),
+    ...containerCandidates,
+  ]
+    .filter((candidate) => candidate.role === "app" && candidate.instance?.origin && candidate.instance.opaqueKey)
+    .sort(compareMembers)[0];
+  if (!best) return null;
+  return {
+    kind: best.kind,
+    opaqueKey: best.instance.opaqueKey,
+    origin: best.instance.origin,
+    port: best.instance.bind.port,
+  };
 }
 
 // Favorites first, then portable git-backed repositories ahead of path-derived local ones. Offline

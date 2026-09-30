@@ -306,4 +306,41 @@ check("the record that took the root is not superseded", supersededBy(reg, RENAM
   check("an unknown repository is refused", renamedInto(reg({}), "nope"), null);
 }
 
+// --- mainCheckoutPath: the main checkout behind any checkout of a repository ---
+// Runtime fills a running repository's idle main row from this (collectIdleMainCheckouts in
+// scripts/cli/developer-runtime.mjs), so a wrong answer prints another checkout's branch on it.
+// Real repositories, because the answer depends on the files git itself writes for a worktree.
+{
+  const { mainCheckoutPath } = await import(M);
+  const { execFileSync } = await import("node:child_process");
+  const git = (...args) => execFileSync("git", args, { stdio: "ignore" });
+  // Real path: git records worktree locations resolved, and macOS tmpdir sits behind /var -> /private/var.
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(tmp, "main-checkout-")));
+  const main = path.join(base, "main");
+  git("init", "-q", "-b", "main", main);
+  git("-C", main, "config", "user.email", "t@example.invalid");
+  git("-C", main, "config", "user.name", "t");
+  git("-C", main, "commit", "-q", "--allow-empty", "-m", "x");
+  const linked = path.join(base, "linked");
+  git("-C", main, "worktree", "add", "-q", "-b", "feature", linked);
+
+  check("an ordinary clone is its own main checkout", mainCheckoutPath([main]), main);
+  check("a linked worktree resolves to its main checkout", mainCheckoutPath([linked]), main);
+  check("unresolvable candidates are skipped, not fatal",
+    mainCheckoutPath([path.join(base, "missing"), linked]), main);
+  check("no candidates, no main checkout", mainCheckoutPath([]), null);
+
+  // A bare repository has no main checkout: its worktrees share `<name>.git`, not `<main>/.git`.
+  const bare = path.join(base, "bare.git");
+  git("clone", "-q", "--bare", main, bare);
+  const bareLinked = path.join(base, "bare-linked");
+  git("-C", bare, "worktree", "add", "-q", "-b", "other", bareLinked);
+  check("a bare repository's worktree has no main checkout", mainCheckoutPath([bareLinked]), null);
+
+  // The main checkout was deleted out from under its worktree: the worktree's gitdir no longer
+  // leads to a common directory, so there is nothing to confirm and nothing to show.
+  fs.rmSync(main, { recursive: true, force: true });
+  check("a worktree whose main checkout is gone resolves to nothing", mainCheckoutPath([linked]), null);
+}
+
 console.log("repositories-lifecycle-check passed");

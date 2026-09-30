@@ -32,6 +32,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+// The second fixture: plain Node servers across a repository and two worktrees, for the checkout-row
+// cases the Compose stack cannot show (several process members, a failing app, an API-only checkout).
+import { startMultiMemberFixture, statusMultiMemberFixture, stopMultiMemberFixture } from "./multi-member-fixture.mjs";
 
 const FIXTURE_ROOT = path.join(os.homedir(), "projects", "prototypin", "shared-stack-fixture");
 // The second checkout is the first path plus a "-wt" suffix on purpose: it doubles as the
@@ -144,7 +147,7 @@ function provision() {
   }
 }
 
-function start() {
+function startComposeFixture() {
   if (run("docker", ["info"]).status !== 0) return { ok: false, message: "Docker is not running — start it and retry" };
   if (run("git", ["--version"]).status !== 0) return { ok: false, message: "git is unavailable" };
 
@@ -157,7 +160,7 @@ function start() {
   return `fixture running on http://127.0.0.1:${HOST_PORT} (${FIXTURE_ROOT} + -wt)`;
 }
 
-function stop() {
+function stopComposeFixture() {
   if (!fs.existsSync(path.join(FIXTURE_ROOT, "docker-compose.yml"))) return "nothing provisioned";
   const down = compose(["down"]);
   // A wedged container (Docker holding state for namespaces that no longer exist) fails here, and
@@ -167,7 +170,7 @@ function stop() {
   return `stack stopped; checkouts kept at ${FIXTURE_ROOT}`;
 }
 
-function status() {
+function statusComposeFixture() {
   if (!fs.existsSync(path.join(FIXTURE_ROOT, ".git"))) return "not provisioned";
   const ps = compose(["ps", "--quiet"]);
   const running = ps.status === 0 && (ps.stdout || "").trim().length > 0;
@@ -175,6 +178,19 @@ function status() {
     ? `running on http://127.0.0.1:${HOST_PORT} (${FIXTURE_ROOT} + -wt)`
     : `provisioned but stopped (${FIXTURE_ROOT})`;
 }
+
+// Every action covers both fixtures. Each result is either a string or { ok: false, message }; the
+// combined result fails if either part did, and reports both either way.
+function both(composeAction, multiMemberAction) {
+  const results = [composeAction(), multiMemberAction()];
+  const ok = results.every((result) => typeof result === "string" || result.ok !== false);
+  const message = results.map((result) => (typeof result === "string" ? result : result.message)).join("\n");
+  return ok ? message : { ok: false, message };
+}
+
+const start = () => both(startComposeFixture, startMultiMemberFixture);
+const stop = () => both(stopComposeFixture, stopMultiMemberFixture);
+const status = () => both(statusComposeFixture, statusMultiMemberFixture);
 
 const ACTIONS = { start, stop, status };
 const action = process.argv[2];
