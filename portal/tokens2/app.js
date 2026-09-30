@@ -112,17 +112,18 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   // demonstrate the full report even before a real harness is installed.
   // The "install a supported harness" banner is the SHARED component
   // (portal/shared/harness-warning.js — the same portal-notice the Agents page renders);
-  // it shows below the state panel whenever the machine has no active harness.
-  const sharedBanner = harnessWarningElement(snap);
+  // it shows below the state panel whenever telemetry is on and the machine has no active harness.
+  // Only once telemetry is on: with it off, the telemetry prompt is the single setup step.
+  const sharedBanner = telemetryOn ? harnessWarningElement(snap) : null;
   if (state === "telemetry-off") {
     offPanel.style.display = "";
     const title = offPanel.querySelector("[data-slot=title]");
     const body = offPanel.querySelector("[data-slot=body]");
     if (activeHarnessCount === 0) {
-      title.textContent = "telemetry setup required";
-      body.textContent = "Turn telemetry on before token usage can be captured. Harness setup is separate — see the Agents page.";
+      title.textContent = "Telemetry setup required";
+      body.textContent = "Turn telemetry on before token usage can be captured.";
     } else {
-      title.textContent = "telemetry is off";
+      title.textContent = "Telemetry is off";
       body.textContent = "Token usage is not being captured. Turn telemetry on to start collecting data across your harnesses.";
     }
   } else if (state === "no-harness") {
@@ -131,7 +132,7 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
     offPanel.style.display = "";
     const title = offPanel.querySelector("[data-slot=title]");
     const body = offPanel.querySelector("[data-slot=body]");
-    title.textContent = "no telemetry data yet";
+    title.textContent = "No telemetry data yet";
     body.textContent = "Telemetry is on and a harness is active, but nothing has been captured yet. Run a session in your harness — this page fills in as usage data lands.";
   } else {
     offPanel.style.display = "none";
@@ -218,30 +219,39 @@ async function load(force) {
   renderFullData(data);
 }
 
-// ── Frame-of-reference meta line (v1 renderMeta contract) ──
-// Sessions · captures · period — what the numbers below are drawn from. The Codex provider
-// rate limit (when the provider reports one) rides along as a dim clause; it's a real signal,
-// so it shares the line instead of earning its own stat card.
+// ── Frame-of-reference meta line ──
+// Period first and large (the headline: "what window is this?"), then the counts it is drawn from
+// as a dim detail line, with the Codex provider rate limit (when reported) as a trailing clause.
+// Sessions are distinct agent sessions; "with token data" are those whose usage was captured;
+// events are the individual records inside them (data.event_count — see the tooltip).
 function renderMeta(data) {
   const el = document.getElementById("tokens2meta");
   if (!el) return;
   const sessions = data.sessions || [];
+  const total = data.conditions.data_quality.sessions;
   const parts = [
-    fmt(data.conditions.data_quality.sessions) + " observed sessions"
-      + (sessions.length < data.conditions.data_quality.sessions ? ` (${fmt(sessions.length)} with token data)` : ""),
-    fmt(data.event_count ?? data.capture_count ?? 0) + " captures",
+    fmt(total) + " sessions" + (sessions.length < total ? ` (${fmt(sessions.length)} with token data)` : ""),
+    fmt(data.event_count ?? data.capture_count ?? 0) + " events recorded",
   ];
-  // Period: first session start → last session end (no precomputed field; derived here).
-  const firstTs = sessions.length ? sessions.reduce((m, s) => (s.first_ts < m ? s.first_ts : m), sessions[0].first_ts) : null;
-  const lastTs = sessions.length ? sessions.reduce((m, s) => (s.last_ts > m ? s.last_ts : m), sessions[0].last_ts) : null;
-  if (firstTs && lastTs) {
-    const day = (ts) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    parts.push(day(firstTs) + " – " + day(lastTs));
-  }
   if (data.codex_provider_rate_limits) {
     parts.push("Codex limit " + codexRateLimitLabel(data.codex_provider_rate_limits));
   }
-  el.textContent = parts.join(" · ");
+  // Period: first session start → last session end (no precomputed field; derived here).
+  const firstTs = sessions.length ? sessions.reduce((m, s) => (s.first_ts < m ? s.first_ts : m), sessions[0].first_ts) : null;
+  const lastTs = sessions.length ? sessions.reduce((m, s) => (s.last_ts > m ? s.last_ts : m), sessions[0].last_ts) : null;
+  const day = (ts) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  el.replaceChildren();
+  if (firstTs && lastTs) {
+    const period = document.createElement("div");
+    period.className = "t2-meta-period";
+    period.textContent = day(firstTs) + " – " + day(lastTs);
+    el.appendChild(period);
+  }
+  const detail = document.createElement("div");
+  detail.className = "t2-meta-detail";
+  detail.textContent = parts.join(" · ");
+  detail.dataset.tip = "Sessions: distinct agent sessions seen.\nWith token data: sessions whose token usage was captured.\nEvents: the individual activity records (such as tool calls) logged inside those sessions.";
+  el.appendChild(detail);
 }
 
 function codexRateLimitLabel(rateLimits) {
@@ -256,28 +266,21 @@ function codexRateLimitLabel(rateLimits) {
 function renderVerdict(data) {
   const grid = document.getElementById("waste-grid");
 
-  // Top-level waste metric: % of usage that is identifiable waste, color-graded
-  // (<5% green, 5-10% yellow, 10-15% orange, >15% red). One card per range —
-  // "this week" (trailing 7 days) and "all time" (the full report period).
-  const wasteParts = [];
-  const testTokens = data.testing_efficiency?.["test.tokens_during_testing"];
-  const redundant = data.testing_efficiency?.["test.full_suite_without_intervening_edit"];
-  if (testTokens > 0) {
-    wasteParts.push({ label: "over-testing", tokens: testTokens, note: redundant > 0 ? "incl. full-suite reruns without an edit" : "" });
-  }
-  const loopWaste = (data.loops || []).reduce((s, l) => s + (l.wasted_tokens || 0), 0);
-  if (loopWaste > 0) wasteParts.push({ label: "runaway loops", tokens: loopWaste, note: "" });
-  const readWaste = (data.read_warnings || []).reduce((s, w) => s + (w.approx_tokens || 0), 0);
-  if (readWaste > 0) wasteParts.push({ label: "redundant reads", tokens: readWaste, note: "" });
-  // Spike excess: the portion of spike turns above the spike threshold — the part of a
-  // spike that exceeded what a normal turn costs (defensible "excess", not the whole spike).
-  const threshold = data.spike_threshold || 0;
-  const spikeExcess = (data.spike_causes || [])
-    .reduce((s, c) => s + Math.max(c.total_delta - c.spikes * threshold, 0), 0);
-  if (spikeExcess > 0) wasteParts.push({ label: "spike excess", tokens: spikeExcess, note: "turn size above the spike threshold" });
+  // Top-level waste metric: % of usage that is identifiable waste, color-graded against each
+  // card's danger line. One card per range — "this week" (trailing 7 days) and "all time" (the
+  // full report period). data.waste is built server-side per turn with each turn counted once
+  // (scripts/cli/telemetry-waste.mjs), so a card's sources add up exactly to its total.
+  const wasteParts = (range) => WASTE_SOURCES
+    .map((source) => ({
+      label: source.label,
+      tokens: data.waste?.[range]?.categories?.[source.key] ?? 0,
+      note: source.note,
+    }))
+    .filter((part) => part.tokens > 0);
 
   grid.replaceChildren();
-  if (!wasteParts.length) {
+  const allParts = wasteParts("all");
+  if (!allParts.length) {
     const empty = document.createElement("div");
     empty.className = "waste-card";
     empty.innerHTML = `<span class="dl-text">No identifiable waste in this window.</span>`;
@@ -287,12 +290,18 @@ function renderVerdict(data) {
 
   const allTotal = (data.timeline || []).reduce((s, p) => s + (p.delta || 0), 0);
   const weekTotal = data.usage_windows?.seven_day;
-  const allWaste = wasteParts.reduce((s, p) => s + p.tokens, 0);
-  const weekWaste = wasteInWindow(wasteParts, data, 7);
-
-  if (weekTotal) grid.appendChild(wasteCard("This week", weekWaste, weekTotal, wasteParts, 16));
-  grid.appendChild(wasteCard("All time", allWaste, allTotal, wasteParts, 10));
+  if (weekTotal) grid.appendChild(wasteCard("This week", weekTotal, wasteParts("week"), 16));
+  grid.appendChild(wasteCard("All time", allTotal, allParts, 10));
 }
+
+// Waste sources in display order. `key` matches data.waste categories; `label` is the card text and
+// the lookup for its Investigate section.
+const WASTE_SOURCES = [
+  { key: "testing", label: "over-testing", note: "full-suite reruns with no edit since the last run" },
+  { key: "loops", label: "runaway loops", note: "" },
+  { key: "reads", label: "redundant reads", note: "" },
+  { key: "spikes", label: "spike excess", note: "turn size above the spike threshold" },
+];
 
 // Sticky-header offset for scroll targets, measured ONCE at load (per user: no scroll/resize
 // re-measure) plus a 1rem breathing gap.
@@ -577,44 +586,6 @@ function renderTimelineStrip(data) {
   legend.textContent = "red: spike turn · orange: runaway loop";
 }
 
-// Waste tokens attributable to the trailing N days, computed per-category from event
-// timestamps (not apportioned by volume share — that mathematically cancels out and makes
-// both cards identical). Spike excess and read warnings are timestamped; testing is
-// report-global, so it's apportioned by the window's share of timeline volume.
-function wasteInWindow(parts, data, days) {
-  const timeline = data.timeline || [];
-  if (!timeline.length) return parts.reduce((s, p) => s + p.tokens, 0);
-  const latest = timeline.reduce((m, p) => (p.ts > m ? p.ts : m), timeline[0].ts);
-  const cutoff = new Date(Date.parse(latest) - days * 86400000).toISOString();
-  const totalWaste = parts.reduce((s, p) => s + p.tokens, 0);
-  const inWindow = (ts) => ts >= cutoff;
-
-  // Spike excess: per timeline point, the amount above the spike threshold.
-  const thr = data.spike_threshold || 0;
-  const spikeExcessWeek = thr > 0
-    ? timeline.filter((p) => p.delta >= thr && inWindow(p.ts)).reduce((s, p) => s + (p.delta - thr), 0)
-    : 0;
-
-  // Read warnings: timestamped rows.
-  const readWasteWeek = (data.read_warnings || []).filter((w) => inWindow(w.ts)).reduce((s, w) => s + (w.approx_tokens || 0), 0);
-
-  // Loop waste: timestamped loop rows.
-  const loopWasteWeek = (data.loops || []).filter((l) => inWindow(l.ts)).reduce((s, l) => s + (l.wasted_tokens || 0), 0);
-
-  // Testing: global metric — apportion by the window's share of timeline volume. A zero
-  // all-window delta (all deltas absent/empty) must yield a safe zero share, not NaN — the
-  // clamped weekWaste below needs a finite value.
-  const weekDelta = timeline.filter((p) => inWindow(p.ts)).reduce((s, p) => s + (p.delta || 0), 0);
-  const allDelta = timeline.reduce((s, p) => s + (p.delta || 0), 0);
-  const weekShare = allDelta > 0 ? weekDelta / allDelta : 0;
-  const testPart = parts.find((p) => p.label === "over-testing");
-  const testWeek = testPart ? testPart.tokens * weekShare : 0;
-
-  let weekWaste = spikeExcessWeek + readWasteWeek + loopWasteWeek + testWeek;
-  // Timeline spikes can diverge from spike_causes rollup — clamp to the all-time waste.
-  return Math.min(Math.max(Math.round(weekWaste), 0), totalWaste);
-}
-
 // Waste grade: color starts only where the user's danger line says it matters — below the first
 // band the value renders in the DEFAULT color (a small deficit is still a deficit, not "good").
 // Bands scale to the card's danger line (all-time 10%, this-week 16%): yellow at 1/3, orange 2/3,
@@ -629,16 +600,15 @@ function wasteGrade(pct, danger) {
 // One waste card: analytics-header style — range label, huge graded %, subtle tokens line, then
 // the top-3 waste sources (each a link to its Investigate section) plus a "+N more" tooltip
 // (shared tooltip component) listing every violator with its percent.
-function wasteCard(label, waste, total, parts, danger) {
+function wasteCard(label, total, parts, danger) {
   const div = document.createElement("div");
   div.className = "waste-card";
+  const waste = parts.reduce((s, p) => s + p.tokens, 0);
   const share = total > 0 ? (waste / total) * 100 : 0;
   const grade = wasteGrade(share, danger);
-  const sum = parts.reduce((s, p) => s + p.tokens, 0);
-  const scale = waste / (sum || 1);
   // Violators by share of the range's total usage, descending.
   const violators = parts
-    .map((p) => ({ label: p.label, tokens: p.tokens * scale, pct: total > 0 ? ((p.tokens * scale) / total) * 100 : 0 }))
+    .map((p) => ({ label: p.label, tokens: p.tokens, pct: total > 0 ? (p.tokens / total) * 100 : 0 }))
     .filter((v) => v.pct >= 0.05)
     .sort((a, b) => b.pct - a.pct);
   // Investigate-section each source links to (scroll + auto-expand).
@@ -661,7 +631,7 @@ function wasteCard(label, waste, total, parts, danger) {
 
   // Column 1: range + big graded % + tokens. Column 2: the waste categories, one per row.
   div.innerHTML = `<span class="waste-range">${esc(label)}</span>
-    <span class="waste-big ${grade}"><span class="waste-pct">${Math.round(share * 10) / 10}%</span><span class="waste-sub" title="Upper-bound estimate: categories can overlap (a runaway loop also counts as spike excess) and use different measurement bases.">${tokShort(waste)} of ${tokShort(total)} tokens · upper bound</span></span>
+    <span class="waste-big ${grade}"><span class="waste-pct">${Math.round(share * 10) / 10}%</span><span class="waste-sub">${tokShort(waste)} of ${tokShort(total)} tokens</span></span>
     <span class="waste-sources">${shown.map((v) => `<span class="waste-source-row">${sourceHtml(v)}</span>`).join("")}${moreHtml}</span>`;
   return div;
 }

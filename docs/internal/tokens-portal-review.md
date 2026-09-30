@@ -86,7 +86,7 @@ they protect are listed in [Telemetry Internals](telemetry-internals.md#analytic
 | Demo baseline and focused cohorts differed in repo and model. | Both cohorts share both. |
 | Legacy rollups keyed on bare `session_id`, merging harnesses and fabricating cross-harness loops; tables dropped tokenless sessions while conditions counted them. | One harness-keyed pipeline on canonical rows; the conditions report is always built. Meta line shows observed vs token-bearing sessions. |
 | Findings on unidentified sessions vanished silently. | Counted in `data_quality.findings_lost_to_fallback` (not yet displayed). |
-| Waste card read as a disjoint sum. | Labeled “upper bound” with an overlap explanation; not de-duplicated. |
+| Waste card read as a disjoint sum. | De-duplicated per turn server-side (`report.waste`); each turn counts once, under its largest source. |
 | Change rows hid how many sessions had unknown condition data. | `unknown_condition` returned and shown. |
 | Cross-mirror duplicate findings (latent). | Not possible now that analysis runs on deduplicated rows. |
 

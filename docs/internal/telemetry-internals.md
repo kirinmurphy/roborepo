@@ -45,8 +45,10 @@ that fails if it breaks. When adding analytics, add the rule's check first.
 
 Known limits, so they are not mistaken for bugs:
 
-- The waste card is an upper-bound estimate. A runaway loop counts as both loop waste and spike
-  excess, and the families use different measurement bases (hook deltas vs. characters/4).
+- The waste card counts each turn once (`telemetry-waste.mjs`): loops, redundant reads, spike excess
+  and testing each nominate turns with a token amount, and the largest nomination wins, so category
+  totals add up to the headline. The families still use different measurement bases (hook deltas vs.
+  characters/4 for reads), and over-testing counts only full-suite reruns with no edit since the previous test run.
 - Token tables skip captures with no token data; the observed-session count includes them.
 - Every comparison is an association. Task mix, model and repository can differ between cohorts.
 - The bundled demo is synthetic and deterministic; it exercises the pipeline, not real usage.

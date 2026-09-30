@@ -2000,6 +2000,10 @@ assert "telemetry: store bounds on markers/snapshots/experiments" \
 assert "telemetry: portal time-axis label/scale/tick helpers" \
   node "${repo_root}/scripts/test/telemetry-time-axis-check.mjs"
 
+# Identifiable-waste ledger: each turn counted once, categories sum to the headline total.
+assert "telemetry: waste ledger counts each turn once" \
+  node "${repo_root}/scripts/test/telemetry-waste-check.mjs"
+
 assert "config: onboarding notices match harness/package state" \
   node "${repo_root}/scripts/test/config-onboarding-state-check.mjs"
 

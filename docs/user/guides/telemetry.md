@@ -28,7 +28,7 @@ Read the page from top to bottom:
 
 | Section | What to do |
 | --- | --- |
-| **Identifiable waste** | Look at flagged token usage for this week and all time. These are identified patterns, not a complete accounting of every avoidable token. |
+| **Identifiable waste** | Look at flagged token usage for this week and all time. Each turn is counted once, under its largest source, so the sources add up to the total. These are identified patterns, not a complete accounting of every avoidable token. |
 | **Action items** | Start with a finding and follow its suggested investigation. |
 | **Investigate** | Expand a problem type or **Recent problem sessions** to inspect evidence. Recent sessions start collapsed, combine findings from the same session, and scroll within a bounded list. |
 | **Do problems follow a condition?** | Compare problem rates with and without a known condition. |
@@ -56,12 +56,13 @@ session-level condition rate or marker comparison.
 ## Compare conditions
 
 Conditions can include a model, repository, harness, configured package, or available skill.
-Full-width category cards show supported deviations under **Fewer with condition** and
-**More with condition**, plus known/eligible coverage. Select **Full outcomes** to see raw rates,
-cohort denominators, neutral outcomes, and unknown coverage, including items that have no
-supported deviation. **More evidence needed** expands the raw rates for small samples.
-A small sample is never labeled as no difference. **Inspect sessions** opens the recent-session
-list filtered to that condition and problem; **Clear condition filter** restores the full list.
+Full-width category cards show supported deviations under **Cheaper** and **More expensive**,
+one row per condition with its percentage, an info icon for the raw counts, and a **Sessions**
+button that opens the matching sessions. Two links sit under the columns. **Full outcomes** shows
+raw rates, cohort denominators, neutral outcomes, and unknown coverage, including items that have no
+supported deviation. **More evidence needed** opens a popup listing comparisons that are too small
+for a percentage, with what each still needs. A small sample is never labeled as no difference.
+A column with nothing to report shows a dash.
 
 ![Condition cards comparing known presence and absence across models, repositories, harnesses, packages, and skills.](../../images/tokens/conditions-light.png)
 
@@ -168,7 +169,7 @@ monitoring an improvement or inspecting a possible regression.
 | --- | --- |
 | Simulated report | Enable telemetry and collect live agent sessions. |
 | Unknown condition coverage | Telemetry cannot establish presence or absence. More samples cannot repair missing historical evidence, but new captures may have usable snapshots. |
-| More evidence needed | Expand the raw rates. Too few sessions or affected sessions prevent a percentage claim. |
+| More evidence needed | Open the popup for the raw rates and what is still missing. Too few sessions or affected sessions prevent a percentage claim. |
 | No clear difference | No comparison crosses the display band with sufficient evidence. Focus on stronger signals. |
 | Comparison group missing | Collect sessions with and without that condition; unresolved context stays excluded. |
 | Partial or unavailable token coverage | Read valid/eligible counts before interpreting averages. Missing usage is not zero usage. |

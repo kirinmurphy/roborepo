@@ -163,7 +163,7 @@ function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
     setupPanel.style.display = "";
     if (activeHarnessCount === 0) {
       title.textContent = "telemetry setup required";
-      body.textContent = "Turn telemetry on before token usage can be captured. Harness setup is separate — see the Agents page.";
+      body.textContent = "Turn telemetry on before token usage can be captured.";
     } else {
       title.textContent = "telemetry is off";
       body.textContent = "Token usage is not being captured. Turn telemetry on to start collecting data across your harnesses.";
