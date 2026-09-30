@@ -1,4 +1,3 @@
-import path from "node:path";
 import { appRoot, STATE_ROOT as stateRoot } from "./paths.mjs";
 import { collectGitContext } from "../../modules/developer-runtime/git.mjs";
 import {
@@ -24,6 +23,7 @@ import {
   checkoutRootsFor,
   deriveLifecycle,
   lastSeenAtFor,
+  mainCheckoutPath,
   resolveGitDir,
   supersededBy,
   ageOutCandidates,
@@ -676,20 +676,6 @@ async function collectIdleMainCheckouts(discovery, runningIds, registry) {
     out.set(repositoryId, { rootId, projectRoot: mainRoot, git, state: "present" });
   }
   return out;
-}
-
-// The main checkout shared by any of these checkout paths, or null. Confirmed from both ends: the
-// common directory must be a non-bare `.git`, and the directory holding it must itself resolve to
-// that same git directory as an ordinary (non-worktree) checkout.
-function mainCheckoutPath(checkoutPaths) {
-  for (const checkoutPath of checkoutPaths) {
-    const resolved = resolveGitDir(checkoutPath);
-    if (!resolved || path.basename(resolved.commonDir) !== ".git") continue;
-    const mainRoot = path.dirname(resolved.commonDir);
-    const main = resolveGitDir(mainRoot);
-    if (main && !main.isWorktree && main.gitDir === resolved.commonDir) return mainRoot;
-  }
-  return null;
 }
 
 // Git for a persisted checkout path, but only once that path is confirmed to still BE this
