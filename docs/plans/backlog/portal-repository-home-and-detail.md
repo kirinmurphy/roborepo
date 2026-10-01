@@ -1,7 +1,7 @@
 ---
 id: jqi1dof
 priority: high
-next_action: Allocate stable repository urlKey (Phase 1), then add the dynamic /repositories/<urlKey> page route (Phase 2) before evolving Home into the repository directory
+next_action: Reset the registry at v2 and implement stable repository urlKey allocation (Phase 1), then add the dynamic detail route (Phase 2)
 blocked_by: []
 depends_on: []
 related:
@@ -9,7 +9,7 @@ related:
   - canonical-repository-identity-plan-v2
   - h4tqm2wz
   - nl40n9vr
-reviewed_commit: 85390e9
+reviewed_commit: 80728a7
 ---
 
 # Evolve Portal Home into a Repository-First Workspace
@@ -51,13 +51,14 @@ Repository detail lives at `/repositories/<urlKey>`: a bookmarkable, back/forwar
 
 ## Current State
 
-Verified against `85390e9`.
+Verified against `80728a7`.
 
 **Already shipped — do not re-plan:**
 
 - `scripts/cli/portal-server.mjs` `PAGES` serves `home` at `/` with `default: true`, and Agents at `/config`. `roborepo web` opens `/`.
 - `portal/home/` exists but holds only `index.html` (a static welcome page with four nav cards) and `styles.css` — no `app.js`, `api.js`, or `templates.js`.
 - The canonical repository registry (`modules/repositories/`) stores discovery provenance, opaque local-root IDs, a private `rootId -> absolute path` index (`registry.localRootPaths`), visibility, resolution, activity, aliases, `pinned`, and enrollments.
+- The registry is not only a discovery cache. It also preserves user choices and durable history: pins, hidden/restored state, confirmed aliases, enrollments, `firstSeenAt`, and local-root ownership. A version change must either migrate those fields or explicitly accept losing them.
 - Browser-safe summaries (`modules/repositories/summary.mjs`) already strip paths: `repositorySummary`, `repositoryListPayload`, and `repositoryDetailPayload` whitelist fields and map local roots to kind/timestamps only.
 - [[h4tqm2wz]] (completed) delivered the Runtime workspace model: `deriveLifecycle` returns `active`/`idle`/`stale` (`modules/repositories/lifecycle.mjs`), `lastSeenAtFor` gives a repository's recency, `ageOutCandidates` ages repositories out after 30 days of not being seen, and visibility-based hiding is in place.
 - `buildDeveloperRuntimeSnapshot` (`modules/developer-runtime/snapshot.mjs`) already builds the repository → checkouts(`roots`) → `primaryEntrypoint` model this story needs. Each root carries `primaryEntrypoint` = `{ kind, opaqueKey, origin, port }`, and `primaryEntrypointFor` treats Compose containers and host listeners identically — a container-backed web UI already promotes the same way a dev-server does. `scripts/cli/developer-runtime.mjs` assembles `persistedRepositories`, `repositoryNames`, and `pinnedRepositoryIds` from the registry and feeds the builder.
@@ -109,23 +110,26 @@ Add a persisted, URL-safe key to canonical repository records. It is the one new
 
 `urlKey` invariants:
 
-- short, URL-safe, human-readable;
+- lowercase ASCII slug matching `[a-z0-9]+(?:-[a-z0-9]+)*`, at most 80 characters;
 - unique within the local registry;
 - allocated once and persisted; independent of later display-name changes;
 - never contains an absolute path, provider URL, credentials, or the canonical ID;
-- deterministic and collision-safe (`roborepo`, then `roborepo-a31f` on collision);
-- old keys stay reserved as aliases if a deliberate rename/merge happens;
+- collision-safe, with a deterministic suffix (`roborepo`, then `roborepo-a31f` on collision);
+- validated as unique across every repository record;
+- old keys continue resolving through canonical repository aliases if repositories are deliberately merged;
 - allocated at record creation, so every record has one by construction.
 
-Resolve `urlKey -> repositoryId` once at the server boundary and pass canonical `repositoryId` to domain loaders. Do not persist `urlKey` as a foreign key in Plans, telemetry, Runtime, or agent-config data. Expose `urlKey` through `repositorySummary`/`repositoryDetailPayload` (path-free by construction).
+Derive the readable base from `displayName`, falling back to `repository` if normalization removes every character, and truncate the base to leave room for a suffix. The first record allocated an available base keeps it. A collision adds the first four base36 characters of a hash of canonical identity, extending the hash deterministically until the candidate is unique. Persist the result so discovery order or later display-name changes never alter an existing URL.
 
-**Decision — legacy registry data is wiped, not migrated.** The existing on-disk registry is discardable: rather than writing a `v1 -> v2` upgrade that backfills `urlKey` onto old records, bump `REGISTRY_VERSION` and have the load path reset to a fresh registry when it sees an older version (keeping the existing `backupRegistryFile` step so the old file is preserved on disk, never silently deleted). This removes the whole class of "record exists without a `urlKey`" states — `urlKey` is allocated when a record is created, so every record always has one. The tradeoff accepted here: repositories re-populate from discovery (Runtime activity, and later [[pljvmyh]] sources) rather than carrying over, which is acceptable because nothing durable is lost — the registry is a cache of what discovery can re-derive.
+Resolve `urlKey -> repositoryId` once at the server boundary, then resolve any canonical repository alias and pass the surviving `repositoryId` to domain loaders. Do not persist `urlKey` as a foreign key in Plans, telemetry, Runtime, or agent-config data. Expose `urlKey` through `repositorySummary`/`repositoryDetailPayload` (path-free by construction).
+
+**Decision — reset registry v1 without a backup.** When `loadRegistry` sees an older version, replace it with a fresh v2 registry and do not retain a v1 backup. This intentionally discards pins, hidden/restored state, aliases, enrollments, timestamps, and local-root mappings. Runtime and later repository-source discovery repopulate repository facts; user-managed state is not migrated. Tests must assert both the fresh v2 shape and the absence of a backup file so compatibility behavior is not reintroduced accidentally.
 
 This field and its allocation/collision/lookup rules are shared infrastructure: [[pljvmyh]] builds its `?repository=<urlKey>` scope on exactly this field.
 
 ### 2. Repository directory is the primary Home content
 
-Replace the static welcome cards with a directory of visible resolved repositories from the canonical registry.
+Replace the static welcome cards with a directory of visible canonical records from the registry. Git-backed and `local:` repositories are both valid cards; resolution/confidence is displayed honestly rather than used to hide a registered local repository.
 
 Ordering (reusing existing signals, not a new model):
 
@@ -134,11 +138,11 @@ Ordering (reusing existing signals, not a new model):
 3. recently active / idle (`idle`, ordered by `lastSeenAtFor`);
 4. stale (`stale`).
 
-This mirrors `sortRepositoriesForDisplay` in `modules/developer-runtime/snapshot.mjs`, which already groups running repositories ahead of idle/stale and honors `pinned`. Prefer sharing that ordering (or its inputs) over re-deriving it in Home browser code.
+`sortRepositoriesForDisplay` in `modules/developer-runtime/snapshot.mjs` already proves the active/pinned signals, but its idle group falls back to name rather than recency. Add the Home-specific comparator in the server-side overview module, using the existing `pinned`, lifecycle, and `lastSeenAt` facts; do not sort in browser code or create another lifecycle model.
 
-If the registry is empty, Home presents the zero-configuration model: start a local project (Runtime will discover it) or add a repository/folder — the latter linking to the repository management surface [[pljvmyh]] delivers. Leave that affordance ("Manage repositories" / "Add repositories") visible even when the directory is non-empty, so the progression *see what RoboRepo knows → broaden coverage* is discoverable. This story only links to that surface; it does not implement it.
+If the registry is empty, Home presents the zero-configuration path that exists today: start a local project, then open Runtime so discovery can register it. Do not ship a dead "Manage repositories" link to a route that [[pljvmyh]] has not delivered yet. Leave a stable action slot in the layout; [[pljvmyh]] makes that slot interactive as "Manage repositories" when its destination exists.
 
-Unresolved repository/activity signals must not render as fake canonical cards. Surface them separately as an unresolved item with a path to association/management.
+Runtime activity that has no registered canonical record must not render as a fake repository card. Surface it separately as unresolved activity with a path to the existing Runtime association workflow.
 
 ### 3. Checkout/worktree rows are a core Home primitive
 
@@ -186,7 +190,7 @@ Architectural caveat: a repository may intentionally expose several meaningful u
 
 ### 5. Git is a first-class repository domain
 
-Git state is fundamental to repository identity and worktree context, and the current plan under-specified it. Make Git first-class — but do not duplicate the checkout list in a separate Git section if one shared checkout-row presentation can carry both Runtime and Git identity.
+Git state is fundamental to repository identity and worktree context. Make Git first-class, but do not duplicate the checkout list in a separate Git section when one shared checkout-row presentation can carry both Runtime and Git identity.
 
 Home might eventually render rows like:
 
@@ -198,7 +202,7 @@ fix/auth              behind 2
 
 The architectural principle, not the exact copy, is the requirement: **checkout/worktree identity is shared context; Git and Runtime contribute to the same Home row while keeping separate underlying data contracts.**
 
-**Decision — define a small, stable repository Git/checkout summary contract; Home does not read Runtime's view-model directly.** Home must not reach into the shape `buildDeveloperRuntimeSnapshot` produces for Runtime's own page, because that couples the two surfaces — a later change to how Runtime renders would silently break Home. Instead, introduce one narrow, named Git-summary contract that both Home and repository detail read from, fed by the *underlying* Git data/caches (the `root.git` already on each snapshot root, and the repository Git helpers in `modules/repositories/` such as `collectBranchSyncFacts`) rather than by shelling out again or by consuming Runtime's rendered model. Keep the contract deliberately thin — only the fields a Home row and the detail Git view actually need, decided against the real data when implemented, not speculatively widened.
+**Decision — define a small repository workspace summary contract; browser pages do not receive Runtime's full view-model.** A server-side mapper consumes the cached `loadDeveloperRuntimeSnapshot()` result and projects only repository lifecycle, checkout identity/Git state, and `primaryEntrypoint`. This reuses the expensive discovery and Git work without re-enumerating checkouts or coupling Home markup to unrelated Runtime fields. Home and repository detail consume the named projection; deeper Git fields can be added to that contract only when the detail view needs them.
 
 Git fields a Home row needs (the likely contract surface): branch/worktree name, dirty state, ahead/behind, a notable drift warning, current/default branch where useful. Keep it compact; the deeper Git view belongs on repository detail, which can read more from the same contract.
 
@@ -216,7 +220,7 @@ Keep a compact repository-level token/session signal on Home: warning count, hig
 
 ### 8. Agents/config summary
 
-Agent configuration is intended to become repository-aware but is not yet. Home/detail establish a stable conceptual slot for repository agent/config state without blocking the MVP. Allowed initial states: `configured`, `not configured`, `unavailable`, or a future/placeholder. A detail link to Agents may land on the [[pljvmyh]] repository-config placeholder.
+Agent configuration is not repository-aware yet. Home/detail establish a stable conceptual slot, but the initial state is `unavailable`; do not claim `not configured` when no repository-scoped check exists. Future repository-aware config can replace the envelope with `configured` or `not-configured` data without changing the card contract.
 
 ### 9. Repository card surface
 
@@ -233,7 +237,7 @@ experiment/foo        :3000 ↗
 Git      1 dirty · 1 behind
 Plans    2 active · 4 backlog
 Tokens   1 warning
-Agents   Not configured
+Agents   Unavailable
 
 View repository →
 ```
@@ -268,30 +272,42 @@ Detail provides deeper per-repository views of the domains Home surfaces and doe
 - recent Tokens/session summary with a scoped link;
 - Agents status with a scoped link.
 
-Extend `repositoryDetailPayload` (which already lazy-loads provenance separately from the list payload) rather than duplicating repository lookup.
+Reuse `repositoryDetailPayload` for browser-safe identity fields. Load discovery and local-root provenance through the existing associations service only when the detail view needs it; do not duplicate repository lookup or expose the private alias/path indexes.
 
 ### 11. Dynamic routing for the detail page
 
 Portal *page* routing is currently static exact-match: `handlePortalPage` does `PAGE_BY_PATH.get(urlPath)`. `/repositories/<urlKey>` needs pattern support at the page layer. (The API route tables in `portal-router.mjs` already match `:param` segments and can serve the overview API by pattern today — the gap is the HTML page handler, not the API dispatcher.)
 
-**Decision — generalize the page router, do not special-case it.** Rather than adding a one-off branch for `/repositories/`, teach the page layer to match `:param` segments the way the API router already does, so a `PAGES` entry can carry a pattern (e.g. `/repositories/:urlKey`) and future dynamic pages need no further routing work. Reuse the existing `matchSegments`/`defineRoutes` machinery in `portal-router.mjs` rather than writing a second matcher — exact-match pages keep working because a pattern with no `:param` segments is just an exact match. The cost accepted here is slightly more work now (the page handler stops being a plain `Map.get`) in exchange for not accumulating per-page routing special cases; this suits a portal that already expects more dynamic surfaces (repository detail is the first, not the last).
+**Decision — generalize page matching without adding dynamic destinations to global navigation.** Keep `PAGES` as the static, navigable manifest that feeds the header, `/api/portal/status`, sitemap, and manifest metadata. Add a separate derived page-route table containing those static entries plus a non-navigable `/repositories/:urlKey` entry whose `navId` is `home`. `pageHtml` injects the matched route's `navId` as current-page metadata; `theme.js` activates that ID instead of inferring ownership from exact path equality. Export and reuse `matchSegments` (or an equivalent shared matcher) from `portal-router.mjs`; do not add a second segment matcher or a one-off `/repositories/` branch.
 
 Implementation and tests must cover:
 
-- recognizing the `/repositories/:urlKey` page pattern without turning per-repository pages into static `PAGES` manifest entries;
+- recognizing the `/repositories/:urlKey` page pattern while leaving `PAGES` and its five-item browser manifest unchanged;
 - extracting and decoding `urlKey`;
 - serving the repository detail shell;
-- missing/invalid/hidden `urlKey` → explicit not-found/unavailable, never a silent redirect to Home or "all";
-- preserving the existing static global-nav manifest behavior (the header nav still reads `PAGES`).
+- malformed path encoding → server 404; unknown or hidden `urlKey` → overview API 404 rendered by the detail shell as an explicit unavailable state, never a redirect to Home or "all";
+- marking Home active in global navigation while repository detail is open;
+- preserving the existing static global-nav and metadata behavior (all continue to read `PAGES`).
 
 ### 12. Cross-domain aggregation and partial failure
 
-Home/detail aggregate existing service functions server-side; they do not fetch the portal's own HTTP endpoints from the server. Add a focused aggregate boundary, for example `GET /api/home` and `GET /api/repositories/<urlKey>/overview`. Responsibilities:
+Home/detail aggregate existing service functions server-side; they do not fetch the portal's own HTTP endpoints from the server. Add a focused `scripts/cli/repository-overview.mjs` coordinator behind `GET /api/home` and `GET /api/repositories/:urlKey/overview`. Responsibilities:
 
-- resolve repositories once;
-- fan out to independent domain summary loaders, each behind its own timeout/cancellation boundary;
+- load visible canonical repositories once and use them as the anchor set;
+- map the cached Runtime snapshot through the narrow repository workspace contract;
+- group a cached Plans snapshot by canonical `repositoryId`, carrying explicit coverage/freshness;
+- read a compact per-repository telemetry projection retained alongside the default analysis cache instead of parsing or returning the multi-megabyte `/api/data` JSON;
+- represent Agents/config as an explicit unavailable/not-configured state until repository-aware config exists;
 - join domain data by canonical `repositoryId`;
-- return partial results when one domain fails — a timeout becomes e.g. `{ "domain": "plans", "status": "timeout" }`, the response still completes, names the affected domain, and keeps any stale-but-successful data marked stale rather than empty.
+- isolate each loader with `try`/`catch` and return partial results when one fails; keep stale-but-successful data marked stale rather than empty.
+
+The portal server and these loaders are synchronous on one Node thread, so the aggregate request path uses cached, bounded projections only. Expensive Runtime refresh, plan discovery, and telemetry analysis remain owned by their existing background/manual refresh paths. Add timeout/cancellation semantics only if a loader later becomes genuinely asynchronous and interruptible.
+
+Every domain result uses one small envelope so absence is not confused with a valid zero:
+
+```json
+{ "status": "available|partial|stale|unavailable|not-configured", "updatedAt": "ISO-8601|null", "data": {} }
+```
 
 **One failed domain must not make a repository disappear.** A card like:
 
@@ -312,7 +328,7 @@ Build a framework-less repository-first Home under `portal/home/` following curr
 - `portal/home/app.js`, `portal/home/api.js`, `portal/home/templates.js` (new)
 - `portal/home/styles.css` (already exists)
 
-Add a focused repository-detail surface under a clear ownership boundary (a dedicated `portal/repository/` folder or a shared Home/repository feature folder). Follow the loaded `code-style` and `javascript-typescript` conventions: page `app.js` stays wiring/orchestration; server/domain calculations stay out of browser code; named ESM exports; reusable multi-element markup in real HTML `<template>` elements (not nested `createElement` or JS template strings); split files by responsibility before they grow into mixed orchestrator/render modules.
+Add the focused detail surface under `portal/repositories/`. Follow the loaded `code-style` and `javascript-typescript` conventions: page `app.js` stays wiring/orchestration; server/domain calculations stay out of browser code; named ESM exports; reusable multi-element markup in real HTML `<template>` elements (not nested `createElement` or JS template strings); split files by responsibility before they grow into mixed orchestrator/render modules.
 
 Refresh: poll Home aggregate state at a modest interval; let Runtime's established cache/refresh policy govern discovery; detail may refresh active/runtime summaries without reloading stable repository metadata; correctness and clear stale/error states matter more than fine-grained DOM patching.
 
@@ -343,61 +359,65 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 
 ### Repository identity and payloads
 
-- `modules/repositories/schema.mjs` — version the registry for persisted `urlKey`; reset (not migrate) on an older version, since legacy data is discardable.
-- `modules/repositories/registry.mjs` — allocate/lookup `urlKey`; keep local-root metadata keyed by opaque IDs.
-- `modules/repositories/summary.mjs` — add `urlKey`, `pinned`, lifecycle, and recency to the browser-safe summary/detail payloads without adding paths.
+- `modules/repositories/schema.mjs` — version the registry for required, unique `urlKey`; define the fresh v2 shape.
+- `modules/repositories/registry.mjs` — reset older registries without migration or backup, allocate/lookup `urlKey`, and keep local-root metadata keyed by opaque IDs.
+- `modules/repositories/summary.mjs` — add `urlKey` and `pinned` to browser-safe summary/detail payloads without adding paths; dynamic lifecycle/recency stay in the overview projection.
 - `modules/repositories/index.mjs` — export the new `urlKey` APIs.
 
 ### Portal routing/chrome
 
-- `scripts/cli/portal-server.mjs` — generalize `handlePortalPage` to match `:param` page patterns (reusing `portal-router.mjs`'s `matchSegments`) instead of a plain `PAGE_BY_PATH.get`; `/repositories/:urlKey` becomes a patterned `PAGES`-style entry while exact-match pages and the nav manifest behave as before.
+- `scripts/cli/portal-router.mjs` — export the segment matcher for page routing as well as API routing.
+- `scripts/cli/portal-server.mjs` — replace `PAGE_BY_PATH.get` with shared pattern matching over a page-route table; keep dynamic repository detail out of `PAGES` so nav and metadata remain static.
 - `scripts/cli/portal-routes-repositories.mjs` — add the Home/overview aggregate routes and accept `urlKey` at the browser boundary while internal functions keep taking `repositoryId`.
-- `portal/shared/theme.js`, `portal/shared/chrome-partial.html`, `portal/shared/base.css` — reuse shared chrome.
+- `scripts/cli/telemetry.mjs` — wire the aggregate handlers and expose a compact cached telemetry projection without parsing the full serialized report.
+- `portal/shared/theme.js` — honor the current dynamic page's nav owner so repository detail highlights Home.
+- `portal/shared/base.css` — reuse shared layout/status primitives; keep page-specific layout in each page folder.
 
 ### Home and repository detail
 
 - `portal/home/*` — repository directory, checkout rows, cross-domain status, empty/loading/error/partial-failure states.
-- New repository-detail surface — identity/activity, deeper per-domain sections, scoped links.
-- `scripts/cli/repositories.mjs` — extend the browser-safe detail/overview service or delegate to a focused aggregation service.
+- `portal/repositories/*` — identity/activity, deeper per-domain sections, scoped links, unavailable state.
+- `scripts/cli/repositories.mjs` — `urlKey` resolution and browser-safe repository access.
+- `scripts/cli/repository-overview.mjs` — aggregation, domain envelopes, canonical-ID joins, and Runtime-to-workspace projection.
 
 ### Domain summary sources (reuse, do not reimplement)
 
-- Runtime: `modules/developer-runtime/snapshot.mjs` repository view (`roots`, `primaryEntrypoint`, lifecycle) via `scripts/cli/developer-runtime.mjs`.
-- Git: `root.git` on snapshot roots and `modules/repositories/` Git helpers (`collectBranchSyncFacts`).
-- Plans: repository-associated counts and recently-changed timestamps.
-- Tokens/telemetry: repository-associated recent-session summary and warning counts.
-- Agents/config: repository config state (placeholder until the dedicated feature lands).
+- Runtime/Git: cached `loadDeveloperRuntimeSnapshot()` repository view (`roots`, `root.git`, `primaryEntrypoint`, lifecycle), projected by `repository-overview.mjs`.
+- Plans: `scripts/cli/plans.mjs` exposes a cached repository summary with counts, coverage, freshness, and recently-changed timestamps.
+- Tokens/telemetry: `scripts/cli/telemetry.mjs` retains a compact per-repository warning/session projection beside the default analysis-cache entry.
+- Agents/config: the aggregate returns `unavailable` until repository-aware agent configuration has a real data owner.
+- Documentation: update `docs/internal/portal-architecture.md` and add `docs/user/reference/repositories.md` for the Home directory, detail route, states, and privacy boundary.
 
 ## Implementation Plan
 
 ### Phase 1 — Stable repository browser identity
 
 - [ ] Add persisted `urlKey` to the registry schema with a version bump.
-- [ ] Reset the registry on an older version (bump `REGISTRY_VERSION`, back up the old file, start fresh) rather than migrating/backfilling old records.
+- [ ] Reset an older registry directly to a fresh v2 registry; do not migrate or create a backup.
 - [ ] Allocate `urlKey` at record creation, deterministically, with collision handling (`roborepo`, `roborepo-a31f`).
 - [ ] Add `urlKey -> repositoryId` lookup at the repository service boundary.
 - [ ] Add browser-safe URL helpers and expose `urlKey` in summary/detail payloads.
-- [ ] Test allocation stability, collisions, reserved aliases, hidden repositories, and path privacy.
+- [ ] Test required/unique schema validation, allocation stability, collisions, canonical alias resolution, hidden repositories, reset behavior, absence of a backup, and path privacy.
 
 ### Phase 2 — Repository detail route infrastructure
 
-- [ ] Generalize the page router to match `:param` segments (reusing `matchSegments` from `portal-router.mjs`) so a patterned page entry like `/repositories/:urlKey` resolves; keep exact-match pages and the nav manifest unchanged.
-- [ ] Resolve/decode `urlKey`; serve the detail shell.
-- [ ] Handle missing/invalid/hidden keys with an explicit not-found/unavailable state.
-- [ ] Preserve the existing static global-nav manifest behavior.
+- [ ] Generalize the page router to match `:param` segments with the shared matcher while keeping `/repositories/:urlKey` outside `PAGES`.
+- [ ] Serve the `portal/repositories/` shell for a decoded route key.
+- [ ] Return API 404 for unknown/hidden keys and render that as an explicit unavailable state; malformed encoding stays a server 404.
+- [ ] Keep the five-item static nav, status payload, manifest, and sitemap unchanged while marking Home active on detail routes.
 
 ### Phase 3 — Repository Home directory
 
 - [ ] Build server-side Home repository summaries keyed by canonical `repositoryId`.
-- [ ] Render visible resolved repositories; reuse existing visibility/`includeHidden` handling.
-- [ ] Order by pinned → active → idle(recent) → stale, reusing `deriveLifecycle`/`lastSeenAtFor`/`pinned` (prefer sharing `sortRepositoriesForDisplay`'s inputs over re-deriving).
-- [ ] Add the zero-repository state and the persistent "Manage repositories" affordance (link only; [[pljvmyh]] implements it).
+- [ ] Render visible canonical Git and `local:` repositories; reuse existing visibility/`includeHidden` handling and expose resolution/confidence honestly.
+- [ ] Order by pinned → active → idle(recent) → stale in the server overview, using `deriveLifecycle`/`lastSeenAtFor`/`pinned` rather than the Runtime comparator's alphabetical idle fallback.
+- [ ] Add the zero-repository Runtime-discovery guidance and a stable future action slot; do not render a dead repository-management link before [[pljvmyh]].
 - [ ] Keep unresolved activity out of normal repository cards.
 - [ ] Add per-repository/per-domain partial-failure handling.
 
 ### Phase 4 — Checkout/worktree Home model
 
-- [ ] Consume `buildDeveloperRuntimeSnapshot`'s repository → `roots` view for checkout identity.
+- [ ] Add the narrow server-side workspace projection over `loadDeveloperRuntimeSnapshot()`.
 - [ ] Render every known checkout/worktree with branch/name.
 - [ ] Associate the promoted Runtime entrypoint per checkout.
 - [ ] Keep inactive checkouts visible without a link.
@@ -412,25 +432,26 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 
 ### Phase 6 — Git repository summary
 
-- [ ] Add a reusable repository Git/checkout summary contract decoupled from Runtime's view model.
+- [ ] Include the thin Git fields in the shared repository workspace contract without exposing the rest of Runtime's view-model.
 - [ ] Surface clean/dirty, ahead/behind, and worktree-level status on Home rows.
 - [ ] Aggregate repository-level Git warnings for the card.
 - [ ] Reuse existing Runtime checkout Git data/caches.
 
 ### Phase 7 — Plans integration
 
-- [ ] Add repository-associated plan counts/status from existing plan data.
+- [ ] Add a cached repository-associated Plans projection rather than refreshing discovery on every Home poll.
 - [ ] Represent coverage explicitly (`available`/`partial`/`unavailable`/`stale`); never render a misleading authoritative `0 plans`.
 - [ ] Add seven-day recently-changed data on detail (Git last-commit, mtime fallback; label "Recently changed").
 
 ### Phase 8 — Tokens integration
 
-- [ ] Add a compact repository-level token/session warning signal to Home.
+- [ ] Retain a compact per-repository token/session warning projection alongside the default telemetry analysis cache.
+- [ ] Read that compact projection from Home/detail without parsing or returning the full `/api/data` report.
 - [ ] Expand recent/high-severity findings on detail.
 
 ### Phase 9 — Agents/config integration
 
-- [ ] Establish the stable repository agent/config slot with `configured`/`not configured`/`unavailable`/placeholder states.
+- [ ] Render the repository agent/config slot as `unavailable`; reserve `configured`/`not-configured` for a future real repository-scoped check.
 
 ### Phase 10 — Repository detail composition and polish
 
@@ -442,6 +463,17 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 
 Adjust ordering if implementation inspection suggests a stronger sequence; Phases 1–2 (identity + routing) should land before the visible directory work in Phase 3.
 
+## Risks
+
+- The v1 reset intentionally loses user-managed registry state. Keep the behavior isolated to the explicit version mismatch and cover it with a destructive-reset test.
+- Home polling can make the single-threaded portal unresponsive if it triggers discovery, Git traversal, or telemetry analysis. The aggregate path must read bounded cached projections only.
+- Runtime, Plans, and telemetry refresh at different times. Every domain envelope needs its own freshness timestamp/state so the UI does not imply an atomic cross-domain snapshot.
+- A dynamic page accidentally added to `PAGES` would leak a literal `:urlKey` link into navigation and metadata; manifest tests must keep the static five-entry contract exact.
+
+## Open Questions
+
+None. Registry v1 is intentionally reset without migration or backup.
+
 ## Validation
 
 Use focused domain tests while building, then the full suite because Home crosses routing and several shared domains.
@@ -449,22 +481,21 @@ Use focused domain tests while building, then the full suite because Home crosse
 Existing repo-native checks to preserve and extend:
 
 ```text
-npm run test:repositories
-npm run test:repositories-service
-npm run test:repositories-api
-npm run test:developer-runtime
-npm run test:developer-runtime-repository-merge
-npm run test:plans
-npm run test:plans-portal-state
+npm run test:unit -- --filter repositories
+npm run test:unit -- --filter repository-overview
+npm run test:unit -- --filter developer-runtime
+npm run test:unit -- --filter portal-pages
+npm run test:unit -- --filter plans-portal-state
 npm run test:telemetry
-npm test
+npm run test:portal-ui
+npm run check
 ```
 
 Add focused coverage for:
 
-- `urlKey` allocation stability, collisions, and reserved aliases; a registry at an older version resets to fresh (with a backup) rather than carrying old records forward;
+- `urlKey` allocation stability, collisions, uniqueness validation, and canonical aliases; an older registry resets to fresh with no migration and no backup;
 - `urlKey -> repositoryId` resolution, including hidden/unknown keys;
-- dynamic `/repositories/:urlKey` page routing, missing/invalid key handling, and browser history, with the static nav manifest unchanged;
+- dynamic `/repositories/:urlKey` page routing, missing/invalid key handling, browser history, and Home-active navigation, with the static nav manifest unchanged;
 - Home rendering visible canonical repositories and excluding hidden ones;
 - repository ordering (pinned/active/idle/stale) against `deriveLifecycle`/`lastSeenAtFor` under a fixed clock;
 - checkout/worktree rows carrying branch identity and the promoted entrypoint;
@@ -475,6 +506,8 @@ Add focused coverage for:
 - repository-associated Tokens warnings;
 - Agents stable-state rendering;
 - partial responses when one domain fails, with the repository card still rendering;
+- stale domain envelopes preserving last successful data and per-domain timestamps;
+- Home/detail requests avoiding synchronous Runtime discovery, Plans refresh, or telemetry analysis; Runtime may schedule its established asynchronous refresh after returning the cached snapshot;
 - no absolute paths in Home/detail browser payloads.
 
 ## Acceptance Criteria
@@ -493,8 +526,8 @@ Add focused coverage for:
 - Agents has a stable future-facing state.
 - `/repositories/<urlKey>` works, is bookmarkable, and supports back/forward.
 - Dynamic repository-detail page routing is supported without breaking the static nav manifest.
-- `urlKey` is allocated at record creation, collision-safe, and consumable by [[pljvmyh]]; an older registry resets to fresh (with a backup) rather than migrating.
+- `urlKey` is allocated at record creation, collision-safe, and consumable by [[pljvmyh]]; an older registry resets to fresh without migration or backup.
 - One failed domain does not break the full repository card or detail page.
 - No absolute filesystem paths leak through general browser-safe repository payloads.
 - Runtime remains the deeper operational surface.
-- Targeted tests and `npm test` pass.
+- Targeted unit/browser checks and the full `npm run check` gate pass.
