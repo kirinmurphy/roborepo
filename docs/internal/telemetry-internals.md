@@ -11,7 +11,8 @@ How telemetry is built, for people changing it. User-facing behavior is in
 | `scripts/cli/telemetry-metrics.mjs` | The metrics registry: every formula, unit, and direction. UI components never define their own formulas. |
 | `scripts/cli/telemetry-cohort.mjs` | The normalized cohort filter shared by the CLI and portal. |
 | `scripts/cli/telemetry-compare.mjs` | Marker-relative comparison. |
-| `scripts/cli/telemetry-analyze.mjs` | Analysis, including the exploratory midpoint `regression()`. |
+| `scripts/cli/telemetry-analyze.mjs` | Public analysis entry point: cohort filtering, normalization, conditions, and report version. |
+| `scripts/cli/telemetry-analysis/` | Production report assembly (`rows.mjs`), capture indexing, sessions, costs, findings, regression, data-quality warnings, and testing metrics in focused modules. |
 | `scripts/cli/telemetry-policy.mjs` | Package telemetry policy validation and evaluation. |
 | `scripts/cli/telemetry-markers.mjs` | `createMarker()`, shared by the CLI and the portal's marker dialog. |
 | `scripts/cli/telemetry-task-infer.mjs` | An analysis-time task inference path with no live caller; outcome categories are always explicit. |
@@ -33,8 +34,8 @@ that fails if it breaks. When adding analytics, add the rule's check first.
 | Unknown condition data is not absence; known presence is compared only with known absence | `aggregateCondition` cohorts; `unknown_condition` on change comparisons | `telemetry-conditions-matrix-check`, `telemetry-audit-tier1-check` |
 | Thin evidence never yields a percentage or a direction (minimum cohort, minimum events, 20% display band) | `CONDITIONS_POLICY` in `telemetry-observations.mjs`; both presentation functions | matrix check, presentation check (equal, near-equal and below-floor cases) |
 | Mirrored rows never double-count | `canonicalFlowRows` | `telemetry-conditions-check` (duplicate flows) |
-| One session id under two harnesses stays two sessions; loops never cross harnesses | `sessionKeyOf` in `telemetry-analyze.mjs` | `telemetry-conditions-check` (collision, alternating-harness loop) |
-| Midpoint per-call regression never divides equal timestamps; without a distinct time boundary it is unavailable | `regression` in `telemetry-analyze.mjs` | `telemetry-oracle-check` (fixed tie regressions) |
+| One session id under two harnesses stays two sessions; loops never cross harnesses | `sessionKeyOf` in `telemetry-analysis/captures.mjs` | `telemetry-conditions-check` (collision, alternating-harness loop) |
+| Midpoint per-call regression never divides equal timestamps; without a distinct time boundary it is unavailable | `regression` in `telemetry-analysis/regression.mjs` | `telemetry-oracle-check` (fixed tie regressions) |
 | Boundary sessions are excluded, not assigned; one rule for every marker | `splitObservationBoundary`, which `splitCohortsByMarker` delegates to | `telemetry-boundaries-check`, `telemetry-audit-tier1-check` (equivalence) |
 | An unknown-scope marker is "can't compare fairly", not "too little data" | `compareObservationBoundary`, `compareAcrossMarker` | `telemetry-audit-tier1-check` |
 | Ledger ties break on persisted order | ledger sort in `telemetry-conditions.mjs`, `ambientChanges` | `telemetry-audit-tier1-check` |
@@ -153,8 +154,8 @@ be compared, but agreement returns `partial`.
 
 The live comparison returns aggregate counts, coverage categories, and names of disagreeing
 projection fields. CI uses the same core and comparison projections while retaining its synthetic
-values, shrinker, and replay output. The comparison result describes agreement over the supplied input. A current health result also
-requires the versioned schema, signature validation, and worker lifecycle planned in
+values, shrinker, and replay output. The comparison result describes agreement over the supplied
+input. A current health result also requires the versioned schema, signature validation, and worker lifecycle planned in
 [Phase 5](../plans/active/telemetry-analytics-oracle-live-observer.md#phase-5-isolated-live-observer).
 
 ## Configuration Snapshots

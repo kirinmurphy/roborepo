@@ -56,7 +56,7 @@ export function buildSessions(rows, repositoryIndex = new Map()) {
     const tokens = group.every((row) => row.schema === 2 || row.schema === 3) && usages.length
       && usages.every((usage) => usage && stableJson(usage) === stableJson(usages[0])) ? usages[0] : null;
     return {
-      id: observationId(group[0]), harness: consensus(group, (row) => known(row.harness)),
+      id: JSON.stringify(["session", group[0].harness, group[0].session_id]), harness: consensus(group, (row) => known(row.harness)),
       session_id: consensus(group, (row) => known(row.session_id)),
       repository_id: consensus(group, (row) => repositoryId(row, repositoryIndex)),
       model: consensus(group, (row) => known(row.session?.model)),
@@ -137,10 +137,6 @@ function digest(value) {
 
 function known(value) {
   return typeof value === "string" && value && value !== "unknown" ? value : null;
-}
-
-function observationId(row) {
-  return JSON.stringify(["session", row.harness, row.session_id]);
 }
 
 function validTime(value) {

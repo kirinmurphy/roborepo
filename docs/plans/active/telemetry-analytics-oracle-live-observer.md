@@ -111,7 +111,7 @@ The oracle now recomputes these values without importing production analysis hel
 
 | Comparison | Resolution |
 | --- | --- |
-| Production midpoint regression split calls with equal timestamps across before and after cohorts. | Confirmed as a production bug. `regression()` now chooses the closest distinct timestamp boundary and reports unavailable when no temporal ordering exists. Two fixed oracle regressions pin both cases. |
+| Production midpoint regression split calls with equal timestamps across before and after cohorts. | Confirmed as a production bug. `regression()` in `scripts/cli/telemetry-analysis/regression.mjs` now chooses the closest distinct timestamp boundary and reports unavailable when no temporal ordering exists. Two fixed oracle regressions pin both cases. |
 | Bundled demo and six seeded random spools | No remaining arithmetic disagreement after the timestamp fix. |
 
 ### Current limitations
@@ -501,6 +501,18 @@ a narrower check and claiming completion.
 ## Verification
 
 Phase 4 evidence:
+
+- The branch readability refactor keeps the public analyzer entry point and all five independent
+  oracle module boundaries intact. Production calculations now live under
+  `scripts/cli/telemetry-analysis/`; deterministic oracle fixtures and schema test concerns have
+  separate test modules. All changed JavaScript files are at most 150 lines.
+- Complete production reports match the pre-refactor analyzer across 213 fixture/option cases,
+  including seeded spools, equal timestamps, empty inputs, filters, and marker comparisons.
+  The exported `spikeCause()` results also match. This comparison used a fixed clock.
+- After the readability refactor, `npm run check` passes: 420 CLI checks, installer collision
+  checks, 12 CI check suites, packed-package installation, all four Linux Docker scenario families,
+  and 31 browser tests. PowerShell remains unavailable locally; the two opt-in screenshot tests
+  were skipped in this gate and were covered by the earlier explicit capture run below.
 
 - `npm run test:telemetry-oracle` passes all nine existing cases: 879 raw events, 204 condition
   rows, 21 marker comparisons, and 32 regression groups. A before/after comparison of every
