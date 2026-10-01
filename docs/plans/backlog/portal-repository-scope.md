@@ -460,15 +460,13 @@ Retire or redirect the current `/plans-enrollment` repository action once known 
 
 ### Tokens
 
-- `portal/telemetry/state.js`
-- `portal/telemetry/app.js`
-- `portal/telemetry/index.html`
-- `portal/telemetry/api.js`
+- `portal/tokens2/app.js`
+- `portal/tokens2/index.html`
 - `scripts/cli/portal-routes-telemetry.mjs`
 - `scripts/cli/telemetry.mjs`
 - `scripts/cli/telemetry-cohort.mjs`
 
-Separate shared canonical scope from legacy telemetry `repo` semantics and preserve existing range/harness/model/marker state.
+Separate shared canonical scope from legacy telemetry `repo` semantics. The Tokens page no longer has range/harness/model/marker filter UI (the legacy v1 dashboard that owned it was removed); `/api/data` still accepts those parameters.
 
 ### Shared portal chrome
 
