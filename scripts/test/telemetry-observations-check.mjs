@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { normalizeObservations, normalizeTokenUsage, evaluateCondition, aggregateCondition, relativeModelMetrics, tokenCoverage } from "../cli/telemetry-observations.mjs";
+import { normalizeObservations, normalizeTokenUsage, evaluateCondition, aggregateCondition } from "../cli/telemetry-observations.mjs";
 const usage = { input: 100, output: 20, cache_read: 30, cache_creation: 10, total: 160 };
 const row = (session, extra = {}) => ({ schema: 3, harness: "claude", session_id: session, call_id: "call1", capture_id: `capture-${session}`, ts: "2026-09-01T00:00:00Z", tokens: usage, session: { model: "model-a" }, repo: { repository_id: "git:one", label: "same" }, ...extra });
 const original = row("one");
@@ -39,12 +39,7 @@ assert.deepEqual(result, aggregateCondition([...cohorts, ...cohorts].reverse(), 
 assert.equal(aggregateCondition(cohorts.slice(76), { dimension: "model", value: "with" }, affected).with_rate, null);
 assert.equal(aggregateCondition(cohorts, { dimension: "model", value: "with" }, new Set()).relative_delta, null);
 assert.equal(aggregateCondition(cohorts.slice(0, 12), { dimension: "model", value: "with" }, affected).comparison_available, false);
-assert.deepEqual(tokenCoverage(2, 1), { eligible_observations: 2, valid_token_observations: 1, coverage: 0.5, coverage_state: "partial" });
-assert.equal(tokenCoverage(0, 0).coverage_state, "unavailable");
-const metrics = relativeModelMetrics([observation, { ...observation, id: "other", tokens: null }])[0];
-assert.equal(metrics.average_tokens, 160);
-assert.equal(metrics.coverage, 0.5);
-console.log("telemetry observations: identity, dedupe, evaluability, cohorts, token coverage and reorder checks passed");
+console.log("telemetry observations: identity, dedupe, evaluability, cohorts, token normalization and reorder checks passed");
 
 const missingIdentity = normalizeObservations([row("missing", { harness: null, session_id: null })]);
 assert.equal(missingIdentity.sessions.length, 0, "unidentified captures are not independent sessions");

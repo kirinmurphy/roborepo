@@ -37,7 +37,6 @@ for (const pick of [(row) => row.repo?.label, (row) => row.session?.model]) asse
 assert.ok(cohortValues(true, (row) => row.repo?.label).length > 1);
 const states = new Set(report.conditions.comparisons.map((row) => comparisonPresentation(row).state));
 assert.ok(states.has("fewer") && states.has("more") && states.has("thin"));
-assert.ok(report.conditions.relative_models.filter((row) => row.meets_sample_floor).length >= 3);
 assert.deepEqual(conditionDemoEvidence(records), evidence);
 const midpoint = report.insights.find((finding) => finding.kind === "midpoint_regression");
 assert.match(midpoint.headline, /heavier: .* → .* tok\/call/);

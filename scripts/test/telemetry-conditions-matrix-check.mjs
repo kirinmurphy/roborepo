@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { aggregateCondition, evaluateCondition, normalizeObservations, normalizeTokenUsage, relativeModelMetrics } from "../cli/telemetry-observations.mjs";
+import { aggregateCondition, evaluateCondition, normalizeObservations, normalizeTokenUsage } from "../cli/telemetry-observations.mjs";
 import { splitObservationBoundary } from "../cli/telemetry-boundaries.mjs";
 import { documentationScenario } from "./fixtures/telemetry-conditions-documentation.mjs";
 
@@ -71,11 +71,11 @@ for (const a of [usage, null, { ...usage, input: -1 }]) for (const b of [usage, 
   const payloads = [a, b, c];
   const valid = payloads.filter((payload) => payload === usage).length;
   for (const ordered of permutations(payloads.map((payload, index) => capture(String(index), payload)))) {
-    const result = relativeModelMetrics(normalizeObservations(ordered).sessions)[0];
-    assert.equal(result.eligible_observations, 3);
-    assert.equal(result.valid_token_observations, valid);
-    assert.equal(result.average_tokens, valid ? 160 : null);
-    assert.equal(result.coverage_state, ["unavailable", "partial", "partial", "available"][valid]);
+    const sessions = normalizeObservations(ordered).sessions;
+    assert.equal(sessions.length, 3);
+    const withTokens = sessions.filter((session) => session.tokens);
+    assert.equal(withTokens.length, valid);
+    assert.ok(withTokens.every((session) => session.tokens.total === 160));
     scenarios++;
   }
 }

@@ -429,6 +429,9 @@ from the per-turn ledger described in decision 16.
 
 ### Relative model metrics
 
+> **Removed, 2026-09-30.** The panel left the page in `74b60fc` and its code was removed later:
+> per-model averages compared sessions of different tasks with no shared baseline of activity, so they could not support a comparison between models; the panel's own copy already said not to rank models because tasks differ. This section records the original design only.
+
 When supported by attributable usage, an Investigate panel shows model token usage per operation with:
 
 - average tokens / flow;
@@ -717,6 +720,8 @@ Delivered on `codex/telemetry-tokens-conditions-report` and integrated with that
   decision 16.
 - Legacy removal: the `/tokens_v1` dashboard and its route were deleted, `pageState` moved to
   `portal/tokens/page-state.js`, and `tokens2` was renamed to `tokens` throughout.
+- Removal: the relative model metrics panel, its analysis code (`relativeModelMetrics`, `tokenCoverage`,
+  `relative_models`), and its guide section were removed; see the note under "Relative model metrics".
 - Follow-ups: scope controls, deeper change comparison, the remaining product iteration, and the
   fate of endpoints that lost their caller are tracked in [[nl40n9vr]].
 

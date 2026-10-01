@@ -24,7 +24,7 @@ and test rules applied; TypeScript and React conventions did not.
 | Event evidence hierarchy | Recent sessions competed with Action items and the existing investigation lists. | Recent sessions start collapsed and scroll within 440px or 60vh. Action items recommend; recent sessions provide evidence. |
 | Condition coverage band | Always visible below an already dense list. | Available under “What context was captured?” inside the evidence section. Unknowns stay explicit in comparison details. |
 | Session title, subtitle, close control, fact grid | Present, but repeated the same metadata in two grids and chips. | Next step leads one condition fact grid. Captured findings remain available without a transcript. |
-| Several model metric cards | Demo only had one model above the display threshold. Partial coverage was plain gray. | Demo shows three eligible models, with partial coverage highlighted. |
+| Several model metric cards | Demo only had one model above the display threshold. Partial coverage was plain gray. | Demo showed three eligible models. The panel was later removed; see "Removed: relative model metrics". |
 | Tokens per operation and exact attribution | Not supported by persisted cumulative session counters. | Still session-based and approximately attributed. Per-operation claims require new evidence. |
 | Stacked condition cards | Present. | Retained, with named model/repository/package/skill rows and green/red outcomes. |
 | Named condition items | The condition value was omitted from main-card rows. | Names now appear before outcome pills. Canonical repository identifiers remain in data and details. |
@@ -44,6 +44,15 @@ and test rules applied; TypeScript and React conventions did not.
 | Narrow-screen full outcomes | Five table columns compete for space at 390px. | Page and cards fit without horizontal overflow, but the full-outcomes table remains dense. Stacked comparison details are a recommended mobile follow-up. |
 | Shared page geometry | Reference uses a 1060px column and its own palette; portal uses shared page styles. | Shared portal width, palette, and surrounding section spacing remain. This is not a pixel-identical reproduction. |
 | Page order | Existing waste, actions, investigate, conditions, ledger, changes, and prompt were preserved. | Retained. |
+
+### Removed: relative model metrics
+
+The "Model token usage per session" panel (average tokens per session, input/output mix, and
+valid/eligible coverage for each model) no longer exists. It left the page in `74b60fc` without a
+recorded reason. The code (`relativeModelMetrics`, `tokenCoverage`, the `relative_models` report
+field, and the `minimum_model_sessions` policy) and its guide section were removed afterward,
+because per-model averages compared sessions of different tasks with no shared baseline of activity, so they could not support a comparison between models; the panel's own copy already said not to rank models because tasks differ. Models are still compared through the Conditions cards, which
+compare sessions with and without a condition rather than averaging usage per model.
 
 ### Code correctness and maintainability
 
@@ -109,7 +118,6 @@ Except where noted, these are tracked in plan `nl40n9vr` (Phase 5).
 | Action items | What should I investigate first? | Ranked recommendation and jump to evidence. |
 | Recent problem sessions | Which session explains this recommendation or condition signal? | Collapsed, bounded list; session dialog contains the detail. |
 | Conditions | Which setup is worth comparing on similar work? | Named signals and inspect-session actions; raw/unknown detail on demand. |
-| Model metrics | Which model’s expensive sessions deserve inspection? | Context only; task mix prevents a fair efficiency ranking. |
 | Event ledger | Did problems appear around a recorded or observed change? | Chronology with change links and boundary status. |
 | Your changes | Should I keep monitoring, investigate a regression, or collect more evidence? | Before/after rates, exclusions, and next step in one place. |
 

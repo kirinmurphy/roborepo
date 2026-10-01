@@ -31,12 +31,6 @@ export function normalizeTokenUsage(tokens) {
   return { input: inputTotal, output, total, component_total: components, total_override: total !== components };
 }
 
-export function tokenCoverage(eligible, valid) {
-  return { eligible_observations: eligible, valid_token_observations: valid,
-    coverage: eligible ? valid / eligible : 0,
-    coverage_state: !valid ? "unavailable" : valid === eligible ? "available" : "partial" };
-}
-
 export function observationIdentity(event) {
   const harness = known(event.harness);
   const session = known(event.session_id);
@@ -121,7 +115,7 @@ export function evaluateCondition(observation, condition, snapshots = []) {
   return { evaluable: present != null, present: present === true, state: present == null ? "unknown" : present ? "present" : "absent" };
 }
 
-export const CONDITIONS_POLICY = Object.freeze({ minimum_cohort: 10, minimum_events: 3, display_band: 0.2, minimum_model_sessions: 3 });
+export const CONDITIONS_POLICY = Object.freeze({ minimum_cohort: 10, minimum_events: 3, display_band: 0.2 });
 
 export function aggregateCondition(observations, condition, affectedIds, { snapshots = [], policy = CONDITIONS_POLICY, eventKind = null } = {}) {
   if (new Set(observations.map((item) => item.observation_unit)).size > 1) throw new Error("condition cohorts must use one observation unit");
@@ -142,23 +136,6 @@ export function aggregateCondition(observations, condition, affectedIds, { snaps
     relative_delta: percentAvailable ? (withRate - withoutRate) / withoutRate : null,
     comparison_available: available, percent_available: percentAvailable, policy,
   };
-}
-
-export function relativeModelMetrics(sessions) {
-  const models = unique(sessions.map((item) => item.model).filter(Boolean));
-  return models.map((model) => {
-    const eligible = sessions.filter((item) => item.model === model);
-    const valid = eligible.filter((item) => item.tokens);
-    const total = sum(valid.map((item) => item.tokens.total));
-    const input = sum(valid.map((item) => item.tokens.input));
-    const output = sum(valid.map((item) => item.tokens.output));
-    const safe = total !== null && input !== null && output !== null;
-    return { model, observation_unit: "session", ...tokenCoverage(eligible.length, safe ? valid.length : 0),
-      average_tokens: safe && valid.length ? total / valid.length : null,
-      input_tokens: safe && valid.length ? input : null, output_tokens: safe && valid.length ? output : null,
-      exact_model_observations: 0, approximate_model_observations: eligible.length,
-      model_attribution: "approximate", meets_sample_floor: eligible.length >= CONDITIONS_POLICY.minimum_model_sessions };
-  });
 }
 
 // Shared deterministic representative for legacy finding detectors and operation metrics.

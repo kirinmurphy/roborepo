@@ -5,11 +5,9 @@ const event = (id, extra = {}) => ({ schema: 3, capture_id: `cap-${id}`, call_id
 const events = [event(1), event(2, { tokens: null }), event(3, { config_snapshot_id: "cfg" })];
 const report = analyzeTelemetry(events, {});
 assert.deepEqual(report.conditions, analyzeTelemetry([...events].reverse(), {}).conditions);
-assert.equal(report.conditions.relative_models[0].coverage_state, "partial");
-assert.equal(report.conditions.relative_models[0].valid_token_observations, 2);
 const duplicates = analyzeTelemetry([...events, { ...events[0], capture_id: "mirror" }], {});
 assert.equal(duplicates.conditions.data_quality.sessions, 3);
-assert.deepEqual(duplicates.conditions.relative_models, report.conditions.relative_models);
+assert.deepEqual(duplicates.conditions.comparisons, report.conditions.comparisons);
 const snapshot = { schema: 1, snapshot_id: "cfg", packages: ["p"], skills: [] };
 const joined = analyzeTelemetry(events, { snapshots: [snapshot] });
 assert.notEqual(joined.version, report.version);
