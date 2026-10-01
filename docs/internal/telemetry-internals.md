@@ -68,32 +68,16 @@ server registration detail, no parsed Codex `config.toml`), recorded as `unavail
 
 ## Portal Page
 
-The v1 dashboard (`/tokens_v1`, hidden from nav) is a frameworkless, dependency-free page
-(`portal/telemetry/`) polling `/api/data` every 5 seconds. The nav-visible `/tokens` page
-(`portal/tokens2/`) reads the same `/api/data` report. See `docs/internal/portal-architecture.md` for the shared portal architecture (loopback bind,
-mutation-token contract, route dispatch). Telemetry-specific pieces:
+The `/tokens` page (`portal/tokens2/`) is a frameworkless, dependency-free page polling `/api/data`
+every 5 seconds. See `docs/internal/portal-architecture.md` for the shared portal architecture
+(loopback bind, mutation-token contract, route dispatch). Telemetry-specific pieces:
 
-- **Global cohort filter bar** — time range, harness, model, repository, and a marker-relative
-  comparison selector. Serializes into the URL (`?range=`, `&end=`, `&harness=`, `&model=`, `&repo=`,
-  `&marker_id=`) so a filtered view can be bookmarked, copied, and restored on reload.
-- **Timeline marker overlay** — markers render as colored vertical lines (by type) on the token-usage
-  chart; overlapping markers cluster; hover shows title/timestamp/SHA/packages/skills/metric; click
-  opens marker detail, with a "compare across this marker" action for `change` markers.
-- **Action-item panel** — each deterministic insight shows severity, confidence, headline, detail,
-  next action, and an "open analysis" button that expands the Analysis explorer pre-filled with that
-  finding's metric/marker.
-- **Testing-efficiency panel** — leads with the most actionable abnormality (redundant full-suite
-  reruns without an intervening edit), then a compact metrics table.
-- **Analysis explorer** (`portal/telemetry/analysis-explorer.js`) — a collapsed-by-default drawer for
-  high-cardinality comparisons the global filter bar deliberately does not expose: pick a metric from
-  the registry, compare across a marker or between two independently-filtered cohorts, see the result
-  with the same confidence/data-quality treatment as everywhere else.
-- **Session detail** — extended with model history, the session's configuration snapshot (id +
+- **Session detail** — model history, the session's configuration snapshot (id +
   packages/skills), a phase timeline, semantic operation totals, its explicit outcome/task category
   (marked `source: "explicit"`), markers within a 15-minute
-  window of the session, and data-quality flags — alongside the existing "surface chat context" /
-  copy-prompt / transcript-open actions, which are unchanged.
-- **Marker creation** — a dialog reachable from the cohort filter bar ("+ mark change") posts through
+  window of the session, and data-quality flags — alongside the "surface chat context" /
+  copy-prompt / transcript-open actions.
+- **Marker creation** — the conditions section's "+ Mark a change" dialog posts through
   the same validation/persistence path as the CLI (`createMarker` in `telemetry-markers.mjs`); no
   browser-side duplication of marker rules.
 

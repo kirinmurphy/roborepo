@@ -5,7 +5,7 @@
 // paragraphs interpolate report fields, and section framing is static UI copy.
 
 import { portalGetJson, portalPostJson, portalHideLoading, portalHideLoadingNow, portalSetUpdatedAt, portalWireBackdropClose } from "/portal/shared/api.js";
-import { pageState } from "/portal/telemetry/state.js";
+import { pageState } from "./page-state.js";
 import { activePresentedHarnesses, formatHarnessList } from "/portal/shared/harness-cohort.js";
 import { harnessWarningElement } from "/portal/shared/harness-warning.js";
 import { createConditionsReport } from "./conditions-report.js";
@@ -27,7 +27,7 @@ let lastSetupState = null;
 // click time, so a click always acts on the live report rather than a stale closure.
 let lastSessionData = null;
 
-// ── Formatting helpers (local — no dependency on telemetry/state.js's fmt for tokens) ──
+// ── Formatting helpers (local) ──
 const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 const tokShort = (n) => {
   n = Number(n || 0);
@@ -52,7 +52,7 @@ init();
 async function init() {
   // Setup-state poll: reads /api/config (same as the existing telemetry page's
   // refreshTelemetryState) to determine which cascade rung we're on. Reuses pageState()
-  // from portal/telemetry/state.js. The config API returns a flat `telemetry` object
+  // from ./page-state.js. The config API returns a flat `telemetry` object
   // (cfg.telemetry.enabled), not nested under packages.
   //
   // Mock data: when the page is NOT in the "full" state (no harness installed, or no
@@ -806,7 +806,7 @@ function renderInvestigationSections(data) {
 
   // 4h (removed): "Before vs after your change" marker comparison — half an idea on its own;
   // a future iteration will address change-marking holistically. The pipeline fields
-  // (marker_comparison, MOCK_MARKER) stay — the /tokens_v1 page and CLI still read them.
+  // (marker_comparison, MOCK_MARKER) stay — the CLI still reads them.
 }
 
 // Badge color rule (one rule for every Investigate section):

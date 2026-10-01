@@ -954,12 +954,6 @@ if [[ -n "${cfg_port:-}" ]]; then
   # Phase 6 of docs/plans/active/roborepo-telemetry-events-experiments-plan.md: portal marker/
   # experiment/analysis endpoints. Real HTTP calls against the running loopback server (per the
   # plan's "no Playwright" decision — verified via API status/JSON-shape checks, not a real browser).
-  assert "telemetry: served page includes cohort filter bar and marker-create dialog" \
-    bash -c "curl -s 'http://127.0.0.1:${cfg_port}/tokens_v1' | grep -q 'id=\"cohortfilt\"' && curl -s 'http://127.0.0.1:${cfg_port}/tokens_v1' | grep -q 'id=\"marker-modal\"'"
-  assert "telemetry: served dashboard JS parses" \
-    bash -c "telejs=\"${cfg_home}/telemetry-app.mjs\"; curl -s 'http://127.0.0.1:${cfg_port}/portal/telemetry/app.js' > \"\${telejs}\" && node --check \"\${telejs}\""
-  assert "telemetry: served chart.js parses" \
-    bash -c "chartjs=\"${cfg_home}/telemetry-chart.mjs\"; curl -s 'http://127.0.0.1:${cfg_port}/portal/telemetry/chart.js' > \"\${chartjs}\" && node --check \"\${chartjs}\""
   assert "telemetry: GET /api/telemetry/markers returns an array (empty spool ok)" \
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/telemetry/markers' | node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.exit(Array.isArray(j.markers)?0:1)})\""
   assert "telemetry: POST /api/telemetry/markers without token returns 403" \
@@ -1974,9 +1968,9 @@ assert "telemetry: marker-relative comparisons and confidence gates" \
 assert "telemetry: package telemetry policy validation and evaluation" \
   node "${repo_root}/scripts/test/telemetry-policy-check.mjs"
 
-# Phase 6: portal global-filter <-> URL state round-trip (state.js's pure helpers, no DOM needed).
-assert "telemetry: portal global filter URL state round-trips" \
-  node "${repo_root}/scripts/test/telemetry-portal-state-check.mjs"
+# Tokens page setup cascade (telemetry off -> no harness -> no data -> full), pure function.
+assert "tokens: page setup-state cascade" \
+  node "${repo_root}/scripts/test/tokens-page-state-check.mjs"
 
 # Phase 6 of docs/plans/active/discoverable-harness-provider-architecture-plan.md: /api/session
 # rejects a missing/unrecognized harness id instead of silently defaulting to Claude.
@@ -1994,11 +1988,6 @@ assert "telemetry: synthetic third-provider analysis and rate-limit capability" 
 # ROBOREPO_STATE_ROOT.
 assert "telemetry: store bounds on markers/snapshots/experiments" \
   node "${repo_root}/scripts/test/telemetry-store-bounds-check.mjs"
-
-# Pure function tests for the portal's time-axis helpers: clock labels, scale selection, tick
-# bounding, day labels. No fs or process dependency.
-assert "telemetry: portal time-axis label/scale/tick helpers" \
-  node "${repo_root}/scripts/test/telemetry-time-axis-check.mjs"
 
 # Identifiable-waste ledger: each turn counted once, categories sum to the headline total.
 assert "telemetry: waste ledger counts each turn once" \
