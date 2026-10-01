@@ -8,7 +8,7 @@ related:
   - roborepo-telemetry-events-experiments
   - f0j4j8y2
   - nl40n9vr
-reviewed_commit: d4c1fae5e5090940ce2dd15a14c6e9d451d6c686
+reviewed_commit: d001394d929218d35fb50663a1023bd7b362f646
 ---
 
 # Tokens Conditions Report: Events × Conditions Correlation on /tokens
@@ -735,15 +735,18 @@ Verification on commit `d4c1fae`:
 
 ## Verification
 
-Run on the branch after merging `origin/main` (merge base advanced by the Runtime layout work, #20):
+Re-run on the branch after the relative model metrics removal, which landed after the first
+`origin/main` merge. The later merge of `main` changed only two backlog plans, so these results
+cover the delivered code:
 
 - `npm run check` (full CI parity gate, Docker available, `CLEAN_MACHINE_STRICT=1`): passed. This
-  includes the unit suites (`roborepo tests: 420 passed, 0 failed`), the portal browser suite
-  (31 passed, 2 skipped opt-in screenshot cases), the clean-machine container checks, and the
-  install-sandbox checks.
+  includes the unit suites (`roborepo tests: 420 passed, 0 failed`, with the per-turn waste ledger
+  check), the portal browser suite (31 passed, 2 skipped opt-in screenshot cases), the
+  clean-machine container checks, and the install-sandbox checks. Windows installer parity was
+  skipped because `pwsh` is unavailable.
 - `bash scripts/doctor.sh --quiet`: 101 checks passed.
-- `node scripts/test/telemetry-waste-check.mjs`: passed (per-turn waste ledger).
-- Plan validation of this plan and every plan it links: dependencies and related ids resolve.
+- Plan validation of this plan and every plan it links: no findings; dependencies and related ids
+  resolve.
 
 Not verified: the per-operation token attribution and exact file-revision tracking this plan
 excludes (`f0j4j8y2` owns revisions), and any causal reading of an association.
