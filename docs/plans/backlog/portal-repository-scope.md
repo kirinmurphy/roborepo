@@ -460,8 +460,8 @@ Retire or redirect the current `/plans-enrollment` repository action once known 
 
 ### Tokens
 
-- `portal/tokens2/app.js`
-- `portal/tokens2/index.html`
+- `portal/tokens/app.js`
+- `portal/tokens/index.html`
 - `scripts/cli/portal-routes-telemetry.mjs`
 - `scripts/cli/telemetry.mjs`
 - `scripts/cli/telemetry-cohort.mjs`

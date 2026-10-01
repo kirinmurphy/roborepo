@@ -58,8 +58,8 @@ export const PAGES = [
   { path: "/", id: "home", title: "Home", dir: "home", default: true },
   { path: "/config", id: "config", title: "Agents", dir: "config" },
   { path: "/plans", id: "plans", title: "Plans", dir: "plans" },
-  // The token report owns /tokens (id/dir keep the tokens2 module paths).
-  { path: "/tokens", id: "tokens2", title: "Tokens", dir: "tokens2" },
+  // The token report owns /tokens (id/dir keep the tokens module paths).
+  { path: "/tokens", id: "tokens", title: "Tokens", dir: "tokens" },
   {
     path: "/runtime",
     id: "developer-runtime",

@@ -49,9 +49,9 @@ and test rules applied; TypeScript and React conventions did not.
 | Finding | Resolution | Source |
 | --- | --- | --- |
 | An older action headline described a falling token share as “up,” because its trigger measures per-call cost. | Superseded by the 2026-09-30 audit below: the headline now speaks only in per-call cost. | `scripts/cli/telemetry-insights.mjs` |
-| Missing percentages were treated as no difference. | Centralized presentation states distinguish missing baseline, low sample, neutral, fewer, and more. | `portal/tokens2/conditions-format.js` |
+| Missing percentages were treated as no difference. | Centralized presentation states distinguish missing baseline, low sample, neutral, fewer, and more. | `portal/tokens/conditions-format.js` |
 | Equal before/after rates became “More.” | Explicit equality branch; low-count changes remain provisional. | `conditions-format.js` |
-| A late session request could overwrite a later-opened session. | Request identity guards success and error paths. | `portal/tokens2/app.js` |
+| A late session request could overwrite a later-opened session. | Request identity guards success and error paths. | `portal/tokens/app.js` |
 | Background refresh replaced open comparison dialogs. | Defer rendering while a dialog is open; resume on later polls. | `app.js` |
 | Session metadata lookup ignored harness identity. | Match the session and harness together in the modal lookup. | `app.js`, `conditions-context.js` |
 | Demo sessions lacked useful fallback findings when transcripts were absent. | Render captured ledger findings when the session API has none. | `conditions-context.js` |
@@ -59,7 +59,7 @@ and test rules applied; TypeScript and React conventions did not.
 | Multiple problem records occupied multiple recent-session rows. | Group by harness/session identity; retain all underlying ledger events. | `conditions-evidence.js` |
 | Coverage and ancillary panels could retain stale content when conditions disappeared. | Explicit visibility and empty-state updates for the whole feature. | `conditions-report.js` |
 | “Show all” rebuilt the entire conditions feature and unbounded the ledger. | Ledger controller adds 12 rows at a time without rebuilding other panels. | `conditions-ledger.js` |
-| Rendering, form submission, comparison wording, metrics, and context were mixed in one large function. | Separate feature modules with a short orchestration entry point; pure presentation is independently tested. | `portal/tokens2/conditions-*.js` |
+| Rendering, form submission, comparison wording, metrics, and context were mixed in one large function. | Separate feature modules with a short orchestration entry point; pure presentation is independently tested. | `portal/tokens/conditions-*.js` |
 | Analysis rebuilt normalization, snapshot maps, and session context repeatedly. | Reuse normalized observations; index snapshots/sessions and memoize per-session context. | `scripts/cli/telemetry-conditions.mjs`, `telemetry-analyze.mjs` |
 | Demo assignment performed repeated linear session lookups. | Index session positions once. Synthetic evidence still runs through production analysis. | `telemetry-conditions-demo.mjs` |
 | Top-level session count omitted sessions without token-bearing captures while coverage counted them. | Page meta uses the canonical observed-session count when conditions are available. | `app.js` |

@@ -68,7 +68,7 @@ server registration detail, no parsed Codex `config.toml`), recorded as `unavail
 
 ## Portal Page
 
-The `/tokens` page (`portal/tokens2/`) is a frameworkless, dependency-free page polling `/api/data`
+The `/tokens` page (`portal/tokens/`) is a frameworkless, dependency-free page polling `/api/data`
 every 5 seconds. See `docs/internal/portal-architecture.md` for the shared portal architecture
 (loopback bind, mutation-token contract, route dispatch). Telemetry-specific pieces:
 

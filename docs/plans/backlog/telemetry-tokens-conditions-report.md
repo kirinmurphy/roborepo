@@ -31,7 +31,7 @@ boundaries below; they are not proof that current telemetry supports those examp
 
 ## Context
 
-The current dashboard in `portal/tokens2/` renders a waste decision line, action items,
+The current dashboard in `portal/tokens/` renders a waste decision line, action items,
 Investigate evidence sections, and an agent-ready prompt. The next goal is to associate the
 events already tracked with the conditions observed around them, and to add relative metrics
 such as tokens-per-call and input:output mix that make model/tool behavior easier to compare.
@@ -155,12 +155,12 @@ row.
 
 | Capability | Location | Gap for this plan |
 |---|---|---|
-| Flagged-event strip | `portal/tokens2/app.js` `renderTimelineStrip` | Superseded by the ledger after the ledger ships |
+| Flagged-event strip | `portal/tokens/app.js` `renderTimelineStrip` | Superseded by the ledger after the ledger ships |
 | Marker persistence + endpoints | `scripts/cli/telemetry-markers.mjs`, `scripts/cli/portal-routes-telemetry.mjs` `/api/telemetry/markers` | Existing `repo` is a Git basename; add canonical scope, effective time separate from recorded `ts`, watching-kinds, and finding attachment |
 | Before/after comparison | `scripts/cli/telemetry-compare.mjs` `compareAcrossMarker` | Session cohorts only; marker-spanning sessions excluded; should consume the shared normalized analysis layer rather than remain a separate semantic implementation |
 | Per-model data | `capture.session.model`; cohort filter `models` dimension | Not surfaced per event; mixed-model attribution can be approximate |
 | Capture record | schema v3 with `config_snapshot_id` | Snapshot not currently joined for /tokens display |
-| Mock pipeline | `portal/tokens2/mock-spool.jsonl` + seeding scripts | Needs unknown/partial coverage, cohort-denominator, and honesty-state fixtures |
+| Mock pipeline | `portal/tokens/mock-spool.jsonl` + seeding scripts | Needs unknown/partial coverage, cohort-denominator, and honesty-state fixtures |
 
 ### Verified integration touchpoints
 
@@ -174,7 +174,7 @@ row.
 | I/O and cache | `scripts/cli/telemetry.mjs`: supply snapshot indexes to CLI and portal analysis outside pure functions; extend analysis cache invalidation to snapshot availability/content and new options, including changes without a new capture. Retain background refresh and bounded reads. |
 | Repository scope | `scripts/cli/telemetry-repository.mjs`: reuse canonical repository resolution; basename labels are display metadata and cannot distinguish repositories with the same name. |
 | Marker schema | `scripts/cli/telemetry-schemas/marker-schema.mjs`, `scripts/cli/telemetry-markers.mjs`: preserve append/supersede history and experiment consumers when adding Phase 2 fields. |
-| Portal and fixtures | `portal/tokens2/app.js`, `portal/tokens2/index.html`, `portal/tokens2/styles.css`, `portal/tokens2/mock-spool.jsonl`, `scripts/cli/telemetry-seed-demo.mjs`, `scripts/cli/portal-routes-telemetry.mjs`: wire real and mock data through the same report contract. |
+| Portal and fixtures | `portal/tokens/app.js`, `portal/tokens/index.html`, `portal/tokens/styles.css`, `portal/tokens/mock-spool.jsonl`, `scripts/cli/telemetry-seed-demo.mjs`, `scripts/cli/portal-routes-telemetry.mjs`: wire real and mock data through the same report contract. |
 
 ### Delivery and follow-up boundary
 
@@ -646,7 +646,7 @@ and append-only corrections. The ledger initially shows 12 rows with an explicit
   `telemetry-schemas/{snapshot-schema,marker-schema,persistence}.mjs`.
 - I/O/cache/CLI: `telemetry.mjs`, including snapshot-only invalidation and
   `roborepo telemetry report --conditions`; ordinary report output remains unchanged.
-- Portal: `portal/tokens2/{app.js,index.html,styles.css}` and the approved mockup.
+- Portal: `portal/tokens/{app.js,index.html,styles.css}` and the approved mockup.
 - Shared synthetic evidence: `telemetry-conditions-demo.mjs`, used by bundled mock and seed.
 - Verification: four new telemetry check suites, schema compatibility updates, three browser
   cases, and user-guide documentation.
@@ -677,7 +677,7 @@ Exact file fingerprints remain the separate `f0j4j8y2` follow-up.
 The [portal review](../../internal/tokens-portal-review.md) records the reference inventory,
 correctness fixes, remaining code opportunities, and recommended product decisions.
 This review applies the requested code-style and JavaScript conventions; new condition UI
-responsibilities live in `portal/tokens2/conditions-*.js`, with markup in HTML templates.
+responsibilities live in `portal/tokens/conditions-*.js`, with markup in HTML templates.
 
 - [x] Collapse and bound recent-session evidence, combine repeated sessions, and simplify context chips.
 - [x] Name condition outcomes and distinguish small samples from no difference.

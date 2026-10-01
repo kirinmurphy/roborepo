@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { pageState } from "../../portal/tokens2/page-state.js";
+import { pageState } from "../../portal/tokens/page-state.js";
 
 // Strict cascade: the shown state is the FIRST failing rung (see page-state.js).
 assert.equal(pageState({ telemetryOn: false, activeHarnessCount: 0, hasData: false }), "telemetry-off");

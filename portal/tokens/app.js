@@ -1,6 +1,6 @@
-// Tokens2 — the evolved tokens dashboard. Fetches the same /api/data report the existing
-// /tokens page uses, but renders it in a layered, layperson-readable layout: verdict → findings
-// → chart → investigation sections → distilled report → full data. All prose is deterministic:
+// Tokens page. Fetches the /api/data report and renders it in a layered, layperson-readable
+// layout: verdict → findings → chart → investigation sections → distilled report → full data.
+// All prose is deterministic:
 // finding headlines/details come from report.insights (deriveInsights templates), evidence
 // paragraphs interpolate report fields, and section framing is static UI copy.
 
@@ -72,11 +72,11 @@ async function init() {
   const harnessCount = activePresentedHarnesses(cfg).length;
   // Package capability lookups (docLookupHint) read this snapshot — installed/available state
   // comes from the same /api/config the setup cascade already uses. No second fetch.
-  window.__tokens2Config = cfg;
+  window.__tokensConfig = cfg;
   await applySetupState({ telemetryOn, activeHarnessCount: harnessCount, snap: cfg });
 
   // Always attempt to load the report — even when the setup state is not "full".
-  // In the mock state (no real harness), we fetch from /api/tokens2/mock which
+  // In the mock state (no real harness), we fetch from /api/tokens/mock which
   // reads the bundled mock-spool.jsonl through the same analyzeTelemetry pipeline.
   // In the full state, we fetch from /api/data (the real spool).
   const isFullState = setupReady;
@@ -100,9 +100,9 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   lastSetup = { telemetryOn, activeHarnessCount, snap };
   if (!setupReady && firstLoad) { firstLoad = false; portalHideLoadingNow(); }
 
-  const offPanel = document.getElementById("tokens2off");
-  const bannerHost = document.getElementById("tokens2banner");
-  const content = document.getElementById("tokens2content");
+  const offPanel = document.getElementById("tokensoff");
+  const bannerHost = document.getElementById("tokensbanner");
+  const content = document.getElementById("tokenscontent");
   const state = pageState({ telemetryOn, activeHarnessCount, hasData });
   lastSetupState = state;
 
@@ -146,12 +146,12 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   content.hidden = false;
 
   // Wire the enable-telemetry button (same pattern as the existing page).
-  const enableBtn = document.getElementById("tokens2enable");
+  const enableBtn = document.getElementById("tokensenable");
   if (enableBtn) {
     enableBtn.hidden = telemetryOn;
     enableBtn.onclick = async () => {
       enableBtn.disabled = true;
-      const errEl = document.getElementById("tokens2enableerr");
+      const errEl = document.getElementById("tokensenableerr");
       if (errEl) errEl.textContent = "";
       try {
         await portalPostJson("/api/config/packages", { id: "telemetry", enabled: true });
@@ -166,13 +166,13 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
 
 // ── Load: fetch the report and render every layer ──
 // force=true renders even when setupReady is false (the mock-data path): fetches
-// from /api/tokens2/mock instead of /api/data, and shows the mock-data disclaimer.
+// from /api/tokens/mock instead of /api/data, and shows the mock-data disclaimer.
 async function load(force) {
   if (!setupReady && !force) {
     if (firstLoad) { firstLoad = false; portalHideLoading(); }
     return;
   }
-  const endpoint = force ? "/api/tokens2/mock" : "/api/data";
+  const endpoint = force ? "/api/tokens/mock" : "/api/data";
   let data;
   try {
     data = await portalGetJson(endpoint);
@@ -225,7 +225,7 @@ async function load(force) {
 // Sessions are distinct agent sessions; "with token data" are those whose usage was captured;
 // events are the individual records inside them (data.event_count — see the tooltip).
 function renderMeta(data) {
-  const el = document.getElementById("tokens2meta");
+  const el = document.getElementById("tokensmeta");
   if (!el) return;
   const sessions = data.sessions || [];
   const total = data.conditions.data_quality.sessions;
@@ -390,7 +390,7 @@ function wireWasteSourceLinks() {
 // Jargon (session ids, transcript paths, model history) lives in the agent prompt, not here.
 // Transcript lookup is best-effort: heaviest turns render when the transcript is on disk; a
 // rotated-away transcript just means "no turns", the prompt still works.
-const sessionModal = document.getElementById("tokens2session-modal");
+const sessionModal = document.getElementById("tokenssession-modal");
 const sessionModalBody = sessionModal.querySelector('[data-slot="body"]');
 // Close paths: the shared X button (its custom element renders the icon but does NOT self-wire
 // click behavior — the host page must listen, same as the v1/doc dialogs) and backdrop clicks.
@@ -921,7 +921,7 @@ function readWarningsBody(rows, data) {
 // Package identity comes from /api/config's package list (id/label + self-declared capabilities),
 // never from a hardcoded name here. Falls back to the state-3 copy when config isn't loaded.
 function docLookupHint(warning, type) {
-  const cfg = window.__tokens2Config;
+  const cfg = window.__tokensConfig;
   const pkgs = (cfg?.packages || []).filter((p) => (p.capabilities || []).includes("doc-lookup"));
   if (!pkgs.length) return readWarningLabel(type) === "Large document read"
     ? "prefer a section-level lookup over loading the whole document"
@@ -1087,7 +1087,7 @@ function renderAgentPrompt(data) {
   const lines = [];
   // Harness list is dynamic — machine-installed harnesses from /api/config (same machineHarnesses
   // cohort the setup cascade uses), not a static string. Falls back to the data's own harnesses.
-  const installedNames = activePresentedHarnesses(window.__tokens2Config || {})
+  const installedNames = activePresentedHarnesses(window.__tokensConfig || {})
     .map((h) => h.displayName || h.id);
   const dataNames = [...new Set((data.harnesses || []).filter(Boolean))];
   const names = installedNames.length ? installedNames : dataNames;
@@ -1306,17 +1306,17 @@ wireHintToggle();
 // Same one-delegate pattern as the v1 dashboard: any <portal-info-icon data-doc-anchor> opens
 // the shared doc-guide popup pre-scrolled to that heading. The guide is server-rendered from
 // docs/user/guides/telemetry.md — the popup and the on-disk doc are always the same content.
-// Anchors are placed only where the guide section genuinely describes the tokens2 section
+// Anchors are placed only where the guide section genuinely describes the tokens section
 // (testing-efficiency, session-detail); sections the guide doesn't cover get NO icon rather
 // than a mismatched one.
-const docModal = createDocGuideModal(document.getElementById("tokens2docmodal"), async () => {
+const docModal = createDocGuideModal(document.getElementById("tokensdocmodal"), async () => {
   try {
     return await portalGetJson("/api/telemetry/guide");
   } catch (err) {
     return { ok: false, error: (err && err.message) || String(err) };
   }
 });
-document.getElementById("tokens2docmodal").addEventListener("close", () => {
+document.getElementById("tokensdocmodal").addEventListener("close", () => {
   for (const icon of document.querySelectorAll("portal-info-icon[aria-expanded='true']")) {
     icon.setAttribute("aria-expanded", "false");
   }

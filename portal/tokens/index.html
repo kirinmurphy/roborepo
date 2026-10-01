@@ -6,24 +6,24 @@
     {{WIDGET_TEMPLATES}}
     {{LOADING}}
     <main class="inner">
-      <div class="banner-stack" id="tokens2banner-stack">
-        <section class="intro-banner tokens2-off" id="tokens2off" style="display:none">
+      <div class="banner-stack" id="tokensbanner-stack">
+        <section class="intro-banner tokens-off" id="tokensoff" style="display:none">
           <h2 class="intro-banner-title" data-slot="title">telemetry is off</h2>
           <p class="intro-banner-body" data-slot="body"></p>
           <div class="intro-banner-actions">
-            <button data-btn="cta" id="tokens2enable">turn on telemetry</button>
+            <button data-btn="cta" id="tokensenable">turn on telemetry</button>
           </div>
-          <div class="item-err" id="tokens2enableerr"></div>
+          <div class="item-err" id="tokensenableerr"></div>
         </section>
-        <div id="tokens2banner" style="display:none"></div>
+        <div id="tokensbanner" style="display:none"></div>
         <div id="mock-disclaimer" class="mock-disclaimer" style="display:none">
           <span class="mock-text">Below is a <b>simulated tracking report</b>, track your activity after running your own agent sessions.</span>
         </div>
       </div>
-      <div id="tokens2content" hidden>
+      <div id="tokenscontent" hidden>
         <!-- Frame-of-reference meta line (v1 renderMeta contract): sessions · captures · period,
              with the Codex rate limit riding along as a dim clause when the provider reports one. -->
-        <div id="tokens2meta" class="t2-meta"></div>
+        <div id="tokensmeta" class="t2-meta"></div>
         <!-- Section: waste stats — the dashboard header. One card per range (this week /
              all time): color-graded % badge, tokens context, top-3 violators, and a
              "[more]" tooltip with the full violator table. -->
@@ -114,16 +114,16 @@
     </main>
     <!-- Session drill-down: what the session was, what happened (deterministic findings from
          /api/session), what to do, and the copy-prompt-for-agent action. -->
-    <dialog id="tokens2session-modal" class="t2-session-modal" data-dialog-size="md" aria-labelledby="tokens2session-title">
+    <dialog id="tokenssession-modal" class="t2-session-modal" data-dialog-size="md" aria-labelledby="tokenssession-title">
       <div class="modal-head">
-        <span class="modal-title" id="tokens2session-title" data-slot="title">Session</span>
+        <span class="modal-title" id="tokenssession-title" data-slot="title">Session</span>
         <span class="modal-path" data-slot="sub"></span>
         <portal-close-button data-slot="close"></portal-close-button>
       </div>
       <div class="t2-session-body" data-slot="body"></div>
     </dialog>
     <!-- Doc-guide popup: server-rendered docs/user/guides/telemetry.md, shared factory. -->
-    <dialog id="tokens2docmodal" data-dialog-size="lg">
+    <dialog id="tokensdocmodal" data-dialog-size="lg">
       <div class="modal-head">
         <span class="modal-title" data-slot="title"></span>
         <span class="modal-path" data-slot="path"></span>
@@ -143,7 +143,7 @@
     <script src="/portal/shared/tooltip.js" type="module"></script>
     <script src="/portal/shared/harness-warning.js" type="module"></script>
     <script src="/portal/shared/notice.js" type="module"></script>
-    <script src="/portal/tokens2/app.js" type="module"></script>
+    <script src="/portal/tokens/app.js" type="module"></script>
     <template id="condition-card-template">
       <article class="panel condition-card"><header class="condition-card-head"><h3></h3></header>
         <div class="condition-columns"><div class="condition-fewer"><h4>Cheaper</h4><ul data-fewer></ul></div><div class="condition-more"><h4>More expensive</h4><ul data-more></ul></div></div>

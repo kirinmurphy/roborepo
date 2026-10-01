@@ -9,7 +9,7 @@
 // Everything runs against a disposable HOME, so no screenshot shows the machine it was taken on:
 //   - Harnesses: stub `claude` / `codex` binaries on PATH, then `roborepo init`, a typical package
 //     set, and telemetry enabled.
-//   - Tokens: the repo's own mock spool (portal/tokens2/mock-spool.jsonl).
+//   - Tokens: the repo's own mock spool (portal/tokens/mock-spool.jsonl).
 //   - Plans: this repository's docs/plans (public content).
 //   - Runtime: two demo apps in throwaway git repos with example remotes (acme/*). Discovery
 //     scans the real machine's listeners, so the page's snapshot is filtered to the demo apps
@@ -89,7 +89,7 @@ function setUpHome() {
   roborepo("telemetry", "enable");
   const spoolDir = path.join(home, ".roborepo", "telemetry", "spool");
   fs.mkdirSync(spoolDir, { recursive: true });
-  fs.copyFileSync(path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl"), path.join(spoolDir, "claude.jsonl"));
+  fs.copyFileSync(path.join(repoRoot, "portal", "tokens", "mock-spool.jsonl"), path.join(spoolDir, "claude.jsonl"));
 }
 
 // ── Demo apps for Runtime ──
@@ -209,7 +209,7 @@ const SHOTS = [
   { file: "plans.png", page: "/plans", from: "header.portal-header", fromEdge: "bottom", to: "article.plan-card >> nth=0" },
   { file: "agents-config.png", page: "/config", element: "section.panel:has(h2:text-is('Skills - Development Life Cycle'))" },
   { file: "harness-files.png", page: "/config", element: "section.panel.wide >> nth=0" },
-  { file: "tokens.png", page: "/tokens", from: "#tokens2meta", to: "div.finding >> nth=0" },
+  { file: "tokens.png", page: "/tokens", from: "#tokensmeta", to: "div.finding >> nth=0" },
 ];
 const PAD = 20;
 const BOTTOM_PAD = 12;

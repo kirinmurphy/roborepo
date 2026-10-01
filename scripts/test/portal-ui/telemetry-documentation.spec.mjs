@@ -67,7 +67,7 @@ test("Tokens user guide serves its screenshots inside the portal", async ({ page
   }
   await page.goto("/tokens");
   await page.locator('portal-info-icon[data-doc-anchor="testing-efficiency"]').click();
-  const dialog = page.locator("#tokens2docmodal");
+  const dialog = page.locator("#tokensdocmodal");
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("#testing-efficiency")).toBeVisible();
   const image = dialog.locator("img").first();

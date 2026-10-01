@@ -3,7 +3,7 @@ name: builtin-development
 description: >
   INTERNAL to this repo. Use when developing or maintaining roborepo itself: installer/update/
   repair/uninstall plumbing, package/apply/workspace state, symlink and skill-linking machinery,
-  rules/permissions generation, CLI modules, portal/tokens2, tests, and local machine
+  rules/permissions generation, CLI modules, portal/tokens, tests, and local machine
   lifecycle behavior. This is the mechanic's manual for the tool implementation. Triggers:
   "how does this repo work", "roborepo development", "harness config architecture",
   "install scripts", "add an install step", "package mode", "workspace roots", "the symlink
