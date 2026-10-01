@@ -53,46 +53,109 @@ Known limits, so they are not mistaken for bugs:
 - Every comparison is an association. Task mix, model and repository can differ between cohorts.
 - The bundled demo is synthetic and deterministic; it exercises the pipeline, not real usage.
 
-### Gaps in confidence
+### Independent oracle
 
-`telemetry-oracle-check` independently recomputes harness-scoped session and token-session counts,
-operation deduplication, affected-session condition rates, marker-relative cohorts and exclusions,
-thin-evidence gating, per-call regression, and harness-scoped loop detection from the bundled demo
-and deterministic seeded spools. It imports no production analysis helpers and shrinks a failure to
-a replayable JSONL case. It does not independently verify unrelated dashboard totals, insight prose,
-marker persistence, approximate waste attribution, or browser rendering; their focused checks remain
-the source of confidence for those paths.
+The oracle protects against arithmetic errors by computing covered values again from raw events.
+Its five core modules import only Node built-ins and each other. They share no production analysis
+or presentation helpers, fixtures, logging, or filesystem reads.
+
+| Module under `scripts/cli/` | Owns |
+| --- | --- |
+| `telemetry-oracle-observations.mjs` | Raw acceptance, operation deduplication, harness-scoped sessions, and independent repository identity resolution. |
+| `telemetry-oracle-findings.mjs` | Spike, loop, and read-warning detection. |
+| `telemetry-oracle-cohorts.mjs` | Condition rates, marker boundaries and exclusions, and locally encoded evidence policy. |
+| `telemetry-oracle-regression.mjs` | Per-call regression at distinct timestamp boundaries. |
+| `telemetry-oracle-run.mjs` | Independent calculation and evidence coverage inspection. |
+| `telemetry-oracle-compare.mjs` | Black-box production invocation, covered projections, and sanitized comparison output. This boundary alone knows both implementations. |
+
+The CI runner, `scripts/test/telemetry-oracle-check.mjs`, owns the bundled demo, fixed regressions,
+seeded spools, and failure shrinking. It uses the independent core and the same comparison
+projections as the runtime boundary. Synthetic failures retain detailed values and replayable
+JSONL; live comparisons return only aggregate counts, fixed coverage categories, and disagreeing
+field names. Exceptions yield a fixed error category rather than the original message.
 
 ```mermaid
 flowchart LR
-    hooks[Capture hooks] --> raw[Persisted raw events]
-    raw --> production[Production analyzer]
-    raw --> oracle[Independent naive oracle]
-    production --> reported[Reported analytics]
-    oracle --> expected[Oracle analytics]
-    reported --> compare{Exact agreement?}
-    expected --> compare
-    compare -->|Yes| pass[Oracle passes in CI]
-    compare -->|No| replay[Seed and minimized JSONL reproduction]
-    reported --> dashboard[Tokens dashboard]
-    dashboard --> browser[Presentation and browser checks]
+    raw[Raw events and metadata] -->|supply identical evidence| production[Production analyzer]
+    raw -->|supply identical evidence| oracle[Independent oracle core]
+    production -->|return covered values| compare[Comparison boundary]
+    oracle -->|return expected values| compare
+    compare -->|report sanitized agreement and coverage| result[Runtime comparison result]
+    compare -->|expose synthetic projections to CI| runner[CI fixture runner]
+    runner -->|reject disagreement and shrink failures| gate[Build gate and replay evidence]
 ```
 
-The oracle is an analytics integrity check, not a live dashboard health indicator. A pass means the
-production analyzer and the independent implementation computed the same covered values from the
-same raw evidence. The surrounding checks establish the other confidence layers:
+An oracle pass establishes agreement on harness-scoped session and token-session counts, operation
+deduplication, affected-session condition rates, marker cohorts and exclusions, evidence gating,
+per-call regression, and harness-local loops. Unrelated dashboard totals, insight prose, marker
+persistence, approximate waste attribution, and browser rendering retain their focused checks.
+
+`compareTelemetryOracle()` reports one of four comparison statuses:
+
+| Status | Meaning |
+| --- | --- |
+| `passed` | Covered values agree and supplied evidence has no coverage gaps. |
+| `partial` | Covered values agree, but evidence is incomplete or unresolved. |
+| `failed` | Comparable input produces disagreement on covered fields, even if coverage is incomplete. |
+| `unavailable` | Input is empty or unsafe to compare, or a calculation throws. |
+
+The portal does not yet invoke this comparison, retain its result, or expose a health endpoint or
+badge. Scheduling, worker isolation, and freshness validation remain in the
+[live observer plan](../plans/active/telemetry-analytics-oracle-live-observer.md).
+
+### Verification layers
 
 | Layer | Primary check | What a pass establishes |
 | --- | --- | --- |
 | Capture and schema | telemetry capture/schema checks | Persisted events have the supported shape and provider fields. |
-| Analytics arithmetic | `telemetry-oracle-check` | Covered headline numbers agree with an independent raw-event implementation. |
+| Analytics arithmetic | `telemetry-oracle-check` | Covered values agree with an independent raw-event implementation. |
+| Oracle independence | `telemetry-oracle-core-check` | Imports respect the core boundary; calculations preserve inputs and evidence-policy behavior. |
+| Live comparison contract | `telemetry-oracle-live-check` | Unsupported evidence prevents a pass; injected disagreements fail; output excludes raw values and exception text. |
 | Presentation rules | conditions presentation checks | Thin evidence, neutral bands, and correlation-only language are presented honestly. |
 | Browser integration | portal UI suite | The report reaches the Tokens page and its interactions render correctly. |
 
-Run `npm run test:telemetry-oracle` for the detailed local summary. The normal `*-check.mjs` suite
-discovers it automatically, and the `ci` check group runs it on every `npm run check`. A success
-summary lists case and evidence counts plus the covered invariants. A failure prints the seed, the
-production/oracle disagreement, snapshots, markers, and minimized replayable JSONL.
+Run `npm run test:telemetry-oracle` for the deterministic comparison summary. Run
+`node scripts/test/telemetry-oracle-core-check.mjs` and
+`node scripts/test/telemetry-oracle-live-check.mjs` for the runtime boundary checks. All three belong
+to the `ci` check group run by `npm run check`. The synthetic CI summary lists case and evidence
+counts; a failure includes the seed, disagreement, metadata, and minimized replayable JSONL.
+
+### Live evidence support
+
+The independent acceptance rules follow the analyzer's raw acceptance boundary in
+`telemetry-observations.mjs`, repository resolution in `telemetry-repository.mjs` and
+`modules/repositories/associations.mjs`, and snapshot/marker condition semantics in
+`telemetry-conditions.mjs` and `telemetry-boundaries.mjs`. Bare tool attribution was checked against
+`mcpServerOf()` in `scripts/harnesses/transcript-parse.mjs`. These are reference sources, not imports
+of the independent calculation modules.
+
+| Raw evidence form | Independent handling and coverage |
+| --- | --- |
+| Capture schema absent/null, `2`, or `3` | Supported. Exact v3 calls deduplicate by harness/session/call; derived or missing calls use capture/content fallback. |
+| Explicit schema `1`, other versions, non-object rows, unidentified sessions, invalid timestamps, malformed token fields | Explicit unsupported/malformed categories; live comparison is `unavailable`. Such rows never disappear into a pass. |
+| Direct `repo.repository_id` | Supported and takes precedence over legacy hashes. Malformed values are unsupported. |
+| `repo.normalized_remote_hash` with raw registry evidence | Independently hash each registry `normalizedRemote` with SHA-256, truncate to 24 hex characters, and resolve its canonical `id`. Conflicting hash identities make the input unavailable. |
+| Missing repository data, unmatched normalized hash, `remote_hash`, `git_root_hash`, basename/label, or path-only evidence | Unresolved. Neither a label nor a path hash establishes canonical identity; agreeing calculations remain `partial`. |
+| Token data absent/null | Supported absence; session and token-session counts remain distinct. |
+| Missing model, missing referenced snapshot, unknown snapshot evaluability, or conflicting session condition evidence | Counted coverage gaps; agreeing calculations remain `partial`. A session that changes snapshot IDs is conservatively partial. |
+| Snapshot schemas `1` and `2` | Independently evaluate package/skill arrays and v2 evaluability. Unknown schemas, malformed arrays, and duplicate IDs make input unavailable. |
+| Native `Read`, `Grep`, `Glob`, `Bash`, `Edit`, `Write`, `NotebookEdit`, and prefixed `mcp__...` tool names | Supported. Other bare names, including production-recognized bare MCP aliases, are explicitly `unsupported_bare_tool`; independent alias support remains a possible later extension. |
+| Marker schemas `1` and `2` | Supported arithmetic for active change markers watching spike, loop, and read-warning. Unknown scope, missing watched kinds, or unresolved supersede references prevent a pass. |
+| Unsupported watched kinds such as `over-testing`, malformed/unknown markers, or duplicate marker IDs | Input unavailable. Phase, outcome, experiment, and note markers have no covered change projection. |
+| Filtered analysis options or a caller-supplied production hash index | Unsupported. The live boundary accepts an unfiltered snapshot plus raw repository registry evidence. |
+| Reader-skipped or malformed persisted records | The reader supplies nonnegative counts through `skippedEvidence`; any positive count prevents a pass. The planned worker must wire this contract. |
+
+`inspectOracleEvidence()` counts supplied event rows and fixed coverage categories before analysis.
+`compareTelemetryOracle()` compares the same full in-memory event array on both sides when its
+shape is comparable; it does not filter away unsupported rows to manufacture agreement. An unsafe
+shape returns `unavailable` without invoking analysis. Interpretable unknown conditions can still
+be compared, but agreement returns `partial`.
+
+The live comparison returns aggregate counts, coverage categories, and names of disagreeing
+projection fields. CI uses the same core and comparison projections while retaining its synthetic
+values, shrinker, and replay output. The comparison result describes agreement over the supplied input. A current health result also
+requires the versioned schema, signature validation, and worker lifecycle planned in
+[Phase 5](../plans/active/telemetry-analytics-oracle-live-observer.md#phase-5-isolated-live-observer).
 
 ## Configuration Snapshots
 

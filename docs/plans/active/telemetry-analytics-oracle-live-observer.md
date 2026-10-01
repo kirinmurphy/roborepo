@@ -188,39 +188,10 @@ evidence. Neither result should be presented as the other.
 
 ### Live evidence support
 
-The Phase 4 inventory follows the analyzer's raw acceptance boundary in
-`telemetry-observations.mjs`, repository resolution in `telemetry-repository.mjs` and
-`modules/repositories/associations.mjs`, and snapshot/marker condition semantics in
-`telemetry-conditions.mjs` and `telemetry-boundaries.mjs`. Bare tool attribution was checked against
-`mcpServerOf()` in `scripts/harnesses/transcript-parse.mjs`. These are reference sources, not imports
-of the independent calculation modules.
-
-| Raw evidence form | Independent handling and coverage |
-| --- | --- |
-| Capture schema absent/null, `2`, or `3` | Supported. Exact v3 calls deduplicate by harness/session/call; derived or missing calls use capture/content fallback. |
-| Explicit schema `1`, other versions, non-object rows, unidentified sessions, invalid timestamps, malformed token fields | Explicit unsupported/malformed categories; live comparison is `unavailable`. Such rows never disappear into a pass. |
-| Direct `repo.repository_id` | Supported and takes precedence over legacy hashes. Malformed values are unsupported. |
-| `repo.normalized_remote_hash` with raw registry evidence | Independently hash each registry `normalizedRemote` with SHA-256, truncate to 24 hex characters, and resolve its canonical `id`. Conflicting hash identities make the input unavailable. |
-| Missing repository data, unmatched normalized hash, `remote_hash`, `git_root_hash`, basename/label, or path-only evidence | Unresolved. Neither a label nor a path hash establishes canonical identity; agreeing calculations remain `partial`. |
-| Token data absent/null | Supported absence; session and token-session counts remain distinct. |
-| Missing model, missing referenced snapshot, unknown snapshot evaluability, or conflicting session condition evidence | Counted coverage gaps; agreeing calculations remain `partial`. A session that changes snapshot IDs is conservatively partial. |
-| Snapshot schemas `1` and `2` | Independently evaluate package/skill arrays and v2 evaluability. Unknown schemas, malformed arrays, and duplicate IDs make input unavailable. |
-| Native `Read`, `Grep`, `Glob`, `Bash`, `Edit`, `Write`, `NotebookEdit`, and prefixed `mcp__...` tool names | Supported. Other bare names, including production-recognized bare MCP aliases, are explicitly `unsupported_bare_tool`; independent alias support remains a possible later extension. |
-| Marker schemas `1` and `2` | Supported arithmetic for active change markers watching spike, loop, and read-warning. Unknown scope, missing watched kinds, or unresolved supersede references prevent a pass. |
-| Unsupported watched kinds such as `over-testing`, malformed/unknown markers, or duplicate marker IDs | Input unavailable. Phase, outcome, experiment, and note markers have no covered change projection. |
-| Filtered analysis options or a caller-supplied production hash index | Unsupported. The live boundary accepts an unfiltered snapshot plus raw repository registry evidence. |
-| Reader-skipped or malformed persisted records | The reader supplies nonnegative counts through `skippedEvidence`; any positive count prevents a pass. The Phase 5 worker must wire this contract. |
-
-`inspectOracleEvidence()` counts supplied event rows and fixed coverage categories before analysis.
-`compareTelemetryOracle()` compares the same full in-memory event array on both sides when its
-shape is comparable; it does not filter away unsupported rows to manufacture agreement. An unsafe
-shape returns `unavailable` without invoking analysis. Interpretable unknown conditions can still
-be compared, but agreement returns `partial`.
-
-The live comparison returns aggregate counts, coverage categories, and names of disagreeing
-projection fields. CI uses the same core and comparison projections while retaining its synthetic
-values, shrinker, and replay output. The comparison result is not yet a current health result:
-Phase 5 must add the versioned schema, signature validation, and worker lifecycle.
+The implemented acceptance rules, coverage categories, and sanitized comparison results are
+specified in [Telemetry Internals](../../internal/telemetry-internals.md#live-evidence-support).
+Phase 5 must preserve that contract: supply raw repository registry evidence and reader-skipped
+record counts, then enforce signature freshness before exposing a comparison as current health.
 
 ### Live execution sequence
 
@@ -548,6 +519,11 @@ Phase 4 evidence:
   health, CLI/install/package checks, Docker clean-machine scenarios, and 31 browser tests.
   Windows installer parity was skipped because PowerShell was unavailable; two opt-in documentation
   screenshot tests were skipped. `git diff --check` also passes.
+- The documentation capture run, `TELEMETRY_DOC_SCREENSHOTS="$PWD/docs/images/tokens" npm run
+  test:portal-ui`, passes all 33 browser tests, including both opt-in screenshot tests. All ten
+  light/dark captures were visually reviewed and match the tracked assets byte for byte. They show
+  the current conditions UI; the oracle badge remains future work. The internal reference now
+  documents the extracted modules, coverage rules, and comparison statuses.
 - The schema guard still requires all production consumers to share `privacyHash`. Its one explicit
   exception is the independent oracle observation module, covered by import-boundary tests and a
   regression that breaks production repository resolution while leaving the oracle's expectation
