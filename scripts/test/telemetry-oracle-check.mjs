@@ -341,6 +341,7 @@ function verify(events, options = {}) {
   equal("change boundaries", report.conditions.changes.map(changeProjection).sort((a, b) => a.marker_id.localeCompare(b.marker_id)), expected.changes);
   equal("per-call regression", { split_ts: report.regression.split_ts,
     groups: report.regression.groups.map((row) => ({ ...row })).sort((a, b) => a.group.localeCompare(b.group)) }, expected.regression);
+  return expected;
 }
 
 function marker(id, boundary) {
@@ -429,7 +430,12 @@ function shrink(testCase) {
 }
 
 function runCase(name, testCase) {
-  try { verify(testCase.events, testCase); }
+  try {
+    const result = verify(testCase.events, testCase);
+    return { name, events: testCase.events.length, condition_rows: result.conditions.length,
+      marker_comparisons: result.changes.reduce((count, change) => count + change.comparisons.length, 0),
+      regression_groups: result.regression.groups.length };
+  }
   catch (error) {
     const minimal = shrink(testCase);
     console.error(`telemetry oracle failure: ${name}`);
@@ -451,16 +457,16 @@ const demo = conditionDemoEvidence(records);
 const demoCase = { ...demo, markers: [marker("demo-boundary", "2026-06-12T00:00:00.000Z")] };
 const demoStates = new Set(oracle(demoCase.events, demoCase).conditions.map((row) => row.presentation_state));
 requireCoverage(["thin", "fewer", "more"].every((state) => demoStates.has(state)), "demo thin/fewer/more condition outcomes");
-runCase("bundled demo", demoCase);
+const summaries = [runCase("bundled demo", demoCase)];
 
 const tiedRegression = regressionTieCase();
-runCase("regression pin: equal timestamps stay together", tiedRegression);
+summaries.push(runCase("regression pin: equal timestamps stay together", tiedRegression));
 const tiedResult = oracle(tiedRegression.events, tiedRegression).regression;
 requireCoverage(tiedResult.split_ts === "2026-09-16T04:00:00.000Z"
   && tiedResult.groups.reduce((count, row) => count + row.before_calls, 0) === 3,
 "equal-timestamp midpoint uses the nearest distinct boundary");
 const noTemporalOrder = regressionTieCase({ allSameTime: true });
-runCase("regression pin: all timestamps equal is unavailable", noTemporalOrder);
+summaries.push(runCase("regression pin: all timestamps equal is unavailable", noTemporalOrder));
 requireCoverage(oracle(noTemporalOrder.events, noTemporalOrder).regression.split_ts == null,
   "all-equal timestamps make regression unavailable");
 
@@ -481,7 +487,13 @@ for (const seed of seeds) {
   requireCoverage(expected.conditions.some((row) => row.presentation_state === "neutral") && expected.conditions.some((row) => row.presentation_state === "thin"), `seed ${seed} 20% band and evidence-floor gating`);
   requireCoverage(expected.changes.some((change) => change.comparisons.some((row) => row.spanning_boundary > 0 && row.ambiguous_boundary > 0)), `seed ${seed} spanning and touching boundary exclusions`);
   requireCoverage(expected.regression.groups.length > 0, `seed ${seed} per-call regression`);
-  runCase(`seed ${seed}`, testCase);
+  summaries.push(runCase(`seed ${seed}`, testCase));
 }
 
-console.log(`telemetry oracle: bundled demo and ${seeds.length} seeded spools matched independent session, operation, condition, boundary, gating, regression and loop calculations`);
+const total = (field) => summaries.reduce((sum, row) => sum + row[field], 0);
+console.log("telemetry oracle: PASS");
+console.log(`  cases: ${summaries.length} (1 bundled demo, 2 fixed regressions, ${seeds.length} seeded spools)`);
+console.log(`  evidence: ${total("events")} raw events · ${total("condition_rows")} condition rows · ${total("marker_comparisons")} marker comparisons · ${total("regression_groups")} regression groups`);
+console.log(`  seeds: ${seeds.join(", ")}`);
+console.log("  exact checks: harness-scoped sessions, token coverage, operation deduplication, condition cohorts, boundary exclusions, evidence gating, per-call regression, loop isolation");
+console.log("  failure evidence: seed, production/oracle disagreement, snapshots, markers, and minimized replayable JSONL");

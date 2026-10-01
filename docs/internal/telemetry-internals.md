@@ -63,6 +63,37 @@ a replayable JSONL case. It does not independently verify unrelated dashboard to
 marker persistence, approximate waste attribution, or browser rendering; their focused checks remain
 the source of confidence for those paths.
 
+```mermaid
+flowchart LR
+    hooks[Capture hooks] --> raw[Persisted raw events]
+    raw --> production[Production analyzer]
+    raw --> oracle[Independent naive oracle]
+    production --> reported[Reported analytics]
+    oracle --> expected[Oracle analytics]
+    reported --> compare{Exact agreement?}
+    expected --> compare
+    compare -->|Yes| pass[Oracle passes in CI]
+    compare -->|No| replay[Seed and minimized JSONL reproduction]
+    reported --> dashboard[Tokens dashboard]
+    dashboard --> browser[Presentation and browser checks]
+```
+
+The oracle is an analytics integrity check, not a live dashboard health indicator. A pass means the
+production analyzer and the independent implementation computed the same covered values from the
+same raw evidence. The surrounding checks establish the other confidence layers:
+
+| Layer | Primary check | What a pass establishes |
+| --- | --- | --- |
+| Capture and schema | telemetry capture/schema checks | Persisted events have the supported shape and provider fields. |
+| Analytics arithmetic | `telemetry-oracle-check` | Covered headline numbers agree with an independent raw-event implementation. |
+| Presentation rules | conditions presentation checks | Thin evidence, neutral bands, and correlation-only language are presented honestly. |
+| Browser integration | portal UI suite | The report reaches the Tokens page and its interactions render correctly. |
+
+Run `npm run test:telemetry-oracle` for the detailed local summary. The normal `*-check.mjs` suite
+discovers it automatically, and the `ci` check group runs it on every `npm run check`. A success
+summary lists case and evidence counts plus the covered invariants. A failure prints the seed, the
+production/oracle disagreement, snapshots, markers, and minimized replayable JSONL.
+
 ## Configuration Snapshots
 
 The snapshot builder is dynamic-imported only on `SessionStart`, to keep the hot capture path's
