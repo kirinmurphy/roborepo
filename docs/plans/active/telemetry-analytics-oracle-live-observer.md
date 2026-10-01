@@ -1,7 +1,7 @@
 ---
 id: koww80zh
 priority: high
-next_action: Extract the independent oracle calculation from scripts/test/telemetry-oracle-check.mjs into production-safe modules without importing production analysis helpers, while keeping the test runner as a black-box comparator
+next_action: Begin Phase 5 with the versioned health-result schema and pure status transitions, then wire the isolated worker to compareTelemetryOracle with one raw evidence snapshot and explicit skipped-evidence counts
 blocked_by: []
 depends_on: []
 related:
@@ -9,7 +9,7 @@ related:
   - telemetry-analysis-io-performance
   - telemetry-analyze-single-pass-perf
   - nl40n9vr
-reviewed_commit:
+reviewed_commit: 53961b3abb39634660646f2c31696c63a9db70de
 ---
 
 # Live confidence for telemetry analytics
@@ -31,8 +31,8 @@ supported input snapshot; it does not claim that capture is complete, that every
 is independently verified, or that any observed condition caused an outcome.
 
 This plan includes the work already completed for the oracle and marks it complete. Remaining work
-starts at the extraction of a reusable independent oracle core and ends when the live status,
-documentation, privacy boundaries, CI visibility, and browser behavior are verified.
+starts at the isolated live observer and ends when the live status, documentation, privacy
+boundaries, CI visibility, and browser behavior are verified.
 
 ## Context
 
@@ -42,10 +42,11 @@ expectation and the implementation. The oracle closes that gap by starting again
 using deliberately direct calculations, and comparing its covered results with
 `scripts/cli/telemetry-analyze.mjs`.
 
-The current oracle is `scripts/test/telemetry-oracle-check.mjs`. It runs one bundled demo, two fixed
-regression cases, and six deterministic seeded spools. It has no runtime endpoint or persisted
-status. The Tokens page polls `/api/data` every five seconds, while the server keeps the production
-report warm with an incremental spool reader and a debounced background recomputation. Running the
+The independent entry point is `scripts/cli/telemetry-oracle-run.mjs`. The CI comparator in
+`scripts/test/telemetry-oracle-check.mjs` runs one bundled demo, two fixed regression cases, and six
+deterministic seeded spools through that core. It has no runtime endpoint or persisted status. The
+Tokens page polls `/api/data` every five seconds, while the server keeps the production report warm
+with an incremental spool reader and a debounced background recomputation. Running the
 naive oracle synchronously on that request path would block the portal, so the live observer must
 run outside the server's main event loop and publish only a cached result.
 
@@ -115,13 +116,14 @@ The oracle now recomputes these values without importing production analysis hel
 
 ### Current limitations
 
-- The checker is test-owned and cannot be imported safely by the running portal without also
-  executing its fixtures.
+- The extracted core and privacy-safe live comparison boundary are implemented. The isolated
+  worker, freshness rules, scheduler, endpoint, and badge remain unimplemented.
 - The CI result exits nonzero on disagreement and therefore breaks the build, but a successful
   summary is still nested inside the full CI log.
 - The live portal does not run the oracle, retain its latest result, or expose a health endpoint.
-- Real spools can include legacy or partially resolvable repository evidence. The live observer
-  needs an explicit support/coverage result before it can label those inputs `Passed`.
+- Coverage accounting distinguishes supported evidence, unresolved conditions, and unsafe shapes.
+  The worker must supply raw registry evidence and counts of records skipped by the reader; the
+  observer must still enforce freshness before exposing a comparison as current.
 - The current failure shrinker is appropriate for small deterministic cases. Applying its repeated
   full analysis to a large personal spool would be expensive and could produce sensitive output,
   so it must remain test-only.
@@ -149,16 +151,16 @@ must not assume constant-time behavior.
 ```mermaid
 flowchart TD
     fixtures[Bundled demo, fixed regressions, seeded spools] -->|feed| ci[CI oracle comparison]
-    ci -->|nonzero exit on disagreement| gate[Build gate]
+    ci -->|exit nonzero on disagreement| gate[Build gate]
     ci -->|write concise result| summary[CI job summary]
 
     inputs[Current spool, markers, snapshots, repository evidence] -->|take one input snapshot| worker[Isolated live observer]
     worker -->|run| production[Production analyzer]
     worker -->|run independently| oracle[Naive oracle]
-    production -->|covered projection| compare{Exact agreement?}
-    oracle -->|covered projection| compare
+    production -->|return covered projection| compare{Exact agreement?}
+    oracle -->|return covered projection| compare
     compare -->|cache status and metadata| health[Oracle health endpoint]
-    health -->|poll small JSON| badge[Tokens page badge and detail dialog]
+    health -->|return cached JSON| badge[Tokens page badge and detail dialog]
 ```
 
 CI and live results answer different questions. CI protects committed behavior against a broad,
@@ -184,17 +186,55 @@ evidence. Neither result should be presented as the other.
 | `portal/tokens/index.html` | Own the badge and dialog markup as real HTML/template structure. JavaScript fills existing slots instead of assembling a nested dialog tree at runtime. |
 | `portal/tokens/styles.css` | Subtle status badge, accessible color treatment, and dialog layout. |
 
+### Live evidence support
+
+The Phase 4 inventory follows the analyzer's raw acceptance boundary in
+`telemetry-observations.mjs`, repository resolution in `telemetry-repository.mjs` and
+`modules/repositories/associations.mjs`, and snapshot/marker condition semantics in
+`telemetry-conditions.mjs` and `telemetry-boundaries.mjs`. Bare tool attribution was checked against
+`mcpServerOf()` in `scripts/harnesses/transcript-parse.mjs`. These are reference sources, not imports
+of the independent calculation modules.
+
+| Raw evidence form | Independent handling and coverage |
+| --- | --- |
+| Capture schema absent/null, `2`, or `3` | Supported. Exact v3 calls deduplicate by harness/session/call; derived or missing calls use capture/content fallback. |
+| Explicit schema `1`, other versions, non-object rows, unidentified sessions, invalid timestamps, malformed token fields | Explicit unsupported/malformed categories; live comparison is `unavailable`. Such rows never disappear into a pass. |
+| Direct `repo.repository_id` | Supported and takes precedence over legacy hashes. Malformed values are unsupported. |
+| `repo.normalized_remote_hash` with raw registry evidence | Independently hash each registry `normalizedRemote` with SHA-256, truncate to 24 hex characters, and resolve its canonical `id`. Conflicting hash identities make the input unavailable. |
+| Missing repository data, unmatched normalized hash, `remote_hash`, `git_root_hash`, basename/label, or path-only evidence | Unresolved. Neither a label nor a path hash establishes canonical identity; agreeing calculations remain `partial`. |
+| Token data absent/null | Supported absence; session and token-session counts remain distinct. |
+| Missing model, missing referenced snapshot, unknown snapshot evaluability, or conflicting session condition evidence | Counted coverage gaps; agreeing calculations remain `partial`. A session that changes snapshot IDs is conservatively partial. |
+| Snapshot schemas `1` and `2` | Independently evaluate package/skill arrays and v2 evaluability. Unknown schemas, malformed arrays, and duplicate IDs make input unavailable. |
+| Native `Read`, `Grep`, `Glob`, `Bash`, `Edit`, `Write`, `NotebookEdit`, and prefixed `mcp__...` tool names | Supported. Other bare names, including production-recognized bare MCP aliases, are explicitly `unsupported_bare_tool`; independent alias support remains a possible later extension. |
+| Marker schemas `1` and `2` | Supported arithmetic for active change markers watching spike, loop, and read-warning. Unknown scope, missing watched kinds, or unresolved supersede references prevent a pass. |
+| Unsupported watched kinds such as `over-testing`, malformed/unknown markers, or duplicate marker IDs | Input unavailable. Phase, outcome, experiment, and note markers have no covered change projection. |
+| Filtered analysis options or a caller-supplied production hash index | Unsupported. The live boundary accepts an unfiltered snapshot plus raw repository registry evidence. |
+| Reader-skipped or malformed persisted records | The reader supplies nonnegative counts through `skippedEvidence`; any positive count prevents a pass. The Phase 5 worker must wire this contract. |
+
+`inspectOracleEvidence()` counts supplied event rows and fixed coverage categories before analysis.
+`compareTelemetryOracle()` compares the same full in-memory event array on both sides when its
+shape is comparable; it does not filter away unsupported rows to manufacture agreement. An unsafe
+shape returns `unavailable` without invoking analysis. Interpretable unknown conditions can still
+be compared, but agreement returns `partial`.
+
+The live comparison returns aggregate counts, coverage categories, and names of disagreeing
+projection fields. CI uses the same core and comparison projections while retaining its synthetic
+values, shrinker, and replay output. The comparison result is not yet a current health result:
+Phase 5 must add the versioned schema, signature validation, and worker lifecycle.
+
 ### Live execution sequence
 
 ```mermaid
 sequenceDiagram
     participant Capture as Telemetry capture
+    participant Spool as Persisted spool
     participant Server as Portal server
     participant Observer as Oracle observer
     participant Worker as Isolated worker
     participant Page as Tokens page
 
-    Capture->>Server: Append raw event
+    Capture->>Spool: Append raw event
+    Server->>Spool: Read evidence signature
     Server->>Observer: Observe changed evidence signature
     Observer->>Observer: Debounce until quiet or maximum wait
     Observer->>Worker: Start one comparison
@@ -356,25 +396,26 @@ a computation itself. The existing report stays usable when the health endpoint 
 - [x] Measure the current and synthetic-spool performance summarized in this plan to establish that
       synchronous request-path execution is unacceptable and isolated execution is feasible.
 
-### Phase 4: Reusable independent core and live support accounting
+### Phase 4: Reusable independent core and live support accounting — completed
 
-- [ ] Extract independent calculations and covered-result projection from the test runner into the
+- [x] Extract independent calculations and covered-result projection from the test runner into the
       observation, finding, cohort, regression, and run modules named in the ownership table. Keep
       fixtures, random generation, shrinking, and console formatting in
       `scripts/test/telemetry-oracle-check.mjs`.
-- [ ] Preserve the rule that oracle calculation modules import no production observation,
+- [x] Preserve the rule that oracle calculation modules import no production observation,
       condition, boundary, finding, metric, or analysis helpers; add an import-boundary assertion
       so future refactors cannot silently erase that independence.
-- [ ] Remove the checker's imports of production condition presentation formatters. Recompute any
+- [x] Remove the checker's imports of production condition presentation formatters. Recompute any
       oracle-owned display-band state from the written policy, and leave production presentation
       behavior to its existing focused presentation checks.
-- [ ] Make both CI and live callers use the extracted oracle core, and prove the deterministic
-      suite's expected results and rich output remain unchanged.
-- [ ] Inventory every raw schema and repository identity form accepted by the current production
+- [x] Make both CI and live callers use the extracted oracle core, and prove the deterministic
+      suite's expected results and rich output remain unchanged. CI and the reusable live comparison
+      boundary use the core and shared projections; the worker is Phase 5 work.
+- [x] Inventory every raw schema and repository identity form accepted by the current production
       analyzer. Add independent handling or an explicit unsupported category for each form.
-- [ ] Add coverage accounting that prevents `passed` when required live evidence was skipped,
+- [x] Add coverage accounting that prevents `passed` when required live evidence was skipped,
       unresolved, malformed, or dependent on an unsupported shape.
-- [ ] Keep live comparison output separate from the CI shrinker and synthetic replay output.
+- [x] Keep live comparison output separate from the CI shrinker and synthetic replay output.
 
 ### Phase 5: Isolated live observer
 
@@ -432,6 +473,8 @@ a computation itself. The existing report stays usable when the health endpoint 
 
 ```bash
 npm run test:telemetry-oracle
+node scripts/test/telemetry-oracle-core-check.mjs
+node scripts/test/telemetry-oracle-live-check.mjs
 node scripts/test/telemetry-oracle-observer-check.mjs
 node scripts/test/run-checks.mjs --filter telemetry
 ```
@@ -443,6 +486,8 @@ Expected results:
 - the import-boundary assertion rejects production analysis-helper imports from oracle modules;
 - observer state tests prove stale results cannot become green and obsolete signatures coalesce;
 - unsupported live rows produce `partial` or `unavailable`, never `passed`.
+
+The observer and route checks become runnable when Phases 5 and 6 add their files.
 
 ### API and browser checks
 
@@ -481,6 +526,32 @@ git diff --check
 Because this plan changes CI orchestration, shared server behavior, and browser UI, the full local
 parity gate is required before handoff. Report any command that cannot run rather than substituting
 a narrower check and claiming completion.
+
+## Verification
+
+Phase 4 evidence:
+
+- `npm run test:telemetry-oracle` passes all nine existing cases: 879 raw events, 204 condition
+  rows, 21 marker comparisons, and 32 regression groups. A before/after comparison of every
+  oracle result and the complete console output found no changes.
+- `node scripts/test/telemetry-oracle-core-check.mjs` passes import-boundary rejection fixtures,
+  silent runtime import, harness identity, mirror deduplication, token coverage, input preservation,
+  order independence, and evidence-policy checks without production presentation helpers. It is
+  registered in the CI check group.
+- `node scripts/test/run-checks.mjs --filter telemetry` passes all 27 suites outside the sandbox.
+  Localhost binding was blocked in the sandbox; the retry permitted the cache-server check to run.
+- `node scripts/test/telemetry-oracle-live-check.mjs` passes legacy repository resolution, raw
+  schema coverage, incomplete/unsupported evidence, malformed metadata, skipped-evidence accounting,
+  and privacy checks. Injected disagreements in every projected field group yield sanitized
+  `failed` results; thrown exception messages never reach live output.
+- `npm run check` passes for the final Phase 4 code outside the sandbox, including repository
+  health, CLI/install/package checks, Docker clean-machine scenarios, and 31 browser tests.
+  Windows installer parity was skipped because PowerShell was unavailable; two opt-in documentation
+  screenshot tests were skipped. `git diff --check` also passes.
+- The schema guard still requires all production consumers to share `privacyHash`. Its one explicit
+  exception is the independent oracle observation module, covered by import-boundary tests and a
+  regression that breaks production repository resolution while leaving the oracle's expectation
+  intact. The worker and current-signature validation remain Phase 5 work.
 
 ## Success criteria
 

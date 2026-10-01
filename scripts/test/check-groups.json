@@ -9,6 +9,8 @@
     "plan-promote-plan-start-check.mjs",
     "core-hook-wiring-check.mjs",
     "permission-rule-home-path-check.mjs",
-    "telemetry-oracle-check.mjs"
+    "telemetry-oracle-check.mjs",
+    "telemetry-oracle-core-check.mjs",
+    "telemetry-oracle-live-check.mjs"
   ]
 }

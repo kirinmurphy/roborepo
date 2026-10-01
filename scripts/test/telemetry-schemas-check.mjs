@@ -205,6 +205,10 @@ function testPrivacyHashHasOneImplementation() {
     if (!fs.existsSync(full)) continue;
     for (const entry of fs.readdirSync(full)) {
       if (!entry.endsWith(".mjs") || entry === "hash.mjs") continue;
+      // The oracle must independently reconstruct raw repository identity; sharing privacyHash
+      // would conceal a production hashing regression. Its import boundary and live comparison
+      // checks enforce that exception. Every production consumer still uses the shared helper.
+      if (dir === "scripts/cli" && entry === "telemetry-oracle-observations.mjs") continue;
       const file = path.join(full, entry);
       if (!fs.statSync(file).isFile()) continue;
       searched.push(path.join(dir, entry));
