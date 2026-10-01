@@ -8,6 +8,7 @@ depends_on:
 related:
   - jqi1dof
   - h4tqm2wz
+  - nl40n9vr
 reviewed_commit: 643f198bdc1091863bd27dbed8ffe748cf4e3b3f
 ---
 
@@ -315,7 +316,7 @@ Repository scope is shared infrastructure, but each page explicitly declares whe
 | Page | All repositories | Selected repository | Story behavior |
 | --- | --- | --- | --- |
 | Plans | Plans across visible known repositories | Plans for canonical `repositoryId` | Replace local repo filter |
-| Tokens | All eligible telemetry | Telemetry for canonical `repositoryId` | Replace local repo selector; preserve legacy metadata handling |
+| Tokens | All eligible telemetry | Telemetry for canonical `repositoryId` | Add the shared repository control, which the page does not have today; `/api/data` already scopes by `repository` |
 | Agents | Global agent configuration | Placeholder for repository config | Show "Repository-level agent config coming soon" and link to global config |
 | Runtime | Operational repository/developer-runtime list | Not supported | No selector/filter; scoped navigation drops `repository` |
 | `/` | Existing Agents compatibility route | Not a scoped Home yet | Follow-up story claims `/` |
@@ -363,7 +364,7 @@ After migration:
 
 ### Tokens
 
-Tokens currently uses `repo` as part of its telemetry cohort/session view state. Introduce the shared `repository=<urlKey>` parameter without mechanically renaming historical fields.
+The Tokens page has no repository control today: the legacy dashboard that owned a `repo` cohort filter and its URL state was removed. The server side is ahead of the UI: `/api/data` already accepts a canonical `repository` id alongside the legacy `repo` label, composes them in the cohort filter, and includes both in the analysis cache key. This plan adds the shared `repository=<urlKey>` control to the page; [[nl40n9vr]] adds the time, harness, and model controls beside it. Introduce the parameter without mechanically renaming historical fields.
 
 Required separation:
 

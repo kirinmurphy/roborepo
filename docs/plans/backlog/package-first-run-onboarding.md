@@ -439,7 +439,7 @@ Keep the orchestration module short; move draft parsing/validation, package-stat
 ### Tests/docs
 
 - `scripts/test/cli-surface-integration-check.mjs`
-- `scripts/test/telemetry-portal-state-check.mjs` where shared route/state behavior overlaps
+- `scripts/test/tokens-page-state-check.mjs` where shared route/state behavior overlaps
 - new focused onboarding service and portal tests
 - `README.md`
 - `docs/user/guides/first-time-setup.md`

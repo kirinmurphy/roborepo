@@ -49,7 +49,7 @@ Known limits, so they are not mistaken for bugs:
   and testing each nominate turns with a token amount, and the largest nomination wins, so category
   totals add up to the headline. The families still use different measurement bases (hook deltas vs.
   characters/4 for reads), and over-testing counts only full-suite reruns with no edit since the previous test run.
-- Token tables skip captures with no token data; the observed-session count includes them.
+- Token tables skip captures with no token data; the session count includes them.
 - Every comparison is an association. Task mix, model and repository can differ between cohorts.
 - The bundled demo is synthetic and deterministic; it exercises the pipeline, not real usage.
 

@@ -8,6 +8,7 @@ depends_on:
 related:
   - canonical-repository-identity-plan-v2
   - h4tqm2wz
+  - nl40n9vr
 reviewed_commit: 643f198bdc1091863bd27dbed8ffe748cf4e3b3f
 ---
 
@@ -279,7 +280,7 @@ Preserve the four useful categories from the older homepage design:
 
 | Category | Required behavior |
 | --- | --- |
-| Token usage | Count recent sessions whose cumulative total exceeds the shared concern threshold |
+| Token usage | Count recent sessions whose cumulative total exceeds the shared concern threshold. The Tokens report also returns `waste` totals (each turn counted once); a repository-scoped waste share is a candidate signal once shared scope lands |
 | Telemetry | Surface existing actionable anomaly/loop/spike findings |
 | Agent config | Reuse context-cost/resource warnings |
 | Health | Surface structured doctor findings and freshness |
