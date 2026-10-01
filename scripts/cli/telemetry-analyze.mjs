@@ -582,7 +582,13 @@ function packageCost(captures) {
 function regression(captures) {
   const rows = resultCaptures(captures).slice().sort((a, b) => a.ts.localeCompare(b.ts));
   if (rows.length < 4) return { split_ts: null, groups: [] };
-  const mid = Math.floor(rows.length / 2);
+  // Choose the closest real time boundary to the row midpoint. Splitting equal timestamps by an
+  // incidental input/flow order would put simultaneous calls on both sides and change the result
+  // when the same spool is reordered. With no distinct timestamps there is no earlier/later claim.
+  const target = rows.length / 2;
+  const boundaries = rows.flatMap((row, index) => index > 0 && rows[index - 1].ts !== row.ts ? [index] : []);
+  if (!boundaries.length) return { split_ts: null, groups: [] };
+  const mid = boundaries.reduce((best, index) => Math.abs(index - target) < Math.abs(best - target) ? index : best);
   const splitTs = rows[mid].ts;
   const avgByGroup = (slice) => {
     const m = new Map();

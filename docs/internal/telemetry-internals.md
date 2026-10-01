@@ -35,6 +35,7 @@ that fails if it breaks. When adding analytics, add the rule's check first.
 | Partial token coverage stays visible | `relative_models.coverage_state`; page meta "observed vs with token data" | `telemetry-conditions-check` |
 | Mirrored rows never double-count | `canonicalFlowRows` | `telemetry-conditions-check` (duplicate flows) |
 | One session id under two harnesses stays two sessions; loops never cross harnesses | `sessionKeyOf` in `telemetry-analyze.mjs` | `telemetry-conditions-check` (collision, alternating-harness loop) |
+| Midpoint per-call regression never divides equal timestamps; without a distinct time boundary it is unavailable | `regression` in `telemetry-analyze.mjs` | `telemetry-oracle-check` (fixed tie regressions) |
 | Boundary sessions are excluded, not assigned; one rule for every marker | `splitObservationBoundary`, which `splitCohortsByMarker` delegates to | `telemetry-boundaries-check`, `telemetry-audit-tier1-check` (equivalence) |
 | An unknown-scope marker is "can't compare fairly", not "too little data" | `compareObservationBoundary`, `compareAcrossMarker` | `telemetry-audit-tier1-check` |
 | Ledger ties break on persisted order | ledger sort in `telemetry-conditions.mjs`, `ambientChanges` | `telemetry-audit-tier1-check` |
@@ -53,10 +54,13 @@ Known limits, so they are not mistaken for bugs:
 
 ### Gaps in confidence
 
-Every check above asserts behavior on hand-built fixtures. None recomputes a headline number
-independently from the raw spool, so a bug that is wrong the same way in the fixture and the code
-would pass. Closing that gap means an oracle test: recompute session counts, affected-session
-rates and before/after cohorts naively from raw events and require the report to match.
+`telemetry-oracle-check` independently recomputes harness-scoped session and token-session counts,
+operation deduplication, affected-session condition rates, marker-relative cohorts and exclusions,
+thin-evidence gating, per-call regression, and harness-scoped loop detection from the bundled demo
+and deterministic seeded spools. It imports no production analysis helpers and shrinks a failure to
+a replayable JSONL case. It does not independently verify unrelated dashboard totals, insight prose,
+marker persistence, approximate waste attribution, or browser rendering; their focused checks remain
+the source of confidence for those paths.
 
 ## Configuration Snapshots
 
