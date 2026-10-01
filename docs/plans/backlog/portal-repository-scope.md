@@ -41,7 +41,7 @@ Shared canonical repository filtering ← this story (pljvmyh), ships second
 
 [[jqi1dof]] ships first and works with zero setup, consuming the repositories RoboRepo already knows and introducing the stable browser `urlKey`. This story ships second and is **additive to Home**: when a user adds a source and new repositories are discovered, they appear on Home automatically because Home already reads the canonical registry. Home needs no source-management data model or discovery of its own, and no Home redesign.
 
-`urlKey` is **established by [[jqi1dof]]**, not invented here. The detail route `/repositories/<urlKey>` requires it, so [[jqi1dof]] allocates, backfills, and persists it first. This story *consumes* `urlKey` for `?repository=<urlKey>` scope and extends its tests/guarantees where scope needs more; it does not create a second slug/key concept. The seam points one way — [[jqi1dof]] produces `urlKey`, this story consumes it — so the two stories do not form a cycle.
+`urlKey` is **established by [[jqi1dof]]**, not invented here. The detail route `/repositories/<urlKey>` requires it, so [[jqi1dof]] resets the legacy registry, then allocates and persists keys on v2 records. This story *consumes* `urlKey` for `?repository=<urlKey>` scope and extends its tests/guarantees where scope needs more; it does not create a second slug/key concept. The seam points one way — [[jqi1dof]] produces `urlKey`, this story consumes it — so the two stories do not form a cycle.
 
 ## Goals
 
