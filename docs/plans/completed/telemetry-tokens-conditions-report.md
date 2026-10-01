@@ -1,7 +1,7 @@
 ---
 id: k8mngttv
 priority: high
-next_action: Open the pull request for codex/telemetry-tokens-conditions-report, review it, and merge to main; then complete this plan so f0j4j8y2 can start
+next_action:
 blocked_by: []
 depends_on: []
 related:
@@ -707,7 +707,7 @@ per-operation attribution.
 
 ## Execution record — 2026-09-30
 
-Delivered on `codex/telemetry-tokens-conditions-report`, committed and not yet merged to `main`.
+Delivered on `codex/telemetry-tokens-conditions-report` and integrated with that branch's merge to `main`.
 
 - Tokens page: a shared intro banner for setup prompts; the harness notice appears only once
   telemetry is on; the header leads with the period; condition cards use one row per condition,
@@ -727,3 +727,18 @@ Verification on commit `d4c1fae`:
 - `bash scripts/doctor.sh --quiet`: 101 checks passed.
 - `node scripts/test/telemetry-waste-check.mjs`: passed.
 - `npm run check` was not run, so Docker clean-machine coverage is not claimed.
+
+## Verification
+
+Run on the branch after merging `origin/main` (merge base advanced by the Runtime layout work, #20):
+
+- `npm run check` (full CI parity gate, Docker available, `CLEAN_MACHINE_STRICT=1`): passed. This
+  includes the unit suites (`roborepo tests: 420 passed, 0 failed`), the portal browser suite
+  (31 passed, 2 skipped opt-in screenshot cases), the clean-machine container checks, and the
+  install-sandbox checks.
+- `bash scripts/doctor.sh --quiet`: 101 checks passed.
+- `node scripts/test/telemetry-waste-check.mjs`: passed (per-turn waste ledger).
+- Plan validation of this plan and every plan it links: dependencies and related ids resolve.
+
+Not verified: the per-operation token attribution and exact file-revision tracking this plan
+excludes (`f0j4j8y2` owns revisions), and any causal reading of an association.

@@ -128,7 +128,9 @@ class PortalCopyMenu extends HTMLElement {
   #syncFlash() {
     const trigger = this.querySelector(".copy-menu-trigger");
     if (trigger) {
-      trigger.classList.toggle("copied", this._flashing);
+      // Boolean(): before the first copy _flashing is undefined, and classList.toggle treats an
+      // undefined force argument as "flip" — which turned every idle trigger green on first render.
+      trigger.classList.toggle("copied", Boolean(this._flashing));
       trigger.setAttribute("aria-label", this._flashing ? "Copied" : "Copy");
       const icon = trigger.querySelector('[data-slot="icon"]');
       if (icon) icon.setAttribute("name", this._flashing ? "check" : "copy");

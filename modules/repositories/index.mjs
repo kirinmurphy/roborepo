@@ -12,6 +12,7 @@ export {
   realpathOf,
   rootId,
   resolveGitDir,
+  mainCheckoutPath,
   providerUrlForRepositoryId,
 } from "./identity.mjs";
 
