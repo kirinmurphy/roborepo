@@ -85,28 +85,6 @@ unavailable; a zero baseline does not produce an infinite percentage. The cards 
 Conditions overlap: a session may belong to a model, repository, and several package or skill
 comparisons. Do not add the cards together as if each represented different sessions.
 
-## Read relative model token metrics
-
-The compact **Model token usage per session** panel appears under **Investigate** when models
-have enough eligible sessions.
-Use it to choose sessions to inspect. Different task mixes mean it cannot establish which model
-is more efficient. Missing usage is highlighted as partial or unavailable.
-
-![Model metrics showing average tokens per session, the input/output ratio, partial token coverage, and approximate model attribution.](../../images/tokens/model-metrics-light.png)
-
-The example shows **9 valid / 12 eligible sessions** for Model A. Its average uses those nine
-valid observations; it does not assume the other three used zero tokens. Coverage is:
-
-| State | Meaning |
-| --- | --- |
-| **Available** | Every eligible observation has valid token data. |
-| **Partial** | Some eligible observations lack valid token data. |
-| **Unavailable** | There is no valid token data for the metric. |
-
-These are cumulative **session** counters, not tokens per tool call. Model attribution is
-approximate when telemetry only records an observed model without proving which model produced
-each operation. A model needs at least three eligible sessions to appear in this panel.
-
 ## Use the event ledger
 
 The **What happened, in order** ledger lists observed problems and changes newest first, with event icons, readable
@@ -173,7 +151,6 @@ monitoring an improvement or inspecting a possible regression.
 | No clear difference | No comparison crosses the display band with sufficient evidence. Focus on stronger signals. |
 | Comparison group missing | Collect sessions with and without that condition; unresolved context stays excluded. |
 | Partial or unavailable token coverage | Read valid/eligible counts before interpreting averages. Missing usage is not zero usage. |
-| Model missing from the metrics panel | It may have fewer than three eligible sessions or unresolved model attribution. |
 | Change still collecting | Continue collecting comparable sessions before and after the effective boundary. |
 
 For structured condition evidence in the terminal:

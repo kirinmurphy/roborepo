@@ -4,6 +4,7 @@
 // Usage:
 //   node scripts/dev/docs-screenshots.mjs            # write PNGs to docs/images/
 //   node scripts/dev/docs-screenshots.mjs --survey   # list each page's sections, write nothing
+//   node scripts/dev/docs-screenshots.mjs --pages /tokens   # only these pages (comma-separated); skips the CLI menu shot
 //   node scripts/dev/docs-screenshots.mjs --out <dir>
 //
 // Everything runs against a disposable HOME, so no screenshot shows the machine it was taken on:
@@ -306,18 +307,20 @@ if (survey) {
   console.log("\n== CLI menu\n" + captureMenu().join("\n").replace(/\x1b\[[0-9;]*m/g, ""));
 } else {
   fs.mkdirSync(outDir, { recursive: true });
-  for (const shot of SHOTS) {
+  for (const shot of SHOTS.filter((candidate) => !onlyPages || onlyPages.includes(candidate.page))) {
     await openPage(shot.page);
     const file = path.join(outDir, shot.file);
     await captureShot(shot, file);
     console.log(`wrote ${path.relative(repoRoot, file)}`);
   }
-  const menuHtml = ansiToHtml(captureMenu());
-  await page.setContent(
-    `<body style="margin:0;background:#0d1117"><pre id="term" style="margin:0;display:inline-block;padding:20px 28px;background:#0d1117;color:#d0d0d0;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace">${menuHtml}</pre></body>`,
-  );
-  await page.locator("#term").screenshot({ path: path.join(outDir, "cli-menu.png") });
-  console.log(`wrote ${path.relative(repoRoot, path.join(outDir, "cli-menu.png"))}`);
+  if (!onlyPages) {
+    const menuHtml = ansiToHtml(captureMenu());
+    await page.setContent(
+      `<body style="margin:0;background:#0d1117"><pre id="term" style="margin:0;display:inline-block;padding:20px 28px;background:#0d1117;color:#d0d0d0;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace">${menuHtml}</pre></body>`,
+    );
+    await page.locator("#term").screenshot({ path: path.join(outDir, "cli-menu.png") });
+    console.log(`wrote ${path.relative(repoRoot, path.join(outDir, "cli-menu.png"))}`);
+  }
 }
 
 await browser.close();

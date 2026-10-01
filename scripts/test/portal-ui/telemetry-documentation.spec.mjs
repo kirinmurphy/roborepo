@@ -37,8 +37,6 @@ for (const theme of ["light", "dark"]) {
     await expect(detail).toContainText("2 unknown");
     await capture(detail, "comparison-detail");
     await detail.getByRole("button", { name: "Close", exact: true }).click();
-    // model-metrics-*.png is not regenerated: the Tokens page no longer renders that panel, so the
-    // existing images are stale until the panel is restored or its guide section is removed.
     await expect(page.locator("#condition-ledger")).toContainText("sample-project");
     await page.setViewportSize({ width: 1440, height: 2600 });
     await capture(page.locator("#condition-ledger-section"), "event-ledger");
@@ -60,7 +58,7 @@ test("Tokens user guide serves its screenshots inside the portal", async ({ page
   expect(guide.ok).toBe(true);
   expect(guide.title).toBe("Tokens page user guide");
   const images = [...guide.html.matchAll(/<img src="([^"]+)"/g)].map((match) => match[1]);
-  expect(images).toHaveLength(5);
+  expect(images).toHaveLength(4);
   for (const image of images) {
     expect(image).toMatch(/^\/docs\/images\/tokens\//);
     const response = await request.get(image);
