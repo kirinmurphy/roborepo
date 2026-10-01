@@ -967,6 +967,34 @@ portal-menu-button {
   } */
 }
 
+/* Shared intro banner: the one "do this first" prompt a page shows before it has anything to report
+ * (Plans' "Add your first Project Folder", Tokens' "Telemetry setup required"). Title, optional
+ * body, then an optional action row; callers fill the slots and never restyle spacing themselves. */
+.intro-banner {
+  display: grid;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+}
+.intro-banner-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+.intro-banner-body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--dim);
+}
+.intro-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Shared JS-positioned tooltip bubble (portal/shared/tooltip.js). Fixed to the viewport; tooltip.js
  * sets top/left clamped so it never crosses the screen edges. */
 .portal-tooltip {
@@ -986,6 +1014,10 @@ portal-menu-button {
 /* Structured/multi-row content (key-value grids, badges) needs more room than a one-line hint. */
 .portal-tooltip.portal-tooltip--rich {
   max-width: 360px;
+}
+/* Plain-text tips containing "\n" render one line per row. */
+.portal-tooltip.portal-tooltip--lines {
+  white-space: pre-line;
 }
 /* Opted into by a trigger with data-tip-placement="panel" (portal/shared/tooltip.js): content large
  * enough to want more width than a hint. */

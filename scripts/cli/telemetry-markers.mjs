@@ -1,3 +1,4 @@
+import { normalizeGitRemote, localRepositoryIdForRoot } from "../../modules/repositories/index.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,7 +31,8 @@ function resolveGitIdentity(cwd) {
   const sha = git(cwd, ["rev-parse", "--short", "HEAD"]);
   const root = git(cwd, ["rev-parse", "--show-toplevel"]);
   return {
-    repo: root ? root.split("/").pop() : null,
+    repo: root ? path.basename(root) : null,
+    repository_id: normalizeGitRemote(git(cwd, ["remote", "get-url", "origin"])) || (root ? localRepositoryIdForRoot(root) : null),
     branch: branch || null,
     sha: sha || null,
   };
@@ -50,15 +52,30 @@ function resolveConfigSnapshotId() {
   }
 }
 
+// A supersede must retire a real, still-active change marker; anything else would leave both
+// markers active (the conditions superseded-filter silently no-ops on an unknown id).
+export function assertSupersedable(targetId, markers) {
+  const target = markers.find((marker) => marker.marker_id === targetId);
+  if (!target) throw new Error(`cannot supersede unknown marker: ${targetId}`);
+  if (target.type !== "change") throw new Error(`cannot supersede a ${target.type} marker; only change markers can be superseded`);
+  if (markers.some((marker) => marker.supersedes === targetId)) throw new Error(`marker ${targetId} is already superseded`);
+}
+
 // Builds, validates, and persists a marker from CLI-supplied fields. Machine-derived identity
 // (repo/branch/sha/timestamp/snapshot) is always resolved here, never accepted from the caller —
 // per the plan's "automatic metadata is correct" exit criterion.
 export function createMarker(fields, { cwd = process.cwd() } = {}) {
+  if (fields.supersedes != null) assertSupersedable(fields.supersedes, readMarkers());
   const identity = resolveGitIdentity(cwd);
   const marker = {
-    schema: 1,
+    schema: 2,
     marker_id: generateMarkerId(),
     ts: new Date().toISOString(),
+    effective_at: fields.effective_at ?? new Date().toISOString(),
+    scope: fields.scope ?? (identity.repository_id ? "repository" : "unknown"),
+    repository_id: fields.scope === "all" ? null : fields.repository_id ?? identity.repository_id,
+    watching_kinds: fields.watching_kinds ?? ["spike", "loop", "read-warning"],
+    finding_id: fields.finding_id ?? null,
     type: fields.type,
     title: fields.title,
     description: fields.description ?? null,
@@ -77,6 +94,7 @@ export function createMarker(fields, { cwd = process.cwd() } = {}) {
     status: fields.status ?? null,
     ...taskFields(fields),
   };
+  if (fields.effective_at == null) marker.effective_at = marker.ts;
   return appendMarker(marker);
 }
 

@@ -1,7 +1,7 @@
 ---
 id: portal-lit-native-scaled-plan
 priority: low
-next_action: Fill in the next concrete task.
+next_action: Record the Phase 0 baselines - portal routes and interactions, package contents, and first-page JavaScript size for /, /config, /plans, and /tokens
 blocked_by: []
 depends_on: []
 related: []
@@ -56,7 +56,7 @@ Treat CSS as a separate decision:
 
 - Reduce manual DOM and custom-element lifecycle boilerplate.
 - Establish one preferred component rendering model.
-- Make shared UI behavior easier to reuse across Config, Plans, and Telemetry.
+- Make shared UI behavior easier to reuse across Config, Plans, and Tokens.
 - Prevent page-specific conventions from drifting further apart.
 - Improve CSS composition without coupling the portal to React or Vite.
 - Preserve direct browser loading, readable source, and platform-native debugging.
@@ -78,13 +78,13 @@ Treat CSS as a separate decision:
 - Redesigning the portal while changing its component architecture.
 - Removing the React/Vite plan as a documented future alternative.
 
-## Current Architecture
+## Current State
 
 ### Runtime
 
 - `roborepo serve` starts the existing Node loopback server.
 - The server binds to `127.0.0.1`.
-- Config, Plans, and Telemetry are separate HTML pages.
+- Config, Plans, and Tokens are separate HTML pages.
 - The server injects the portal manifest and per-process mutation token.
 - Read APIs return JSON.
 - POST requests enforce loopback-origin and mutation-token checks.
@@ -259,14 +259,10 @@ portal/
       action-button.js
     index.html
     styles.css
-  telemetry/
-    api.js
+  tokens/
     app.js
-    state.js
-    chart.js
-    components/
-      telemetry-table.js
-      telemetry-detail.js
+    page-state.js
+    conditions-*.js
     index.html
     styles.css
 ```
@@ -395,7 +391,7 @@ Responsibilities:
 - `base`: document and native-element defaults
 - `components`: shared portal component styles
 - `utilities`: small compositional layout and presentation helpers
-- `pages`: Config, Plans, and Telemetry-specific rules
+- `pages`: Config, Plans, and Tokens-specific rules
 
 Page stylesheets should declare their rules inside `@layer pages`.
 
@@ -554,7 +550,7 @@ JSDoc typedefs may be added for API payloads and component properties. If strong
 is useful, enable JavaScript type checking with `// @ts-check` or a repository `jsconfig.json`
 without requiring source compilation.
 
-## Migration Strategy
+## Implementation Phases
 
 ### Phase 0: Baseline and guardrails
 
@@ -567,7 +563,7 @@ without requiring source compilation.
 
 Minimum browser coverage:
 
-- direct loading of `/`, `/config`, `/plans`, and `/telemetry`
+- direct loading of `/`, `/config`, `/plans`, and `/tokens`
 - global navigation and active state
 - theme persistence
 - Config source modal
@@ -576,8 +572,8 @@ Minimum browser coverage:
 - Plans filtering
 - Plans drawer open and close
 - Plans copy actions
-- Telemetry initial render
-- Telemetry theme-driven chart redraw
+- Tokens initial render
+- Tokens report re-render on poll without closing an open dialog
 - loading and error states
 
 ### Phase 1: Normalize native CSS and selectors
@@ -685,18 +681,18 @@ Migrate repeated and stateful Plans controls where Lit reduces complexity:
 Keep filtering and facet-count functions in `state.js`. Components receive prepared data and emit
 events; they should not own duplicate filtering algorithms.
 
-### Phase 7: Telemetry selectively
+### Phase 7: Tokens selectively
 
-Telemetry should migrate last because it combines tables, dialogs, polling, and imperative canvas
-rendering.
+Tokens should migrate last because it combines tables, dialogs, polling, and a large amount of
+older string-built markup that predates the HTML-template convention.
 
-- Keep the current chart drawing code imperative initially.
-- Wrap the canvas only if a component improves lifecycle handling.
-- Redraw after relevant property, size, or theme changes.
-- Migrate repeated tables and detail panels before chart internals.
+- Migrate repeated tables, condition cards, and detail panels first.
+- Keep open dialogs and unsaved form drafts intact across poll re-renders.
+- Re-render after relevant property or theme changes.
 - Keep telemetry analysis server-side.
 
-Do not adopt a chart library merely because Lit is introduced.
+The page draws no canvas charts today. Do not adopt a chart library merely because Lit is
+introduced, and revisit this phase if a chart returns.
 
 ### Phase 8: Remove obsolete rendering helpers
 
@@ -804,7 +800,7 @@ The portal is local, but performance still affects startup and interaction quali
 - Avoid introducing a global state library.
 - Preserve current polling intervals unless measurements justify changes.
 - Consider pausing polling when the document is hidden.
-- Keep chart rendering responsive during filters and theme changes.
+- Keep the Tokens report responsive during scope changes and theme changes.
 
 Record before and after:
 
@@ -813,7 +809,7 @@ Record before and after:
 - first render time in a representative local environment
 - Config snapshot rerender duration
 - Plans render duration with a representative large plan collection
-- Telemetry redraw duration
+- Tokens render duration
 
 ## Security Requirements
 
@@ -870,7 +866,7 @@ Document the relationship to the React/Vite plan:
 ### Runtime
 
 - `roborepo serve` starts without a frontend compiler.
-- `/`, `/config`, `/plans`, and `/telemetry` load through direct navigation.
+- `/`, `/config`, `/plans`, and `/tokens` load through direct navigation.
 - The portal works without internet access.
 - Navigation and theme behavior remain consistent across pages.
 - Browser console contains no missing-module or custom-element errors.
@@ -892,12 +888,12 @@ Document the relationship to the React/Vite plan:
 - Copy path, context, and prompt actions work.
 - Package enablement works.
 
-### Telemetry
+### Tokens
 
-- Dashboard data loads.
+- Report data loads.
 - Disabled-state enablement works.
-- Filters and detail views work.
-- Charts redraw after data and theme changes.
+- Condition cards, dialogs, and session detail views work.
+- The report re-renders after data and theme changes without losing an open dialog.
 - Large reports remain responsive.
 
 ### Security and packaging
@@ -983,7 +979,7 @@ React should be chosen because those requirements exist, not simply because the 
 - Server-owned view models and mutation contracts remain stable.
 - CSS has clear token, component, utility, and page ownership.
 - JavaScript behavior no longer depends on presentation class names.
-- Browser tests protect the primary Config, Plans, and Telemetry interactions.
+- Browser tests protect the primary Config, Plans, and Tokens interactions.
 - Published packages include every required runtime asset.
 - The architecture can still move to React/Vite later without rewriting server APIs or security
   boundaries.

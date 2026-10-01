@@ -96,11 +96,13 @@ function show(el) {
     if (!template) return;
     tip.replaceChildren(template.content.cloneNode(true));
     tip.classList.add("portal-tooltip--rich");
+    tip.classList.remove("portal-tooltip--lines");
   } else {
     const text = el.getAttribute("data-tip");
     if (!text) return;
     tip.textContent = text;
     tip.classList.remove("portal-tooltip--rich");
+    tip.classList.toggle("portal-tooltip--lines", text.includes("\n"));
   }
   const panel = el.getAttribute("data-tip-placement") === "panel";
   // Wide wherever it shows; docked only where the screen has room for a side panel.

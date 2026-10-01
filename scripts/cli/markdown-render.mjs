@@ -24,10 +24,11 @@ function renderInline(text) {
       return `<code>${escapeHtml(part.slice(1, -1))}</code>`;
     }
     let html = escapeHtml(part);
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
+    html = html.replace(/(!?)\[([^\]]+)\]\(([^)]+)\)/g, (_, image, label, href) => {
       const safe = safeLinkHref(href);
       if (!safe) return label;
       const safeHref = escapeAttr(safe);
+      if (image) return `<img src="${safeHref}" alt="${label}" class="markdown-image" loading="lazy">`;
       return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     });
     html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");

@@ -8,6 +8,7 @@ related:
   - pljvmyh
   - canonical-repository-identity-plan-v2
   - h4tqm2wz
+  - nl40n9vr
 reviewed_commit: 85390e9
 ---
 
@@ -211,7 +212,7 @@ For "recently changed", prefer the plan file's Git last-commit timestamp, fallin
 
 ### 7. Tokens summary
 
-Keep a compact repository-level token/session signal on Home: warning count, highest severity, or recent concerning session state. Repository detail can expand it. This story does not rewrite the Tokens dashboard and does not depend on global telemetry-policy work.
+Keep a compact repository-level token/session signal on Home: warning count, highest severity, or recent concerning session state. Repository detail can expand it. This story does not rewrite the Tokens dashboard and does not depend on global telemetry-policy work. The Tokens report also returns `waste` totals (each turn counted once); a repository-scoped waste share is a candidate signal once shared scope lands.
 
 ### 8. Agents/config summary
 

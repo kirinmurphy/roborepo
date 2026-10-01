@@ -13,7 +13,7 @@ These docs are for people installing and using the RoboRepo package.
 | Understand exact install collision behavior | [Config Collision Handling](reference/config-collision-handling.md) |
 | Browse and manage plan docs | [Plan Docs Walkthrough](guides/plan/lifecycle/plan-docs.md) |
 | Review an integration branch | [Integration Check Walkthrough](guides/plan/lifecycle/integration-check.md) |
-| Use telemetry | [Telemetry Walkthrough](guides/telemetry.md) |
+| Investigate token usage and recorded changes | [Tokens Page User Guide](guides/telemetry.md) |
 | Know which agent CLIs RoboRepo manages | [Supported Harnesses](guides/harnesses/supported-harnesses.md) |
 
 ## Reference

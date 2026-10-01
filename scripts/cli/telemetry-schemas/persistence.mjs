@@ -91,7 +91,7 @@ export function writeSnapshot(snapshot) {
 export function readSnapshot(snapshotId) {
   const file = path.join(telemetrySnapshotsDir, `${snapshotId}.json`);
   try {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
+    return validateSnapshot(JSON.parse(fs.readFileSync(file, "utf8")));
   } catch {
     return null;
   }
@@ -107,7 +107,7 @@ export function readSnapshots() {
   return files
     .map((file) => {
       try {
-        return JSON.parse(fs.readFileSync(path.join(telemetrySnapshotsDir, file), "utf8"));
+        return validateSnapshot(JSON.parse(fs.readFileSync(path.join(telemetrySnapshotsDir, file), "utf8")));
       } catch {
         return null;
       }

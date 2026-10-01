@@ -517,7 +517,7 @@ function derivedCallId(sessionId, toolName, event) {
 // failing the capture.
 async function resolveConfigSnapshotId(event, sessionId, harness, stats) {
   if (!sessionId) return null;
-  const cachePath = path.join(telemetryCollectorDir, `snapshot-${hash(sessionId)}.json`);
+  const cachePath = path.join(telemetryCollectorDir, `snapshot-${hash(`${harness}:${sessionId}`)}.json`);
   if (event === "SessionStart") {
     try {
       const snapshotId = await buildAndCacheSnapshot(harness, stats?.model ?? null);

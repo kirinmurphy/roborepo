@@ -2,18 +2,20 @@ import { privacyHash } from "./hash.mjs";
 import { validateObjectKeys, validateStringArray } from "./validators.mjs";
 import { hasHarnessProvider } from "../../harnesses/registry.mjs";
 
-export const SNAPSHOT_SCHEMA_VERSION = 1;
+export const SNAPSHOT_SCHEMA_VERSION = 2;
 
 const ALLOWED_FIELDS = [
   "schema", "snapshot_id", "created_at", "app_version", "harness", "harness_version",
-  "model", "packages", "rules", "skills", "hooks", "commands", "feature_flags", "unavailable",
+  "model", "packages", "rules", "skills", "hooks", "commands", "feature_flags", "unavailable", "ambient", "evaluability", "revision_contract",
 ];
 
 // Content-addressed: the ID is a hash of the normalized fields, so two sessions with identical
 // effective configuration collapse to one stored snapshot. `created_at` and `harness`/`model`
-// (session-specific, not configuration-specific) are excluded from the hash on purpose.
+// (session-specific, not configuration-specific) are excluded from the v1 hash.
+// v2 includes provider coverage and ambient evidence, while still excluding model/creation time.
 export function computeSnapshotId(snapshot) {
   const material = JSON.stringify({
+    ...(snapshot.schema === 2 ? { schema: 2, unavailable: snapshot.unavailable, ambient: snapshot.ambient, evaluability: snapshot.evaluability, revision_contract: snapshot.revision_contract } : {}),
     app_version: snapshot.app_version ?? null,
     packages: [...(snapshot.packages || [])].sort(),
     rules: [...(snapshot.rules || [])].sort(),
@@ -28,7 +30,7 @@ export function computeSnapshotId(snapshot) {
 export function validateSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) throw new Error("snapshot must be an object");
   validateObjectKeys(snapshot, ALLOWED_FIELDS, "snapshot");
-  if (snapshot.schema !== SNAPSHOT_SCHEMA_VERSION) throw new Error(`unsupported snapshot schema version: ${snapshot.schema}`);
+  if (![1, SNAPSHOT_SCHEMA_VERSION].includes(snapshot.schema)) throw new Error(`unsupported snapshot schema version: ${snapshot.schema}`);
   if (typeof snapshot.snapshot_id !== "string" || !/^cfg_[a-f0-9]{24}$/.test(snapshot.snapshot_id)) {
     throw new Error(`invalid snapshot_id: ${snapshot.snapshot_id}`);
   }
@@ -52,6 +54,12 @@ export function validateSnapshot(snapshot) {
     throw new Error("snapshot feature_flags must be an object");
   }
   validateStringArray(snapshot.unavailable, "snapshot unavailable");
+  if (snapshot.schema === 2) {
+    if (snapshot.revision_contract !== 1) throw new Error("snapshot revision_contract must be 1");
+    if (!snapshot.evaluability || typeof snapshot.evaluability.packages !== "boolean" || typeof snapshot.evaluability.skills !== "boolean") throw new Error("snapshot evaluability is required");
+    if (!snapshot.ambient || typeof snapshot.ambient.evaluable !== "boolean" || !Array.isArray(snapshot.ambient.packages)) throw new Error("snapshot ambient evidence is required");
+    if (snapshot.ambient.evaluable && (typeof snapshot.ambient.hash !== "string" || !snapshot.ambient.harness)) throw new Error("evaluable ambient evidence requires hash and harness");
+  }
   return snapshot;
 }
 
@@ -64,11 +72,22 @@ export function buildEffectiveSnapshot(configSnapshot, { harness = null, harness
   const installedSkillIds = (configSnapshot.tools || []).filter((tool) => tool.installed).map((tool) => tool.id);
   const hookCounts = { ...(configSnapshot.globals?.settings?.hooks || {}) };
 
-  const unavailable = ["hook_command_strings", "mcp_server_registration"];
+  const unavailable = ["hook_command_strings", "mcp_server_registration", "rules", "commands", "feature_flags"];
   if (harness === "codex") unavailable.push("codex_config_toml_parsed");
 
+  const ambientTypes = new Set(["rules", "hooks", "permissions", "codex_tool_approvals", "mcp", "plugin", "harness-config", "service", "runtime-asset"]);
+  const packages = configSnapshot.packages || [];
+  const ambientPackages = packages.filter((pkg) => pkg.enabled && (pkg.resources || []).some((type) => ambientTypes.has(type)))
+    .map((pkg) => ({ id: pkg.id, resources: [...new Set(pkg.resources.filter((type) => ambientTypes.has(type)))].sort() })).sort((a, b) => a.id.localeCompare(b.id));
+  const ambientEvaluable = !!harness && Array.isArray(configSnapshot.packages) && packages.every((pkg) => Array.isArray(pkg.resources));
+  const ambient = { harness, evaluable: ambientEvaluable, packages: ambientPackages,
+    hash: ambientEvaluable ? privacyHash(JSON.stringify({ harness, packages: ambientPackages })) : null,
+    scope: "configured-package-resource-types" };
   const snapshot = {
     schema: SNAPSHOT_SCHEMA_VERSION,
+    ambient,
+    evaluability: { packages: Array.isArray(configSnapshot.packages), skills: Array.isArray(configSnapshot.tools) },
+    revision_contract: 1,
     created_at: new Date().toISOString(),
     app_version: appVersion,
     harness,

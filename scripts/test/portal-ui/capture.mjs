@@ -3,10 +3,10 @@
 // /tokens mock spool, captures full-page screenshots (dark + light), and stops the server.
 //
 // Usage:
-//   node scripts/test/portal-ui/capture.mjs [--seed-tokens2] [--page /tokens] [--out /tmp/rr-shots]
+//   node scripts/test/portal-ui/capture.mjs [--seed-tokens] [--page /tokens] [--out /tmp/rr-shots]
 //
 // Flags:
-//   --seed-tokens2   Copy portal/tokens2/mock-spool.jsonl into the hermetic spool dir so
+//   --seed-tokens   Copy portal/tokens/mock-spool.jsonl into the hermetic spool dir so
 //                    /tokens renders its full mock report (spikes, loops, reads, testing,
 //                    marker comparison). Without it the page renders its empty/no-data state.
 //   --page <path>    Page path to capture (default /tokens).
@@ -37,7 +37,7 @@ const value = (name, fallback) => {
   const i = args.indexOf(name);
   return i !== -1 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : fallback;
 };
-const seedTokens2 = flag("--seed-tokens2");
+const seedTokens = flag("--seed-tokens");
 const pagePath = value("--page", "/tokens");
 const outDir = path.resolve(value("--out", "/tmp/rr-shots"));
 
@@ -47,11 +47,11 @@ fs.mkdirSync(outDir, { recursive: true });
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "rr-capture-"));
 const stateDir = path.join(tmp, ".roborepo");
 
-if (seedTokens2) {
+if (seedTokens) {
   const spoolDir = path.join(stateDir, "telemetry", "spool");
   fs.mkdirSync(spoolDir, { recursive: true });
   fs.copyFileSync(
-    path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl"),
+    path.join(repoRoot, "portal", "tokens", "mock-spool.jsonl"),
     path.join(spoolDir, "claude.jsonl"),
   );
   console.log(`seeded /tokens mock spool → ${spoolDir}/claude.jsonl`);

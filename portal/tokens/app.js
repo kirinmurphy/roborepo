@@ -1,13 +1,15 @@
-// Tokens2 — the evolved tokens dashboard. Fetches the same /api/data report the existing
-// /tokens page uses, but renders it in a layered, layperson-readable layout: verdict → findings
-// → chart → investigation sections → distilled report → full data. All prose is deterministic:
+// Tokens page. Fetches the /api/data report and renders it in a layered, layperson-readable
+// layout: verdict → findings → chart → investigation sections → distilled report → full data.
+// All prose is deterministic:
 // finding headlines/details come from report.insights (deriveInsights templates), evidence
 // paragraphs interpolate report fields, and section framing is static UI copy.
 
 import { portalGetJson, portalPostJson, portalHideLoading, portalHideLoadingNow, portalSetUpdatedAt, portalWireBackdropClose } from "/portal/shared/api.js";
-import { pageState } from "/portal/telemetry/state.js";
+import { pageState } from "./page-state.js";
 import { activePresentedHarnesses, formatHarnessList } from "/portal/shared/harness-cohort.js";
 import { harnessWarningElement } from "/portal/shared/harness-warning.js";
+import { createConditionsReport } from "./conditions-report.js";
+import { sessionConditionLine, capturedSessionFindings } from "./conditions-context.js";
 import { createDocGuideModal } from "/portal/shared/doc-guide-modal.js";
 
 // ── State ──
@@ -25,7 +27,7 @@ let lastSetupState = null;
 // click time, so a click always acts on the live report rather than a stale closure.
 let lastSessionData = null;
 
-// ── Formatting helpers (local — no dependency on telemetry/state.js's fmt for tokens) ──
+// ── Formatting helpers (local) ──
 const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 const tokShort = (n) => {
   n = Number(n || 0);
@@ -38,13 +40,19 @@ const pct = (n) => Math.round(n * 100);
 const esc = (s) => String(s == null ? "" : s).replace(
   /[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
+const conditionsView = createConditionsReport({
+  openSession: openSessionModal,
+  getData: () => lastSessionData,
+  onSaved: async () => { lastVersion = null; await load(); },
+});
+
 // ── Init ──
 init();
 
 async function init() {
   // Setup-state poll: reads /api/config (same as the existing telemetry page's
   // refreshTelemetryState) to determine which cascade rung we're on. Reuses pageState()
-  // from portal/telemetry/state.js. The config API returns a flat `telemetry` object
+  // from ./page-state.js. The config API returns a flat `telemetry` object
   // (cfg.telemetry.enabled), not nested under packages.
   //
   // Mock data: when the page is NOT in the "full" state (no harness installed, or no
@@ -64,11 +72,11 @@ async function init() {
   const harnessCount = activePresentedHarnesses(cfg).length;
   // Package capability lookups (docLookupHint) read this snapshot — installed/available state
   // comes from the same /api/config the setup cascade already uses. No second fetch.
-  window.__tokens2Config = cfg;
+  window.__tokensConfig = cfg;
   await applySetupState({ telemetryOn, activeHarnessCount: harnessCount, snap: cfg });
 
   // Always attempt to load the report — even when the setup state is not "full".
-  // In the mock state (no real harness), we fetch from /api/tokens2/mock which
+  // In the mock state (no real harness), we fetch from /api/tokens/mock which
   // reads the bundled mock-spool.jsonl through the same analyzeTelemetry pipeline.
   // In the full state, we fetch from /api/data (the real spool).
   const isFullState = setupReady;
@@ -92,9 +100,9 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   lastSetup = { telemetryOn, activeHarnessCount, snap };
   if (!setupReady && firstLoad) { firstLoad = false; portalHideLoadingNow(); }
 
-  const offPanel = document.getElementById("tokens2off");
-  const bannerHost = document.getElementById("tokens2banner");
-  const content = document.getElementById("tokens2content");
+  const offPanel = document.getElementById("tokensoff");
+  const bannerHost = document.getElementById("tokensbanner");
+  const content = document.getElementById("tokenscontent");
   const state = pageState({ telemetryOn, activeHarnessCount, hasData });
   lastSetupState = state;
 
@@ -104,17 +112,18 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   // demonstrate the full report even before a real harness is installed.
   // The "install a supported harness" banner is the SHARED component
   // (portal/shared/harness-warning.js — the same portal-notice the Agents page renders);
-  // it shows below the state panel whenever the machine has no active harness.
-  const sharedBanner = harnessWarningElement(snap);
+  // it shows below the state panel whenever telemetry is on and the machine has no active harness.
+  // Only once telemetry is on: with it off, the telemetry prompt is the single setup step.
+  const sharedBanner = telemetryOn ? harnessWarningElement(snap) : null;
   if (state === "telemetry-off") {
     offPanel.style.display = "";
     const title = offPanel.querySelector("[data-slot=title]");
     const body = offPanel.querySelector("[data-slot=body]");
     if (activeHarnessCount === 0) {
-      title.textContent = "telemetry setup required";
-      body.textContent = "Turn telemetry on before token usage can be captured. Harness setup is separate — see the Agents page.";
+      title.textContent = "Telemetry setup required";
+      body.textContent = "Turn telemetry on before token usage can be captured.";
     } else {
-      title.textContent = "telemetry is off";
+      title.textContent = "Telemetry is off";
       body.textContent = "Token usage is not being captured. Turn telemetry on to start collecting data across your harnesses.";
     }
   } else if (state === "no-harness") {
@@ -123,7 +132,7 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
     offPanel.style.display = "";
     const title = offPanel.querySelector("[data-slot=title]");
     const body = offPanel.querySelector("[data-slot=body]");
-    title.textContent = "no telemetry data yet";
+    title.textContent = "No telemetry data yet";
     body.textContent = "Telemetry is on and a harness is active, but nothing has been captured yet. Run a session in your harness — this page fills in as usage data lands.";
   } else {
     offPanel.style.display = "none";
@@ -137,12 +146,12 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
   content.hidden = false;
 
   // Wire the enable-telemetry button (same pattern as the existing page).
-  const enableBtn = document.getElementById("tokens2enable");
+  const enableBtn = document.getElementById("tokensenable");
   if (enableBtn) {
     enableBtn.hidden = telemetryOn;
     enableBtn.onclick = async () => {
       enableBtn.disabled = true;
-      const errEl = document.getElementById("tokens2enableerr");
+      const errEl = document.getElementById("tokensenableerr");
       if (errEl) errEl.textContent = "";
       try {
         await portalPostJson("/api/config/packages", { id: "telemetry", enabled: true });
@@ -157,13 +166,13 @@ async function applySetupState({ telemetryOn, activeHarnessCount, snap }) {
 
 // ── Load: fetch the report and render every layer ──
 // force=true renders even when setupReady is false (the mock-data path): fetches
-// from /api/tokens2/mock instead of /api/data, and shows the mock-data disclaimer.
+// from /api/tokens/mock instead of /api/data, and shows the mock-data disclaimer.
 async function load(force) {
   if (!setupReady && !force) {
     if (firstLoad) { firstLoad = false; portalHideLoading(); }
     return;
   }
-  const endpoint = force ? "/api/tokens2/mock" : "/api/data";
+  const endpoint = force ? "/api/tokens/mock" : "/api/data";
   let data;
   try {
     data = await portalGetJson(endpoint);
@@ -172,6 +181,7 @@ async function load(force) {
     return;
   }
   if (firstLoad) { firstLoad = false; portalHideLoading(); }
+  if (document.querySelector("dialog[open]")) return;
   if (!force && data.version === lastVersion) return;
   lastVersion = data.version;
   lastSessionData = data;
@@ -205,32 +215,43 @@ async function load(force) {
   renderAgentPrompt(data);
   renderInvestigationSections(data);
   renderTimelineStrip(data);
+  conditionsView.render(data, setupReady);
   renderFullData(data);
 }
 
-// ── Frame-of-reference meta line (v1 renderMeta contract) ──
-// Sessions · captures · period — what the numbers below are drawn from. The Codex provider
-// rate limit (when the provider reports one) rides along as a dim clause; it's a real signal,
-// so it shares the line instead of earning its own stat card.
+// ── Frame-of-reference meta line ──
+// Period first and large (the headline: "what window is this?"), then the counts it is drawn from
+// as a dim detail line, with the Codex provider rate limit (when reported) as a trailing clause.
+// Sessions are distinct agent sessions; "with token data" are those whose usage was captured;
+// events are the individual records inside them (data.event_count — see the tooltip).
 function renderMeta(data) {
-  const el = document.getElementById("tokens2meta");
+  const el = document.getElementById("tokensmeta");
   if (!el) return;
   const sessions = data.sessions || [];
+  const total = data.conditions.data_quality.sessions;
   const parts = [
-    fmt(sessions.length) + " sessions",
-    fmt(data.capture_count ?? 0) + " captures",
+    fmt(total) + " sessions" + (sessions.length < total ? ` (${fmt(sessions.length)} with token data)` : ""),
+    fmt(data.event_count ?? data.capture_count ?? 0) + " events recorded",
   ];
-  // Period: first session start → last session end (no precomputed field; derived here).
-  const firstTs = sessions.length ? sessions.reduce((m, s) => (s.first_ts < m ? s.first_ts : m), sessions[0].first_ts) : null;
-  const lastTs = sessions.length ? sessions.reduce((m, s) => (s.last_ts > m ? s.last_ts : m), sessions[0].last_ts) : null;
-  if (firstTs && lastTs) {
-    const day = (ts) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    parts.push(day(firstTs) + " – " + day(lastTs));
-  }
   if (data.codex_provider_rate_limits) {
     parts.push("Codex limit " + codexRateLimitLabel(data.codex_provider_rate_limits));
   }
-  el.textContent = parts.join(" · ");
+  // Period: first session start → last session end (no precomputed field; derived here).
+  const firstTs = sessions.length ? sessions.reduce((m, s) => (s.first_ts < m ? s.first_ts : m), sessions[0].first_ts) : null;
+  const lastTs = sessions.length ? sessions.reduce((m, s) => (s.last_ts > m ? s.last_ts : m), sessions[0].last_ts) : null;
+  const day = (ts) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  el.replaceChildren();
+  if (firstTs && lastTs) {
+    const period = document.createElement("div");
+    period.className = "t2-meta-period";
+    period.textContent = day(firstTs) + " – " + day(lastTs);
+    el.appendChild(period);
+  }
+  const detail = document.createElement("div");
+  detail.className = "t2-meta-detail";
+  detail.textContent = parts.join(" · ");
+  detail.dataset.tip = "Sessions: distinct agent sessions seen.\nWith token data: sessions whose token usage was captured.\nEvents: the individual activity records (such as tool calls) logged inside those sessions.";
+  el.appendChild(detail);
 }
 
 function codexRateLimitLabel(rateLimits) {
@@ -245,43 +266,42 @@ function codexRateLimitLabel(rateLimits) {
 function renderVerdict(data) {
   const grid = document.getElementById("waste-grid");
 
-  // Top-level waste metric: % of usage that is identifiable waste, color-graded
-  // (<5% green, 5-10% yellow, 10-15% orange, >15% red). One card per range —
-  // "this week" (trailing 7 days) and "all time" (the full report period).
-  const wasteParts = [];
-  const testTokens = data.testing_efficiency?.["test.tokens_during_testing"];
-  const redundant = data.testing_efficiency?.["test.full_suite_without_intervening_edit"];
-  if (testTokens > 0) {
-    wasteParts.push({ label: "over-testing", tokens: testTokens, note: redundant > 0 ? "incl. full-suite reruns without an edit" : "" });
-  }
-  const loopWaste = (data.loops || []).reduce((s, l) => s + (l.wasted_tokens || 0), 0);
-  if (loopWaste > 0) wasteParts.push({ label: "runaway loops", tokens: loopWaste, note: "" });
-  const readWaste = (data.read_warnings || []).reduce((s, w) => s + (w.approx_tokens || 0), 0);
-  if (readWaste > 0) wasteParts.push({ label: "redundant reads", tokens: readWaste, note: "" });
-  // Spike excess: the portion of spike turns above the spike threshold — the part of a
-  // spike that exceeded what a normal turn costs (defensible "excess", not the whole spike).
-  const threshold = data.spike_threshold || 0;
-  const spikeExcess = (data.spike_causes || [])
-    .reduce((s, c) => s + Math.max(c.total_delta - c.spikes * threshold, 0), 0);
-  if (spikeExcess > 0) wasteParts.push({ label: "spike excess", tokens: spikeExcess, note: "turn size above the spike threshold" });
+  // Top-level waste metric: % of usage that is identifiable waste, color-graded against each
+  // card's danger line. One card per range — "this week" (trailing 7 days) and "all time" (the
+  // full report period). data.waste is built server-side per turn with each turn counted once
+  // (scripts/cli/telemetry-waste.mjs), so a card's sources add up exactly to its total.
+  const wasteParts = (range) => WASTE_SOURCES
+    .map((source) => ({
+      label: source.label,
+      tokens: data.waste?.[range]?.categories?.[source.key] ?? 0,
+      note: source.note,
+    }))
+    .filter((part) => part.tokens > 0);
 
   grid.replaceChildren();
-  if (!wasteParts.length) {
+  const allParts = wasteParts("all");
+  if (!allParts.length) {
     const empty = document.createElement("div");
     empty.className = "waste-card";
-    empty.innerHTML = `<span class="dl-text">No identifiable waste in this window — every category the pipeline tracks (spikes, loops, redundant reads, redundant test runs) came back clean.</span>`;
+    empty.innerHTML = `<span class="dl-text">No identifiable waste in this window.</span>`;
     grid.appendChild(empty);
     return;
   }
 
   const allTotal = (data.timeline || []).reduce((s, p) => s + (p.delta || 0), 0);
   const weekTotal = data.usage_windows?.seven_day;
-  const allWaste = wasteParts.reduce((s, p) => s + p.tokens, 0);
-  const weekWaste = wasteInWindow(wasteParts, data, 7);
-
-  if (weekTotal) grid.appendChild(wasteCard("This week", weekWaste, weekTotal, wasteParts, 16));
-  grid.appendChild(wasteCard("All time", allWaste, allTotal, wasteParts, 10));
+  if (weekTotal) grid.appendChild(wasteCard("This week", weekTotal, wasteParts("week"), 16));
+  grid.appendChild(wasteCard("All time", allTotal, allParts, 10));
 }
+
+// Waste sources in display order. `key` matches data.waste categories; `label` is the card text and
+// the lookup for its Investigate section.
+const WASTE_SOURCES = [
+  { key: "testing", label: "over-testing", note: "full-suite reruns with no edit since the last run" },
+  { key: "loops", label: "runaway loops", note: "" },
+  { key: "reads", label: "redundant reads", note: "" },
+  { key: "spikes", label: "spike excess", note: "turn size above the spike threshold" },
+];
 
 // Sticky-header offset for scroll targets, measured ONCE at load (per user: no scroll/resize
 // re-measure) plus a 1rem breathing gap.
@@ -289,6 +309,20 @@ let stickyHeaderOffset = 0;
 function measureStickyHeader() {
   const header = document.querySelector(".portal-header");
   stickyHeaderOffset = header ? header.getBoundingClientRect().height + 16 : 16;
+  // Section heads stick just under the portal header.
+  document.documentElement.style.setProperty("--portal-header-h", (header ? header.getBoundingClientRect().height : 0) + "px");
+}
+
+// "Show/Hide suggested fixes": item hints are hidden by default (too dense); the toggle lives in
+// the Investigate header. State is a class on the container, so it survives per-poll re-renders.
+function wireHintToggle() {
+  const toggle = document.getElementById("hint-toggle");
+  const host = document.getElementById("invest-sections");
+  toggle.addEventListener("click", () => {
+    const show = host.classList.toggle("show-hints");
+    toggle.setAttribute("aria-pressed", show ? "true" : "false");
+    toggle.textContent = show ? "Hide suggested fixes" : "Show suggested fixes";
+  });
 }
 
 // Scroll to and auto-expand an Investigate section. Collapsing (or a click on an already-open
@@ -356,33 +390,35 @@ function wireWasteSourceLinks() {
 // Jargon (session ids, transcript paths, model history) lives in the agent prompt, not here.
 // Transcript lookup is best-effort: heaviest turns render when the transcript is on disk; a
 // rotated-away transcript just means "no turns", the prompt still works.
-const sessionModal = document.getElementById("tokens2session-modal");
+const sessionModal = document.getElementById("tokenssession-modal");
 const sessionModalBody = sessionModal.querySelector('[data-slot="body"]');
 // Close paths: the shared X button (its custom element renders the icon but does NOT self-wire
 // click behavior — the host page must listen, same as the v1/doc dialogs) and backdrop clicks.
 sessionModal.querySelector('[data-slot="close"]').addEventListener("click", () => sessionModal.close());
 portalWireBackdropClose(sessionModal, () => sessionModal.close());
 
+let sessionRequest = 0;
 function openSessionModal(sessionId, harness, finding, contextTitle) {
   sessionModal.querySelector('[data-slot="title"]').textContent = contextTitle || "Session detail";
   sessionModal.querySelector('[data-slot="sub"]').textContent = "";
   sessionModalBody.replaceChildren(loadingNote("loading session…"));
   sessionModal.showModal();
-  loadSessionIntoModal(sessionId, harness, finding, contextTitle);
+  loadSessionIntoModal(sessionId, harness, finding, ++sessionRequest);
 }
 
-async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
+async function loadSessionIntoModal(sessionId, harness, finding, requestId) {
   let detail;
   try {
     const qs = `id=${encodeURIComponent(sessionId)}&harness=${encodeURIComponent(harness || "")}&finding=${encodeURIComponent(finding || "abnormal token usage")}`;
     detail = await portalGetJson("/api/session?" + qs);
   } catch (err) {
+    if (requestId !== sessionRequest || !sessionModal.open) return;
     sessionModalBody.replaceChildren(loadingNote("could not load session: " + ((err && err.message) || err)));
     return;
   }
-  if (!sessionModal.open) return; // user closed it while the fetch was in flight
+  if (requestId !== sessionRequest || !sessionModal.open) return; // user closed it while the fetch was in flight
 
-  const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId) || {};
+  const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId && (!harness || x.harness === harness)) || {};
   const frag = document.createDocumentFragment();
 
   // 1. What this session was.
@@ -393,11 +429,12 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
     <div class="sess-fact"><span>Agent</span><span>${esc(s.harness || harness || "unknown")}</span></div>
     ${when ? `<div class="sess-fact"><span>When</span><span>${esc(when)}</span></div>` : ""}
     ${s.activity ? `<div class="sess-fact"><span>Activity</span><span>${esc(s.activity)}</span></div>` : ""}`;
-  frag.appendChild(who);
+  // Condition facts already supply repository and harness; retain the legacy facts only as a fallback.
+  if (!lastSessionData.conditions) frag.appendChild(who);
 
   // 2+3. What happened + what to do (server-built deterministic findings; fallback to the one
   // finding text the page already has when the server couldn't compute rows).
-  const findings = (detail && detail.findings) || [];
+  const findings = detail?.findings?.length ? detail.findings : capturedSessionFindings(lastSessionData, sessionId, harness);
   const whatHappened = document.createElement("div");
   whatHappened.className = "sess-findings";
   if (findings.length) {
@@ -416,7 +453,7 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
     }
   } else {
     whatHappened.innerHTML = `<div class="sess-finding"><p class="sess-finding-summary"><span class="sess-dot dot-warn"></span>${esc(finding || "This session used more tokens than similar sessions.")}</p>
-      <p class="sess-finding-hint">${detail && detail.found === false ? "The full transcript is no longer on disk (rotated out), but the agent prompt below still carries the facts." : ""}</p></div>`;
+      <p class="sess-finding-hint">${detail && detail.found === false ? "The transcript is unavailable. Use the captured evidence and the agent prompt below to investigate." : ""}</p></div>`;
   }
   frag.appendChild(whatHappened);
 
@@ -431,7 +468,7 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
   actions.appendChild(copyBtn);
   const why = document.createElement("p");
   why.className = "sess-why";
-  why.textContent = "Paste this into a fresh chat: it tells your agent which session to open, what telemetry flagged, and what to conclude — so it can investigate the transcript and fix the pattern.";
+  why.textContent = "Paste into a fresh chat so your agent can investigate this session.";
   actions.appendChild(why);
   frag.appendChild(actions);
 
@@ -451,6 +488,8 @@ async function loadSessionIntoModal(sessionId, harness, finding, contextTitle) {
     frag.appendChild(turns);
   }
 
+  const conditionContext = sessionConditionLine(lastSessionData, sessionId, harness, { findings, fallbackFinding: finding, includeFacts: true });
+  if (conditionContext) frag.prepend(conditionContext);
   sessionModalBody.replaceChildren(frag);
   sessionModal.querySelector('[data-slot="sub"]').textContent =
     (s.repo || "unknown") + (harness ? ` · ${harness}` : "");
@@ -473,7 +512,7 @@ function wireSessionChips() {
     const sessionId = chip.dataset.sessionId;
     if (!sessionId) return;
     e.preventDefault();
-    const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId);
+    const s = (lastSessionData.sessions || []).find((x) => x.session_id === sessionId && (x.harness ?? "") === (chip.dataset.harness ?? ""));
     const harness = s?.harness || chip.dataset.harness || "";
     const finding = chip.dataset.finding || `total ${s?.total_tokens ?? "?"} tokens — investigate why this session used so much context`;
     openSessionModal(sessionId, harness, finding, s?.title || null);
@@ -533,7 +572,7 @@ function renderTimelineStrip(data) {
       btn.setAttribute("aria-label", btn.title);
       if (m.count > 1) btn.textContent = "×" + m.count;
       btn.addEventListener("click", () => {
-        const s = (data.sessions || []).find((x) => x.session_id === m.sessionId);
+        const s = (data.sessions || []).find((x) => x.session_id === m.sessionId && (x.harness ?? null) === (m.harness ?? null));
         openSessionModal(m.sessionId, m.harness || s?.harness || "", m.label, s?.title || null);
       });
       col.appendChild(btn);
@@ -544,45 +583,7 @@ function renderTimelineStrip(data) {
     col.appendChild(dayLabel);
     strip.appendChild(col);
   }
-  legend.textContent = "each mark is a flagged event — red: spike turn, orange: runaway loop. Days with no flags show nothing.";
-}
-
-// Waste tokens attributable to the trailing N days, computed per-category from event
-// timestamps (not apportioned by volume share — that mathematically cancels out and makes
-// both cards identical). Spike excess and read warnings are timestamped; testing is
-// report-global, so it's apportioned by the window's share of timeline volume.
-function wasteInWindow(parts, data, days) {
-  const timeline = data.timeline || [];
-  if (!timeline.length) return parts.reduce((s, p) => s + p.tokens, 0);
-  const latest = timeline.reduce((m, p) => (p.ts > m ? p.ts : m), timeline[0].ts);
-  const cutoff = new Date(Date.parse(latest) - days * 86400000).toISOString();
-  const totalWaste = parts.reduce((s, p) => s + p.tokens, 0);
-  const inWindow = (ts) => ts >= cutoff;
-
-  // Spike excess: per timeline point, the amount above the spike threshold.
-  const thr = data.spike_threshold || 0;
-  const spikeExcessWeek = thr > 0
-    ? timeline.filter((p) => p.delta >= thr && inWindow(p.ts)).reduce((s, p) => s + (p.delta - thr), 0)
-    : 0;
-
-  // Read warnings: timestamped rows.
-  const readWasteWeek = (data.read_warnings || []).filter((w) => inWindow(w.ts)).reduce((s, w) => s + (w.approx_tokens || 0), 0);
-
-  // Loop waste: timestamped loop rows.
-  const loopWasteWeek = (data.loops || []).filter((l) => inWindow(l.ts)).reduce((s, l) => s + (l.wasted_tokens || 0), 0);
-
-  // Testing: global metric — apportion by the window's share of timeline volume. A zero
-  // all-window delta (all deltas absent/empty) must yield a safe zero share, not NaN — the
-  // clamped weekWaste below needs a finite value.
-  const weekDelta = timeline.filter((p) => inWindow(p.ts)).reduce((s, p) => s + (p.delta || 0), 0);
-  const allDelta = timeline.reduce((s, p) => s + (p.delta || 0), 0);
-  const weekShare = allDelta > 0 ? weekDelta / allDelta : 0;
-  const testPart = parts.find((p) => p.label === "over-testing");
-  const testWeek = testPart ? testPart.tokens * weekShare : 0;
-
-  let weekWaste = spikeExcessWeek + readWasteWeek + loopWasteWeek + testWeek;
-  // Timeline spikes can diverge from spike_causes rollup — clamp to the all-time waste.
-  return Math.min(Math.max(Math.round(weekWaste), 0), totalWaste);
+  legend.textContent = "red: spike turn · orange: runaway loop";
 }
 
 // Waste grade: color starts only where the user's danger line says it matters — below the first
@@ -599,16 +600,15 @@ function wasteGrade(pct, danger) {
 // One waste card: analytics-header style — range label, huge graded %, subtle tokens line, then
 // the top-3 waste sources (each a link to its Investigate section) plus a "+N more" tooltip
 // (shared tooltip component) listing every violator with its percent.
-function wasteCard(label, waste, total, parts, danger) {
+function wasteCard(label, total, parts, danger) {
   const div = document.createElement("div");
   div.className = "waste-card";
+  const waste = parts.reduce((s, p) => s + p.tokens, 0);
   const share = total > 0 ? (waste / total) * 100 : 0;
   const grade = wasteGrade(share, danger);
-  const sum = parts.reduce((s, p) => s + p.tokens, 0);
-  const scale = waste / (sum || 1);
   // Violators by share of the range's total usage, descending.
   const violators = parts
-    .map((p) => ({ label: p.label, tokens: p.tokens * scale, pct: total > 0 ? ((p.tokens * scale) / total) * 100 : 0 }))
+    .map((p) => ({ label: p.label, tokens: p.tokens, pct: total > 0 ? (p.tokens / total) * 100 : 0 }))
     .filter((v) => v.pct >= 0.05)
     .sort((a, b) => b.pct - a.pct);
   // Investigate-section each source links to (scroll + auto-expand).
@@ -622,21 +622,17 @@ function wasteCard(label, waste, total, parts, danger) {
   const rest = violators.slice(3);
   // "+N more": click-persistent dropdown (visually a tooltip) listing ALL violators as clickable
   // jump links. Open/close handled by the delegated listeners in wireWasteSourceLinks.
-  const violatorHtml = (v) => {
-    const g = wasteGrade(v.pct, danger);
-    const key = secKeyByLabel[v.label] ? ` data-sec-key="${secKeyByLabel[v.label]}"` : "";
-    return `<span class="waste-source waste-source-link"${key} tabindex="0"><span class="waste-pct-inline ${g}">${v.pct < 1 ? "<1" : Math.round(v.pct)}%</span> ${esc(v.label)}</span>`;
-  };
   const moreHtml = rest.length
     ? `<span class="waste-more-wrap">
          <button type="button" class="waste-more" aria-expanded="false" aria-haspopup="true">+${rest.length} more</button>
-         <span class="waste-pop" role="menu">${violators.map((v) => `<span class="waste-pop-row">${violatorHtml(v)}</span>`).join("")}</span>
+         <span class="waste-pop" role="menu">${violators.map((v) => `<span class="waste-pop-row">${sourceHtml(v)}</span>`).join("")}</span>
        </span>`
     : "";
 
+  // Column 1: range + big graded % + tokens. Column 2: the waste categories, one per row.
   div.innerHTML = `<span class="waste-range">${esc(label)}</span>
     <span class="waste-big ${grade}"><span class="waste-pct">${Math.round(share * 10) / 10}%</span><span class="waste-sub">${tokShort(waste)} of ${tokShort(total)} tokens</span></span>
-    <span class="waste-sources">${shown.map(sourceHtml).join(`<span class="waste-sep">, </span>`)}${moreHtml}</span>`;
+    <span class="waste-sources">${shown.map((v) => `<span class="waste-source-row">${sourceHtml(v)}</span>`).join("")}${moreHtml}</span>`;
   return div;
 }
 
@@ -668,27 +664,20 @@ function findingCard(f) {
   const confClass = f.confidence === "strong signal" ? "strong" : "";
   const card = document.createElement("div");
   card.className = "finding";
-  // The next step becomes a jump link when its evidence section exists (item 3: dead "→ next
-  // step" text → clickable path to the evidence). The delegated waste-source listener handles
-  // .waste-source-link clicks, so the link reuses that exact jump contract — same class, same
-  // scroll-and-expand behavior, no second scroll mechanism.
+  // The suggested next step is repeated in the evidence section, so the card keeps only a
+  // bookmark link to it. It reuses .waste-source-link's jump-click contract (scroll + expand).
   const secKey = FINDING_SECTION[f.kind] || null;
-  const nextActionHtml = !f.next_action
-    ? ""
-    : secKey
-      ? `<span class="next waste-source-link next-plain" data-sec-key="${esc(secKey)}" tabindex="0" role="link" aria-label="jump to the evidence section">→ ${esc(f.next_action)} <span class="next-jump">see evidence ↓</span></span>`
-      : `<span class="next">→ ${esc(f.next_action)}</span>`;
+  const jumpHtml = secKey
+    ? ` <span class="finding-jump waste-source-link" data-sec-key="${esc(secKey)}" tabindex="0" role="link" aria-label="jump to the evidence section">see evidence ↓</span>`
+    : "";
   card.innerHTML = `<div class="finding-top">
       <div class="severity ${sevClass}"></div>
       <div class="finding-body">
         <h3 class="finding-title">${esc(f.headline)}
           ${f.confidence ? `<span class="confidence ${confClass}">${esc(f.confidence)}</span>` : ""}
         </h3>
-        <p class="finding-evidence">${esc(f.detail || "")}</p>
+        <p class="finding-evidence">${esc(f.detail || "")}${jumpHtml}</p>
       </div>
-    </div>
-    <div class="finding-action">
-      ${nextActionHtml}
     </div>`;
   return card;
 }
@@ -703,9 +692,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "spikes",
       title: "What made tokens jump",
-      framing: "each spike tagged with the behavior that drove it — and what to change",
+      framing: "spikes grouped by the behavior behind them",
       badge: `${data.spike_causes.length} spike${data.spike_causes.length > 1 ? "s" : ""}`,
       badgeClass: "alert",
+      badgeTip: BADGE_TIPS.alert,
       bodyEl: spikeCausesBody(data.spike_causes),
     }));
   }
@@ -715,9 +705,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "spike-prone",
       title: "Which tools are spike-prone",
-      framing: "lift = how much more a tool group drives spikes vs its normal share. Above 1 = spike-heavy",
+      framing: "lift > 1 = the group shows up in spikes more than in normal turns",
       badge: `${data.spike_anatomy.groups.length} group${data.spike_anatomy.groups.length > 1 ? "s" : ""}`,
       badgeClass: "warn",
+      badgeTip: BADGE_TIPS.warn,
       bodyEl: spikeAnatomyBody(data.spike_anatomy),
     }));
   }
@@ -727,9 +718,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "loops",
       title: "Tools that got stuck",
-      framing: "same tool fired many times consecutively in one session — likely a runaway retry loop",
+      framing: "same tool fired repeatedly in a row",
       badge: `${data.loops.length} loop${data.loops.length > 1 ? "s" : ""}`,
       badgeClass: "alert",
+      badgeTip: BADGE_TIPS.alert,
       bodyEl: loopsBody(data.loops, data),
     }));
   }
@@ -741,9 +733,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "reads",
       title: "Context bloat from reads",
-      framing: "large or repeated document reads that inflated context unnecessarily",
+      framing: "large or repeated document reads",
       badge: `${data.read_warnings.length} warning${data.read_warnings.length > 1 ? "s" : ""}`,
       badgeClass: "warn",
+      badgeTip: BADGE_TIPS.warn,
       bodyEl: readWarningsBody(data.read_warnings, data),
     }));
   }
@@ -759,9 +752,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "group-cost",
       title: "Which tool groups cost the most?",
-      framing: "share of all tool tokens, by functional group — warns when one group takes ≥40%, because that's where scoping saves the most",
+      framing: "share of tool tokens by group; flagged when one group takes ≥40%",
       badge: dominant ? `${top.group} (${topShare}%)` : `${data.group_cost.length} group${data.group_cost.length > 1 ? "s" : ""}, none dominant`,
-      badgeClass: dominant ? "warn" : "",
+      badgeClass: dominant ? "warn" : "ok",
+      badgeTip: dominant ? BADGE_TIPS.warn : BADGE_TIPS.ok,
       bodyEl: costComparisonBody(data.group_cost, data.tool_cost),
     }));
   }
@@ -780,9 +774,10 @@ function renderInvestigationSections(data) {
     container.appendChild(investSection({
       key: "regression",
       title: "Did anything get more expensive?",
-      framing: "first half vs last half of your data, as each group's share of tool tokens — a share gain means it grew relative to everything else",
+      framing: "each group's share of tool tokens, first half vs last half",
       badge: hasRegression ? `${top.group} → ${bShare}% → ${aShare}%` : "none found",
-      badgeClass: hasRegression ? "warn" : "",
+      badgeClass: hasRegression ? "warn" : "ok",
+      badgeTip: hasRegression ? BADGE_TIPS.warn : BADGE_TIPS.ok,
       bodyEl: regressionBody(data.regression),
     }));
   }
@@ -799,9 +794,10 @@ function renderInvestigationSections(data) {
       container.appendChild(investSection({
         key: "testing",
         title: "Are you over-testing?",
-        framing: `how much of your captured token traffic goes to test runs, full-suite reruns, and targeted-to-full balance`,
+        framing: "share of tokens spent on test runs and full-suite reruns",
         badge: overTesting ? `yes — ${tokenShare}%` : `no — ${tokenShare}%`,
-        badgeClass: overTesting ? "warn" : "",
+        badgeClass: overTesting ? "warn" : "ok",
+        badgeTip: overTesting ? BADGE_TIPS.warn : BADGE_TIPS.ok,
         bodyEl: testingEfficiencyBody(te),
         docAnchor: "testing-efficiency",
       }));
@@ -810,10 +806,20 @@ function renderInvestigationSections(data) {
 
   // 4h (removed): "Before vs after your change" marker comparison — half an idea on its own;
   // a future iteration will address change-marking holistically. The pipeline fields
-  // (marker_comparison, MOCK_MARKER) stay — the /tokens_v1 page and CLI still read them.
+  // (marker_comparison, MOCK_MARKER) stay — the CLI still reads them.
 }
 
-function investSection({ key, title, framing, badge, badgeClass, bodyEl, docAnchor }) {
+// Badge color rule (one rule for every Investigate section):
+//   red    — measured incidents: turns or loops that already cost extra tokens
+//   yellow — a pattern worth a look (share, lift, read or testing thresholds crossed)
+//   green  — checked, nothing flagged
+const BADGE_TIPS = {
+  alert: "Red: incidents that already cost extra tokens.",
+  warn: "Yellow: a pattern worth a look, not a confirmed loss.",
+  ok: "Green: checked, nothing flagged.",
+};
+
+function investSection({ key, title, framing, badge, badgeClass, badgeTip, bodyEl, docAnchor }) {
   const details = document.createElement("details");
   details.className = "invest-section";
   if (key) details.dataset.secKey = key;
@@ -828,7 +834,7 @@ function investSection({ key, title, framing, badge, badgeClass, bodyEl, docAnch
       <span class="invest-title">${esc(title)} ${iconHtml}</span>
       <span class="invest-framing">${esc(framing)}</span>
     </span>
-    <span class="invest-badge ${badgeClass}">${esc(badge)}</span>
+    <span class="invest-badge ${badgeClass}"${badgeTip ? ` title="${esc(badgeTip)}"` : ""}>${esc(badge)}</span>
   </summary>
   <div class="invest-body"></div>`;
   const body = details.querySelector(".invest-body");
@@ -842,7 +848,7 @@ function spikeCausesBody(rows) {
     frag.appendChild(itemRow({
       dotColor: "var(--danger)",
       head: `${causeLabel(c.cause)} (${c.spikes} spike${c.spikes > 1 ? "s" : ""})`,
-      detail: `Worst: <span class="num">+${tokShort(c.worst_delta)}</span> delta in <code>${esc(c.worst_repo || "unknown")}</code>. Average delta: <span class="num">${tokShort(c.avg_delta)}</span> per spike.`,
+      detail: `Worst <span class="num">+${tokShort(c.worst_delta)}</span> in <code>${esc(c.worst_repo || "unknown")}</code> · avg <span class="num">${tokShort(c.avg_delta)}</span> per spike`,
       hint: c.hint,
     }));
   }
@@ -856,7 +862,7 @@ function spikeAnatomyBody(a) {
     frag.appendChild(itemRow({
       dotColor: liftColor,
       head: `${esc(g.group)} — lift ${g.lift == null ? "only in spikes" : g.lift + "×"}`,
-      detail: `Appears in <span class="num">${pct(g.spike_share)}%</span> of spike turns but only <span class="num">${pct(g.normal_share)}%</span> of normal turns. Average <span class="num">${tokShort(g.avg_tokens)}</span> tokens/call in spikes.`,
+      detail: `<span class="num">${pct(g.spike_share)}%</span> of spike turns vs <span class="num">${pct(g.normal_share)}%</span> of normal turns · avg <span class="num">${tokShort(g.avg_tokens)}</span> tokens/call`,
       hint: g.lift >= 1 ? `Scope ${esc(g.group)} calls more narrowly (smaller query, fewer refs) before they land in context.` : "Below baseline — not a spike driver.",
     }));
   }
@@ -869,7 +875,7 @@ function loopsBody(rows, data) {
     frag.appendChild(itemRow({
       dotColor: "var(--danger)",
       head: `${esc(l.tool)} repeated ${l.max_repeat}× — ${esc(l.repo)}`,
-      detail: `Session: ${sessionLink(l.session_id, data, l.context?.title ? `"${l.context.title}"` : null)}`,
+      detail: `Session: ${sessionLink(l.session_id, l.harness, data, l.context?.title ? `"${l.context.title}"` : null)}`,
       hint: l.hint,
     }));
   }
@@ -895,7 +901,7 @@ function readWarningsBody(rows, data) {
     const instances = list.slice(0, 5);
     const overflow = list.length - instances.length;
     const instanceLines = instances.map((w) =>
-      `<div class="read-instance">${esc(w.repo || "unknown")} · <span class="num">${tokShort(w.approx_tokens)}</span> approx tokens · ${w.read_count || 1} read${(w.read_count || 1) > 1 ? "s" : ""} · Session: ${sessionLink(w.session_id, data)}</div>`,
+      `<div class="read-instance">${esc(w.repo || "unknown")} · <span class="num">${tokShort(w.approx_tokens)}</span> approx tokens · ${w.read_count || 1} read${(w.read_count || 1) > 1 ? "s" : ""} · Session: ${sessionLink(w.session_id, w.harness, data)}</div>`,
     ).join("");
     frag.appendChild(itemRow({
       dotColor: type === "large_document_read" ? "var(--warn)" : "var(--danger)",
@@ -915,7 +921,7 @@ function readWarningsBody(rows, data) {
 // Package identity comes from /api/config's package list (id/label + self-declared capabilities),
 // never from a hardcoded name here. Falls back to the state-3 copy when config isn't loaded.
 function docLookupHint(warning, type) {
-  const cfg = window.__tokens2Config;
+  const cfg = window.__tokensConfig;
   const pkgs = (cfg?.packages || []).filter((p) => (p.capabilities || []).includes("doc-lookup"));
   if (!pkgs.length) return readWarningLabel(type) === "Large document read"
     ? "prefer a section-level lookup over loading the whole document"
@@ -933,79 +939,46 @@ function docLookupHint(warning, type) {
 }
 
 function costComparisonBody(groupCost, toolCost) {
-  // Horizontal bar chart: y = tool group, x = SHARE of all tool tokens. Share is the primary
-  // framing (universally understood, same unit as the waste cards); avg tokens/call stays in the
-  // metadata rows. Heaviest/cheapest per-call highlighted by data, not hardcoded group names.
+  // Bar chart (shared <portal-bar-chart>): one bar per group, sized by share of all tool tokens.
+  // Heaviest/cheapest per-call groups are highlighted by data, not hardcoded names. Underneath, a
+  // real table gives every group (and its top tools) the same columns so numbers line up.
   const sorted = [...groupCost].sort((a, b) => (b.total_tokens || 0) - (a.total_tokens || 0)).slice(0, 8);
   const perCallRanked = [...groupCost].sort((a, b) => b.avg_tokens - a.avg_tokens);
   const heaviest = perCallRanked[0]?.group;
   const cheapest = perCallRanked[perCallRanked.length - 1]?.group;
+  const tagOf = (g) => (sorted.length > 1 && g === heaviest ? "heaviest" : sorted.length > 1 && g === cheapest ? "cheapest" : "");
 
-  const rowH = 44, padL = 150, padR = 70, gap = 10;
-  const W = 984;
-  const H = sorted.length * rowH + 10;
-  const maxVal = Math.max(...sorted.map((g) => g.share_of_tokens || 0), 0.0001);
-  const chartW = W - padL - padR;
+  const chart = document.createElement("portal-bar-chart");
+  chart.rows = sorted.map((g) => ({
+    label: g.group,
+    value: g.share_of_tokens || 0,
+    text: Math.round((g.share_of_tokens || 0) * 100) + "%",
+    tone: tagOf(g.group) === "heaviest" ? "warn" : tagOf(g.group) === "cheapest" ? "ok" : "",
+  }));
 
-  let rows = "";
-  for (let i = 0; i < sorted.length; i++) {
-    const g = sorted[i];
-    const y = i * rowH;
-    const w = Math.max(((g.share_of_tokens || 0) / maxVal) * chartW, 2);
-    const isHeavy = g.group === heaviest && sorted.length > 1;
-    const isCheap = g.group === cheapest && sorted.length > 1;
-    const fill = isHeavy ? "var(--warn)" : isCheap ? "var(--ok)" : "var(--accent)";
-    const shareLabel = Math.round((g.share_of_tokens || 0) * 100) + "%";
-    rows += `<text x="${padL - 10}" y="${y + rowH / 2 - 2}" fill="var(--ink)" font-size="12" font-weight="600" font-family="var(--sans)" text-anchor="end">${esc(g.group)}</text>
-      <rect x="${padL}" y="${y + 4}" width="${w.toFixed(0)}" height="${rowH - 16}" fill="${fill}" rx="3"/>
-      <text x="${(padL + w + 8).toFixed(0)}" y="${y + rowH / 2 - 2}" fill="var(--dim)" font-size="11" font-family="var(--sans)">${shareLabel}</text>`;
-  }
-  // X-axis ticks in %.
-  const tickCount = 4;
-  let ticks = "";
-  for (let i = 0; i <= tickCount; i++) {
-    const v = (maxVal / tickCount) * i;
-    const x = padL + (v / maxVal) * chartW;
-    ticks += `<line x1="${x.toFixed(0)}" y1="0" x2="${x.toFixed(0)}" y2="${H - 6}" stroke="var(--line)" stroke-width="0.5" opacity="0.3"/>
-      <text x="${x.toFixed(0)}" y="${H + 2}" fill="var(--dim)" font-size="10" font-family="var(--sans)" text-anchor="middle">${Math.round(v * 100)}%</text>`;
-  }
-
-  const frag = document.createDocumentFragment();
-  const chart = document.createElement("div");
-  chart.innerHTML = `<svg class="chart-svg" viewBox="0 0 ${W} ${H + 16}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Average tokens per call by tool group">
-    <g transform="translate(0,0)">${rows}</g>
-    ${ticks}
-  </svg>`;
-
-  // Metadata rows under the chart: dedicated tag column first, then group + details,
-  // so the tags never offset the column alignment.
-  const meta = document.createElement("div");
-  meta.className = "cost-meta";
+  // Per-tool rows show WHICH tool inside a heavy group to scope: top 3 by avg tokens per call.
+  let body = "";
   for (const g of sorted) {
-    const row = document.createElement("div");
-    row.className = "cost-meta-row";
-    const isHeavy = g.group === heaviest && sorted.length > 1;
-    const isCheap = g.group === cheapest && sorted.length > 1;
-    row.innerHTML = `<span class="cost-meta-tag">${isHeavy ? '<span class="tag heaviest">heaviest</span>' : isCheap ? '<span class="tag cheapest">cheapest</span>' : ""}</span>
-      <span class="cost-meta-group">${esc(g.group)}</span>
-      <span class="cost-meta-detail">${fmt(g.calls)} calls · ${tokShort(g.total_tokens)} total · ${g.calls_per_session || "—"} calls/session</span>`;
-    meta.appendChild(row);
-    // Per-tool detail inside the group: WHICH tool inside a heavy group to scope (the decision
-    // the section enables — "jcodemunch is 43% of tool tokens" becomes "the Read-within-group
-    // averaging 8k/call is what to narrow"). Top 3 tools by avg tokens per call; max shown so
-    // a single huge call isn't hidden by a low average.
+    const tag = tagOf(g.group);
+    body += `<tr class="cost-group-row">
+      <th scope="row">${esc(g.group)}${tag ? ` <span class="tag ${tag}">${tag}</span>` : ""}</th>
+      <td>${fmt(g.calls)}</td><td>${tokShort(g.total_tokens)}</td><td>${tokShort(g.avg_tokens)}</td><td></td>
+    </tr>`;
     const tools = (toolCost || []).filter((t) => t.group === g.group).sort((a, b) => b.avg_tokens - a.avg_tokens).slice(0, 3);
     for (const t of tools) {
-      const toolRow = document.createElement("div");
-      toolRow.className = "cost-tool-row";
-      toolRow.innerHTML = `<span class="cost-meta-tag"></span>
-        <span class="cost-meta-group cost-tool-name">${esc(t.tool)}</span>
-        <span class="cost-meta-detail">${fmt(t.calls)} calls · avg ${tokShort(t.avg_tokens)} · up to ${tokShort(t.max_tokens)} in one call</span>`;
-      meta.appendChild(toolRow);
+      body += `<tr class="cost-tool-row">
+        <th scope="row">${esc(t.tool)}</th>
+        <td>${fmt(t.calls)}</td><td>${tokShort(t.total_tokens)}</td><td>${tokShort(t.avg_tokens)}</td><td>${tokShort(t.max_tokens)}</td>
+      </tr>`;
     }
   }
+  const table = document.createElement("table");
+  table.className = "cost-table";
+  table.innerHTML = `<thead><tr><th scope="col">Group / tool</th><th scope="col">Calls</th><th scope="col">Total</th><th scope="col">Avg / call</th><th scope="col">Max / call</th></tr></thead><tbody>${body}</tbody>`;
+
+  const frag = document.createDocumentFragment();
   frag.appendChild(chart);
-  frag.appendChild(meta);
+  frag.appendChild(table);
   return frag;
 }
 
@@ -1031,12 +1004,15 @@ function regressionBody(r) {
     const row = document.createElement("div");
     row.className = "reg-row";
     const gain = (g.after_share ?? 0) - (g.before_share ?? 0);
-    const deltaClass = gain > 0 ? "up" : gain < 0 ? "down" : "";
+    const dir = (d) => (d > 0 ? "up" : d < 0 ? "down" : "");
+    // First half is the baseline (neutral); last half and this week are judged against it.
+    const deltaClass = dir(gain);
+    const weekClass = g.week_share == null ? "" : dir((g.week_share ?? 0) - (g.before_share ?? 0));
     row.innerHTML = `<span class="reg-group">${esc(g.group)}</span>
       <span class="reg-col">${pct(g.before_share ?? 0)}%</span>
       <span class="reg-arrow">→</span>
       <span class="reg-col reg-after ${deltaClass}">${pct(g.after_share ?? 0)}%</span>
-      <span class="reg-col">${pct(g.week_share ?? 0)}%</span>
+      <span class="reg-col ${weekClass}">${pct(g.week_share ?? 0)}%</span>
       <span class="reg-detail">${tokShort(g.before_avg_tokens)} → ${tokShort(g.after_avg_tokens)}</span>`;
     table.appendChild(row);
   }
@@ -1045,7 +1021,7 @@ function regressionBody(r) {
     const note = document.createElement("p");
     note.className = "item-detail";
     note.style.margin = "8px 0 0";
-    note.innerHTML = `<strong>Exploratory:</strong> midpoint split, not tied to a specific change. The marker-relative comparison in a future iteration will give a precise before/after once a change is marked.`;
+    note.innerHTML = `<strong>Exploratory:</strong> midpoint split, not tied to a change. For a precise before/after, mark a change in <a href="#condition-changes-section">Your changes</a>.`;
     frag.appendChild(note);
   }
   return frag;
@@ -1111,7 +1087,7 @@ function renderAgentPrompt(data) {
   const lines = [];
   // Harness list is dynamic — machine-installed harnesses from /api/config (same machineHarnesses
   // cohort the setup cascade uses), not a static string. Falls back to the data's own harnesses.
-  const installedNames = activePresentedHarnesses(window.__tokens2Config || {})
+  const installedNames = activePresentedHarnesses(window.__tokensConfig || {})
     .map((h) => h.displayName || h.id);
   const dataNames = [...new Set((data.harnesses || []).filter(Boolean))];
   const names = installedNames.length ? installedNames : dataNames;
@@ -1129,7 +1105,7 @@ function renderAgentPrompt(data) {
   lines.push("");
   lines.push("=== TOKEN TELEMETRY REPORT ===");
   lines.push("");
-  lines.push(`Period: ${(data.sessions || []).length} sessions, ${(data.capture_count || 0)} tool-call captures.`);
+  lines.push(`Period: ${data.conditions.data_quality.sessions} observed sessions (${(data.sessions || []).length} with token data), ${(data.capture_count || 0)} tool-call captures.`);
   const spikeCount = (data.spikes || []).length;
   if (spikeCount) lines.push(`Usage spikes: ${spikeCount} turns exceeded the ${tokShort(data.spike_threshold)} per-turn spike threshold (2σ above the mean).`);
   const sevenDay = data.usage_windows?.seven_day;
@@ -1241,7 +1217,7 @@ function renderFullData(data) {
   if (data.sessions?.length) {
     container.appendChild(rawTable("Top sessions by tokens", ["session", "repo", "tokens", "captures"],
       data.sessions.slice(0, 10).map((s) => [
-        { html: sessionLink(s.session_id, data, s.title || s.session_id?.slice(0, 8)) },
+        { html: sessionLink(s.session_id, s.harness, data, s.title || s.session_id?.slice(0, 8)) },
         esc(s.repo || "unknown"),
         { num: tokShort(s.total_tokens) },
         { num: s.captures || 0 },
@@ -1305,9 +1281,9 @@ function rawTable(title, headers, rows) {
 // When the session exists in the report (data.sessions), render a chip with a rich tooltip of
 // human-friendly session context (what it was about, what it did, where, when). When it doesn't,
 // fall back to the plain static label. One code path — no per-session markup.
-function sessionLink(sessionId, data, fallbackLabel) {
+function sessionLink(sessionId, harness, data, fallbackLabel) {
   const id = sessionId || "";
-  const s = (data.sessions || []).find((x) => x.session_id === id);
+  const s = (data.sessions || []).find((x) => x.session_id === id && (x.harness ?? null) === (harness ?? null));
   const label = fallbackLabel || id.slice(0, 8);
   if (!s) return `<span class="session-chip session-unknown"><code>${esc(label)}</code></span>`;
   // data-session-id is the click target — wireSessionChips' delegated listener opens the
@@ -1324,22 +1300,23 @@ function sessionLink(sessionId, data, fallbackLabel) {
 wireWasteSourceLinks();
 wireSessionChips();
 wireDocGuideIcons();
+wireHintToggle();
 
 // ── Doc-guide info icons ──
 // Same one-delegate pattern as the v1 dashboard: any <portal-info-icon data-doc-anchor> opens
 // the shared doc-guide popup pre-scrolled to that heading. The guide is server-rendered from
 // docs/user/guides/telemetry.md — the popup and the on-disk doc are always the same content.
-// Anchors are placed only where the guide section genuinely describes the tokens2 section
+// Anchors are placed only where the guide section genuinely describes the tokens section
 // (testing-efficiency, session-detail); sections the guide doesn't cover get NO icon rather
 // than a mismatched one.
-const docModal = createDocGuideModal(document.getElementById("tokens2docmodal"), async () => {
+const docModal = createDocGuideModal(document.getElementById("tokensdocmodal"), async () => {
   try {
     return await portalGetJson("/api/telemetry/guide");
   } catch (err) {
     return { ok: false, error: (err && err.message) || String(err) };
   }
 });
-document.getElementById("tokens2docmodal").addEventListener("close", () => {
+document.getElementById("tokensdocmodal").addEventListener("close", () => {
   for (const icon of document.querySelectorAll("portal-info-icon[aria-expanded='true']")) {
     icon.setAttribute("aria-expanded", "false");
   }

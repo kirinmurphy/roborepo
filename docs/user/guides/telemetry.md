@@ -1,193 +1,166 @@
-# Telemetry Walkthrough
+# Tokens page user guide
 
-## Purpose
+The **Tokens** page (`/tokens`) helps you investigate token usage, repeated work, and the
+conditions observed around problems. Start with an action item, inspect its evidence, and
+record a change when you want to compare later sessions.
 
-Telemetry shows what your Claude and Codex sessions cost — tokens, tool calls, and time. Mark a change
-you made, and it compares sessions before and after it. It is local and opt-in; nothing leaves your
-machine.
+Screenshots in this guide use fictional sample data. Their numbers illustrate how to read
+the page; they are not performance claims about a model, package, or real project.
 
-This guide walks through the portal page. For schemas, privacy, and retention details, see the
-[Telemetry Service Reference](../reference/telemetry.md).
+## Open the Tokens page
 
-## Open The Page
+Run:
 
 ```sh
 roborepo web
 ```
 
-```text
-http://127.0.0.1:4317/tokens
-```
+Choose **Tokens** in the portal navigation. With the default port, the page is at
+`http://127.0.0.1:4317/tokens`; use the address printed by the command if your port differs.
 
-Local-only, refreshes every 5 seconds. If telemetry isn't on yet, the page shows a "turn on
-telemetry" prompt. Until real sessions are captured, it shows a simulated report under a banner so
-you can see what the page will contain.
+Telemetry is opt-in and stored locally. If the page asks you to **turn on telemetry**, enable
+it and run a session in an installed agent harness. Until live data is available, the page can
+show a report labeled **simulated tracking report**. Recording changes requires live telemetry.
 
-## Read The Tokens Page
+## Find a problem worth investigating
 
-The page is ordered from verdict to evidence, top to bottom:
+Read the page from top to bottom:
 
-| Section | Tells you |
+| Section | What to do |
 | --- | --- |
-| Identifiable waste | How much of your token spend went to avoidable patterns, this week and all time, with the top offenders |
-| Action items | Plain-English findings, ranked, each with the change to make — read this first |
-| Investigate | A set of questions, each with a short answer badge and the evidence behind it (listed below) |
-| When did problems happen | A timeline of flagged events; click a mark to open that session |
-| Agent-ready prompt | A copyable prompt that hands the evidence above to your coding agent |
-| Full data *(collapsed)* | Top-N lists, sessions, and data-quality notes |
+| **Identifiable waste** | Look at flagged token usage for this week and all time. Each turn is counted once, under its largest source, so the sources add up to the total. These are identified patterns, not a complete accounting of every avoidable token. |
+| **Action items** | Start with a finding and follow its suggested investigation. |
+| **Investigate** | Expand a problem type or **Recent problem sessions** to inspect evidence. Recent sessions start collapsed, combine findings from the same session, and scroll within a bounded list. |
+| **Do problems follow a condition?** | Compare problem rates with and without a known condition. |
+| **What happened, in order** | Use the event ledger to see when problems and changes were observed. |
+| **Your changes** | Record a change and inspect its before/after comparison. |
+| **Agent-ready prompt** | Copy the summarized evidence into an agent session for further investigation. |
+| **Full data** | Inspect supporting lists, sessions, and data-quality information. |
 
-The Investigate questions:
+### Session detail
 
-| Question | What it looks at |
+Recent rows show the repository once, short model and harness chips, and a resource count.
+Open **Session details** for resource names, attribution, coverage, and the recommended next step.
+The dialog puts that next step first in a labeled fact grid. Where a transcript remains available,
+it can also show the heaviest turns. Captured findings remain visible when a transcript is missing.
+A resource labeled **configured** or **available** was observed in configuration; that label does not prove it
+was used in the session.
+
+### Testing efficiency
+
+Expand **Are you over-testing?** to inspect repeated full-suite runs, targeted-versus-full
+activity, and unchanged failure patterns. Use the evidence to decide whether a smaller check
+would help the next investigation. These warnings are report-wide, so they do not become a
+session-level condition rate or marker comparison.
+
+## Compare conditions
+
+Conditions can include a model, repository, harness, configured package, or available skill.
+Full-width category cards show supported deviations under **Cheaper** and **More expensive**,
+one row per condition with its percentage, an info icon for the raw counts, and a **Sessions**
+button that opens the matching sessions. Two links sit under the columns. **Full outcomes** shows
+raw rates, cohort denominators, neutral outcomes, and unknown coverage, including items that have no
+supported deviation. **More evidence needed** opens a popup listing comparisons that are too small
+for a percentage, with what each still needs. A small sample is never labeled as no difference.
+A column with nothing to report shows a dash.
+
+![Condition cards comparing known presence and absence across models, repositories, harnesses, packages, and skills.](../../images/tokens/conditions-light.png)
+
+Read a comparison as a rate, not just a count. In this example:
+
+- **With the condition:** 3 affected sessions out of 12, or 25%.
+- **Without the condition:** 9 affected sessions out of 12, or 75%.
+- **Unknown:** 2 sessions have insufficient condition evidence and belong to neither cohort.
+
+The relative difference is about **67% fewer with the condition**: `(25% − 75%) / 75%`.
+It is an observed association. It does not show that the condition caused the difference.
+
+![Comparison details showing 3 of 12 affected sessions with a condition, 9 of 12 without, and 2 unknown sessions.](../../images/tokens/comparison-detail-light.png)
+
+Percent deviations require at least **10 sessions and 3 affected sessions in each cohort**.
+Below those floors, use the raw rates and denominators. A missing cohort makes the comparison
+unavailable; a zero baseline does not produce an infinite percentage. The cards use a working
+±20% display band, which is not a test of statistical significance.
+
+Conditions overlap: a session may belong to a model, repository, and several package or skill
+comparisons. Do not add the cards together as if each represented different sessions.
+
+## Use the event ledger
+
+The **What happened, in order** ledger lists observed problems and changes newest first, with event icons, readable
+dates, repository scope, and available event details. Open a problem to inspect its session.
+Select **Show more** to reveal another 12 rows. Problem rows open session details; marked
+changes jump to their comparison under **Your changes**. The scope note describes
+which automatic changes are supported and keeps global markers separate from session context.
+
+A configured ambient-package change is shown when a changed resource configuration is first
+observed by a session. That timestamp is not the exact edit time. Skills-only and app-version
+changes do not produce ambient-change rows. Same-ID file-content edits require the separate
+revision-fingerprinting feature.
+
+Timestamp ties may have a stable display order without proving whether an event happened
+before or after a recorded change. Boundary comparisons exclude unresolved ties.
+
+## Record a change
+
+In **Your changes**, select **+ Mark a change**:
+
+1. Give the change a short, recognizable title.
+2. Choose **I am making this change now** for something you are changing now, or **I made this change earlier**
+   to record an earlier change. For an earlier change, set its effective time.
+3. Choose all repositories or a specific repository.
+4. Select the problem kinds to watch: spikes, loops, or read warnings. Over-testing can be
+   selected, but its comparison is currently unavailable because its evidence is report-wide.
+5. Optionally attach a related finding, then select **Record change**.
+
+![Mark change form with a title, earlier effective time, repository scope, watching kinds, and optional finding attachment.](../../images/tokens/mark-change-light.png)
+
+To correct a record, select **Edit change**. The correction supersedes the earlier record while
+preserving history.
+
+## Interpret the result of a change
+
+![Recorded change showing an available read-warning comparison with 4 of 13 affected sessions before and 8 of 13 after.](../../images/tokens/recorded-change-light.png)
+
+| State | Meaning |
 | --- | --- |
-| What made tokens jump | Each spike, tagged with the behavior that drove it |
-| Which tools are spike-prone | Tool groups that drive spikes more than their normal share |
-| Tools that got stuck | The same tool firing many times in a row — likely a retry loop |
-| Context bloat from reads | Large or repeated reads that inflated context |
-| Which tool groups cost the most? | Token share by tool group |
-| Did anything get more expensive? | The first half of your data against the second half |
-| Are you over-testing? | Testing efficiency — see below |
+| **Recorded** | The change is saved, but no eligible observations are available for its scope yet. |
+| **Collecting** | More eligible sessions are needed for the comparison. |
+| **Comparison available** | Both before and after cohorts meet the comparison's sample requirement. Read the rates and counts. |
+| **Can't compare fairly** | Scope or boundary evidence is insufficient, or the selected finding has no supported comparison unit. |
 
-### Testing Efficiency
+Sessions that span the boundary and observations with unresolved timestamp ties are excluded
+and counted separately. In the example, the affected-session rate rises from **4/13** to
+**8/13** after the change. That is a reason to investigate; it is not proof the change caused
+more read warnings. “Comparison available” is not a verdict that a change helped.
 
-Full vs. targeted test activity, redundant reruns, and how much of captured tokens goes to testing —
-the section most likely to surface a debugging-loop problem worth fixing. It includes the
-targeted-to-full ratio and full-suite reruns that reproduced an unchanged failure signature. On
-`/tokens` this is the **Are you over-testing?** question; the
-[v1 dashboard](#the-v1-dashboard) shows it as a panel measured in tool time.
+The **Marked changes** summary links to the full evidence in **Your changes**, avoiding a second
+copy of the same rates. The **Your changes** cards show watched event kinds and repository scope
+together. Available comparisons show before/after affected-session rates, denominators, ambiguous and spanning counts,
+and association-only wording. Collecting and unavailable results explain what evidence is missing.
+Equal rates say **No observed change**. Small event counts say **Early signal** and ask for more evidence; larger samples suggest
+monitoring an improvement or inspecting a possible regression.
 
-## Session Detail
+## When a result is missing
 
-Click any session chip or flagged row to open a drill-down popup. It shows what the session was
-(opening prompt, repo, agent), what telemetry flagged in it with the recommended fix, and a
-ready-to-paste analysis prompt for your coding agent. When the transcript is still on disk, the heaviest turns are listed under "Heaviest
-turns in this chat."
+| What you see | What it means / what to try |
+| --- | --- |
+| Simulated report | Enable telemetry and collect live agent sessions. |
+| Unknown condition coverage | Telemetry cannot establish presence or absence. More samples cannot repair missing historical evidence, but new captures may have usable snapshots. |
+| More evidence needed | Open the popup for the raw rates and what is still missing. Too few sessions or affected sessions prevent a percentage claim. |
+| No clear difference | No comparison crosses the display band with sufficient evidence. Focus on stronger signals. |
+| Comparison group missing | Collect sessions with and without that condition; unresolved context stays excluded. |
+| Partial or unavailable token coverage | Read valid/eligible counts before interpreting averages. Missing usage is not zero usage. |
+| Change still collecting | Continue collecting comparable sessions before and after the effective boundary. |
 
-## Markers
-
-A marker is a timestamped note on the timeline: "I changed X here." Telemetry can then split
-sessions into before/after that marker and compare them.
-
-Create one from the terminal:
+For structured condition evidence in the terminal:
 
 ```sh
-roborepo telemetry mark --type change --title "Prevent full-suite debugging loops" \
-  --metric test.full_suite_calls_per_debug_phase --expect decrease
+roborepo telemetry report --conditions
 ```
 
-| Marker type | When to use it |
-| --- | --- |
-| `change` | You changed something (skill, rule, package) and want to measure the effect — the one you'll use most |
-| `outcome` | Record whether a session/task succeeded |
-| `phase` | Mark an explicit task-phase boundary |
-| `note` | Free-form timestamped context |
-| `experiment-start` / `experiment-end` | Bookended by `roborepo telemetry experiment start/end` |
+## Related guides
 
-Creating markers in the browser and comparing sessions across one happen on the
-[v1 dashboard](#the-v1-dashboard):
-
-```mermaid
-sequenceDiagram
-  participant You
-  participant CLI as roborepo telemetry mark
-  participant Timeline as v1 dashboard timeline
-  You->>CLI: --type change --title "..." --metric tokens.total --expect decrease
-  CLI->>Timeline: marker appears immediately
-  You->>Timeline: pick marker in the filter bar
-  Timeline-->>You: before/after comparison
-```
-
-## The v1 Dashboard
-
-The earlier dashboard is still served at `/tokens_v1`, hidden from the portal nav. It reads the same
-data as `/tokens` and adds the filtering and comparison tools below.
-
-### How A Filter Reaches The Page
-
-```mermaid
-flowchart LR
-  A[Global filter bar] -->|time / harness / model / repo / marker| B(cohort)
-  C[Analysis explorer] -->|metric + comparison| B
-  B -->|scopes| D[Every panel on the page]
-  B -->|matches| E[CLI: roborepo telemetry report]
-```
-
-Two different things narrow what you see, and they feed the same cohort:
-
-- The **global filter bar** (top of page) — always on, applies to every panel at once.
-- The **Analysis explorer** (bottom of page) — a one-off deeper comparison, doesn't change what
-  the rest of the page shows.
-
-### Global Filters
-
-| Filter | Where | Narrows to |
-| --- | --- | --- |
-| Time range | `time range` row | 1h / 6h / 1d / 1w / all, or drag on the chart to pan |
-| Source | `source` row | Claude only, Codex only, or both |
-| Model | `filters` row → model dropdown | one model |
-| Repository | `filters` row → repo dropdown | one repo |
-| Marker | `filters` row → marker dropdown | before/after a `change` marker instead of a plain filter |
-
-Model and repository are scoped to whatever source is selected — pick Codex and the model dropdown
-only offers models actually used by Codex sessions, not Claude's. Switching source resets model and
-repository, since a value picked under one source may not exist under the other.
-
-Every filter serializes into the page URL — a filtered view can be bookmarked or shared and comes
-back exactly as left. A small count badge and a **clear** link appear once anything is active.
-
-To create a marker here, click **"+ mark change"** (top-right, below the filter bar) → title,
-optional metric, expected direction → submit. It shows up on the chart immediately.
-
-### Panel Map
-
-| # | Panel | Tells you |
-| --- | --- | --- |
-| ① | what this means · action items | Plain-English findings, ranked — read this first |
-| ② | token usage over time | The chart; markers render as colored vertical lines |
-| ③ | warnings & abnormalities | Testing efficiency, data quality, repeated reads, tool loops, spikes |
-| ④ | cost analysis *(collapsed)* | What each tool/MCP package puts into context |
-| ⑤ | sessions *(collapsed)* | Every session ranked by tokens |
-| ⑥ | raw breakdowns *(collapsed)* | Supporting totals |
-| ⑦ | analysis explorer *(collapsed)* | Deeper comparisons, described below |
-
-Clicking a session opens the older detail modal: model history, configuration snapshot, a phase
-timeline, tool totals, and the outcome/task category if one was set. The phase timeline uses these
-phases:
-
-```mermaid
-stateDiagram-v2
-  [*] --> discovery
-  discovery --> implementation
-  implementation --> debugging
-  debugging --> implementation
-  debugging --> verification
-  verification --> finalization
-  finalization --> [*]
-```
-
-### Marker-Relative Comparison
-
-When a marker is selected in the filter bar, this replaces the exploratory midpoint regression
-with a real before/after comparison anchored to that specific change.
-
-### Analysis Explorer
-
-For anything the global filter bar doesn't cover — a specific metric, or two custom cohorts with
-no shared marker to split around:
-
-```mermaid
-flowchart TD
-  A[Pick a metric] -->|then choose| B{Comparison mode}
-  B -->|marker-relative| C[Before / after a marker]
-  B -->|cohort A vs cohort B| D[Two independently filtered groups]
-  C -->|produces| E[Result: evidence + confidence + next action]
-  D -->|produces| E
-```
-
-The metric list comes from one shared registry — the same formulas the CLI report and every
-alert use, so a number never means two different things depending on where you're looking at it.
-
-## Related
-
-- [Telemetry Service Reference](../reference/telemetry.md) — schemas, CLI commands, API
-  routes, privacy/retention details.
+- [Daily Use](./setup-and-daily-use.md)
+- [Telemetry Service Reference](../reference/telemetry.md) — capture, retention, schemas, and CLI details.
+- [Screenshot library](../../images/tokens/README.md) — light/dark assets and regeneration instructions.

@@ -8,6 +8,7 @@ depends_on:
 related:
   - jqi1dof
   - h4tqm2wz
+  - nl40n9vr
 reviewed_commit: 85390e9
 ---
 
@@ -118,7 +119,7 @@ Verified against `85390e9`.
 - There is no global repository-source settings model; sources cannot be user-configured.
 - Plans still owns `discoveryRoots` and `ignoredDirectories` in `~/.roborepo/plan-docs/settings.json` (`modules/plan-docs/index.mjs`), recursively searching those roots and reading `ROBOREPO_PLAN_ROOTS`.
 - `scripts/cli/repositories.mjs` still exposes `enrollRepositoryInPlans()`, and `scripts/cli/portal-routes-repositories.mjs` still serves `POST /api/repositories/:id/plans-enrollment`, which add an exact path to Plans discovery roots.
-- Plans has a page-local repository filter; Tokens has a page-local `repo` cohort selector.
+- Plans has a page-local repository filter. Tokens has no repository control: the legacy dashboard that owned a `repo` cohort selector was removed, though `/api/data` still accepts both a canonical `repository` id and the legacy `repo` label.
 - Shared portal navigation does not preserve repository scope between pages.
 - `urlKey` does not exist yet (allocated by [[jqi1dof]]).
 
@@ -256,7 +257,7 @@ For every visible, resolved repository with a valid local root, Plans inspects i
 | Page | All repositories | Selected repository | Behavior |
 | --- | --- | --- | --- |
 | Plans | Plans across visible known repositories | Plans for canonical `repositoryId` | Replace local repo filter |
-| Tokens | All eligible telemetry | Telemetry for canonical `repositoryId` | Replace local selector; preserve legacy metadata handling |
+| Tokens | All eligible telemetry | Telemetry for canonical `repositoryId` | Add the shared repository control, which the page does not have today; `/api/data` already scopes by `repository` |
 | Agents (`/config`) | Global agent configuration | Repository-config placeholder | Show "coming soon" and a link back to global config |
 | Runtime | Operational repository/runtime list | Not supported | No selector; scoped navigation drops `repository` |
 | Home (`/`) | Repository directory | N/A — Home is the unscoped directory | Scope-clearing destination |
@@ -292,7 +293,7 @@ The link clears scope and returns to global Agents.
 
 **Plans.** Repository scope comes from the shared header; source management from **Manage repositories…**; lifecycle/priority/search stay page-owned. The Plans header may show `N plans in M repositories`, with the count opening the management/selector surface. Remove the Project Folders panel (`portal/plans/panels.js`) and the page-local repository filter (`portal/plans/state.js`) once shared scope and global management land. Plan snapshots consume globally known local repositories instead of discovering a separate set. Do not leave a Plans-local filter and a Portal canonical filter as competing systems.
 
-**Tokens.** Introduce `repository=<urlKey>` as shared canonical scope without mechanically renaming the historical telemetry `repo` cohort metadata. New canonical associations filter by `repositoryId`; historical records predating canonical IDs may use an explicit bounded fallback, but ambiguous display-name matching is not acceptable. Include canonical scope in cache signatures. Remove the redundant page-local repository selector once shared scope is complete.
+**Tokens.** Introduce `repository=<urlKey>` as shared canonical scope without mechanically renaming the historical telemetry `repo` cohort metadata. New canonical associations filter by `repositoryId`; historical records predating canonical IDs may use an explicit bounded fallback, but ambiguous display-name matching is not acceptable. `/api/data` already accepts a canonical `repository` id alongside the legacy `repo` label and includes both in the analysis cache key; the page itself has no repository control, so this story adds the shared one. [[nl40n9vr]] adds the time, harness, and model controls beside it.
 
 **Agents.** Global view unchanged with no scope. When `repository` resolves, replace the global presentation with the placeholder — do not partially filter resources or imply repository-specific config exists before its dedicated story.
 
@@ -336,9 +337,9 @@ Current repository routes key on encoded `repositoryId` (`/api/repositories/:id`
 
 ### Tokens
 
-- `portal/telemetry/state.js`, `portal/telemetry/app.js`, `portal/telemetry/index.html`, `portal/telemetry/api.js`
+- `portal/tokens/app.js`, `portal/tokens/index.html`
 - `scripts/cli/portal-routes-telemetry.mjs`, `scripts/cli/telemetry.mjs`, `scripts/cli/telemetry-cohort.mjs`
-- Separate shared canonical scope from legacy `repo` semantics; preserve range/harness/model/marker state.
+- Separate shared canonical scope from legacy `repo` semantics. The page has no range/harness/model/marker filter UI (the legacy dashboard that owned it was removed); `/api/data` still accepts those parameters.
 
 ### Shared portal chrome
 
@@ -415,7 +416,7 @@ Current repository routes key on encoded `repositoryId` (`/api/repositories/:id`
 
 - [ ] Add canonical repository scope distinct from legacy `repo`.
 - [ ] Filter canonical events by `repositoryId` with bounded historical fallback.
-- [ ] Preserve range/harness/model/marker/session-detail semantics; remove the redundant selector.
+- [ ] Add the shared repository control to the Tokens page; preserve session-detail semantics.
 
 ### Phase 11 — Agents/config integration
 
@@ -445,8 +446,7 @@ npm run test:repositories-api
 npm run test:plans
 npm run test:plans-portal-state
 npm run test:developer-runtime-repository-merge
-npm run test:telemetry-portal-state
-npm run test:telemetry-cohort
+node scripts/test/telemetry-cohort-check.mjs
 npm test
 ```
 

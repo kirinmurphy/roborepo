@@ -8,6 +8,8 @@
 // as the labeled exploratory fallback (plan: "Retain midpoint regression as a labeled exploratory
 // fallback when no marker is selected").
 
+import { normalizeObservations, canonicalFlowRows } from "./telemetry-observations.mjs";
+import { splitObservationBoundary } from "./telemetry-boundaries.mjs";
 import { getMetric, isKnownMetric, computeMetric } from "./telemetry-metrics.mjs";
 import { applyCohortFilter, normalizeCohortFilter } from "./telemetry-cohort.mjs";
 
@@ -47,33 +49,32 @@ function dominantSession(captures) {
 // the caller explicitly opts into within-session comparison (not implemented here — plan explicitly
 // scopes that out: "unless the analysis explicitly supports within-session phase comparison").
 export function splitCohortsByMarker(captures, marker) {
-  const markerMs = Date.parse(marker.ts);
+  if (marker.schema >= 2) {
+    const observations = normalizeObservations(captures).sessions.filter((item) => marker.scope === "all" || (marker.repository_id && item.repository_id === marker.repository_id));
+    const split = splitObservationBoundary(observations, marker);
+    return { before: canonicalFlowRows(normalizeObservations(split.before.flatMap((item) => item.rows))), after: canonicalFlowRows(normalizeObservations(split.after.flatMap((item) => item.rows))),
+      excluded: [...split.spanning.map((item) => ({ session_id: item.session_id, reason: "session spans the marker timestamp" })),
+        ...split.ambiguous.map((item) => ({ session_id: item.session_id, reason: "ambiguous_boundary" }))] };
+  }
+  // Legacy markers share the canonical boundary rule: effective_at ?? ts, with sessions touching
+  // the boundary excluded rather than assigned to a side.
   const sessions = new Map();
   for (const event of captures) {
     const id = event.session_id || "unknown";
     const ms = Date.parse(event.ts);
     if (!Number.isFinite(ms)) continue;
-    if (!sessions.has(id)) sessions.set(id, { first: ms, last: ms, events: [] });
+    if (!sessions.has(id)) sessions.set(id, { session_id: id, first: ms, last: ms, events: [] });
     const s = sessions.get(id);
     s.first = Math.min(s.first, ms);
     s.last = Math.max(s.last, ms);
     s.events.push(event);
   }
-
-  const before = [];
-  const after = [];
-  const excluded = [];
-  for (const [id, session] of sessions) {
-    const spansMarker = session.first < markerMs && session.last > markerMs;
-    if (spansMarker) {
-      excluded.push({ session_id: id, reason: "session spans the marker timestamp" });
-    } else if (session.last <= markerMs) {
-      before.push(...session.events);
-    } else {
-      after.push(...session.events);
-    }
-  }
-  return { before, after, excluded };
+  const observations = [...sessions.values()].map((session) => ({ session_id: session.session_id, events: session.events,
+    first_seen: new Date(session.first).toISOString(), last_seen: new Date(session.last).toISOString(), rows: [] }));
+  const split = splitObservationBoundary(observations, marker);
+  return { before: split.before.flatMap((item) => item.events), after: split.after.flatMap((item) => item.events),
+    excluded: [...split.spanning.map((item) => ({ session_id: item.session_id, reason: "session spans the marker timestamp" })),
+      ...split.ambiguous.map((item) => ({ session_id: item.session_id, reason: "ambiguous_boundary" }))] };
 }
 
 // Restrict the larger of two cohorts to an equal-duration or equal-session-count window matching the
@@ -160,13 +161,18 @@ export function compareAcrossMarker(allCaptures, marker, metricId, {
   const afterValue = computeMetric(metricId, eqAfter, { markers });
 
   const dataQualityIssues = [];
-  if (beforeSessions < minimumSessionsPerCohort) dataQualityIssues.push(`before cohort has ${beforeSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
-  if (afterSessions < minimumSessionsPerCohort) dataQualityIssues.push(`after cohort has ${afterSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
+  // An unknown scope matches no sessions; report that as an unfair comparison, not as thin data.
+  const scopeUnknown = marker.schema >= 2 && !marker.repository_id && marker.scope !== "all";
+  if (scopeUnknown) dataQualityIssues.push("marker scope is unknown, so no sessions can be compared fairly");
+  else {
+    if (beforeSessions < minimumSessionsPerCohort) dataQualityIssues.push(`before cohort has ${beforeSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
+    if (afterSessions < minimumSessionsPerCohort) dataQualityIssues.push(`after cohort has ${afterSessions} sessions, below the minimum of ${minimumSessionsPerCohort}`);
+  }
   const dominantBefore = dominantSession(eqBefore);
   const dominantAfter = dominantSession(eqAfter);
   if (dominantBefore) dataQualityIssues.push(`one session dominates the before cohort (${dominantBefore.id.slice(0, 8)})`);
   if (dominantAfter) dataQualityIssues.push(`one session dominates the after cohort (${dominantAfter.id.slice(0, 8)})`);
-  if (beforeValue == null || afterValue == null) dataQualityIssues.push("metric could not be computed for one or both cohorts");
+  if (!scopeUnknown && (beforeValue == null || afterValue == null)) dataQualityIssues.push("metric could not be computed for one or both cohorts");
   if (excluded.length) dataQualityIssues.push(`${excluded.length} session(s) excluded (spanned the marker timestamp)`);
 
   const effectSize = beforeValue != null && afterValue != null ? afterValue - beforeValue : null;
@@ -179,6 +185,7 @@ export function compareAcrossMarker(allCaptures, marker, metricId, {
     dataQualityIssues,
     beforeValue,
     afterValue,
+    scopeUnknown,
   });
 
   return {
@@ -199,7 +206,8 @@ export function compareAcrossMarker(allCaptures, marker, metricId, {
   };
 }
 
-function confidenceLabel({ beforeSessions, afterSessions, minimumSessionsPerCohort, dataQualityIssues, beforeValue, afterValue }) {
+function confidenceLabel({ beforeSessions, afterSessions, minimumSessionsPerCohort, dataQualityIssues, beforeValue, afterValue, scopeUnknown }) {
+  if (scopeUnknown) return "can't compare fairly";
   if (beforeValue == null || afterValue == null) return "insufficient evidence";
   if (beforeSessions < minimumSessionsPerCohort || afterSessions < minimumSessionsPerCohort) return "insufficient evidence";
   const hasSeriousDataQualityIssue = dataQualityIssues.some((issue) => issue.includes("dominates") || issue.includes("excluded"));
@@ -266,6 +274,8 @@ export function describeMarkerComparison(comparison, marker) {
     : null;
   const nextAction = comparison.confidence === "insufficient evidence"
     ? `Collect more comparable sessions before drawing a conclusion (need at least the configured minimum per cohort).`
+    : comparison.confidence !== "strong signal"
+      ? `Early signal only: keep collecting comparable sessions before acting on ${metricLabel.toLowerCase()} moving ${worseningDirection ? "the wrong way" : "this way"}.`
     : worseningDirection
       ? `Investigate why ${metricLabel.toLowerCase()} moved the wrong way and consider a follow-up change or experiment.`
       : `Continue monitoring ${metricLabel.toLowerCase()} across the next eligible sessions.`;

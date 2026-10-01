@@ -37,7 +37,10 @@ Load a matching skill before the work it governs, not after — and only the ski
 Ask before moving a checkout: `checkout`, `switch`, `reset --hard`, `rebase`, `merge`, or stashing
 edits you did not make. A branch that looks wrong for the task is still the one the user chose.
 
-Need a different base? `git worktree add -b <name> <path> <base>` — isolated tree, checkout untouched.
+Never create a branch or worktree without asking first, even to isolate work or to commit — ask
+whether to make one or stay on the current branch.
+
+Need a different base (once the user agrees)? `git worktree add -b <name> <path> <base>` — isolated tree, checkout untouched.
 
 Uncommitted changes you did not make belong to someone else. Never revert or stash them, and stage
 explicit paths rather than `-A`/`.` so they cannot ride along in your commit.

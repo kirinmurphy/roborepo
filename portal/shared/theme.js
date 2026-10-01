@@ -31,10 +31,8 @@ const PORTAL_PAGES = window.PORTAL_MANIFEST.pages;
   const nav = document.getElementById("nav");
   if (!nav) return;
   const here = location.pathname;
-  // `hidden: true` pages stay served but out of the nav (e.g. the v1 tokens dashboard at
-  // /tokens_v1 during the v2 cutover).
   nav.prepend(
-    ...PORTAL_PAGES.filter((p) => !p.hidden).map((p) => {
+    ...PORTAL_PAGES.map((p) => {
       const link = tpl("tpl-nav-link");
       link.href = p.path;
       link.textContent = p.title;

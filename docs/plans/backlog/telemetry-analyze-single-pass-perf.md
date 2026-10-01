@@ -6,6 +6,7 @@ blocked_by: []
 depends_on: []
 related:
   - telemetry-analysis-io-performance
+  - nl40n9vr
 reviewed_commit:
 ---
 
@@ -49,6 +50,9 @@ path, which is why this is low priority rather than urgent.
 - Reduce `analyzeTelemetry` wall time by folding independent per-capture aggregations into a
   single pass over the captures array.
 - Preserve byte-identical report output — no change to any computed value or report shape.
+- Measure the size of the serialized report on a large spool. Each ledger context carries its
+  evaluated conditions, so payload size grows with findings and condition cardinality; no
+  large-spool benchmark has been run (carried over from the Tokens portal review).
 
 ## Non-goals
 
@@ -68,6 +72,8 @@ many helpers that each iterate `captures` independently. Confirmed separate pass
 - `toolCost(captures)`, `groupCost(captures)`, `packageCost(captures)`
 - `spikeAnatomy(captures, spikeCaptures)`, `regression(captures)`, `detectLoops(captures, ...)`
 - `rollupCauses(spikeCaptures)` (over the spike subset)
+- the waste ledger's spike and testing nominations (two short loops over `captures`), plus the
+  nominations made inside `detectLoops` and `readWarnings`; see `scripts/cli/telemetry-waste.mjs`
 
 Each is a self-contained reducer over the same array. The function is pure (no I/O), so a
 rewrite is purely local to this file.
@@ -76,7 +82,7 @@ Guardrail already exists: `scripts/test/telemetry-correctness-check.mjs` feeds a
 events array into `analyzeTelemetry` and asserts report values. It does not yet assert
 old-vs-new equality on a real spool — add that for this work.
 
-## Proposed approach
+## Proposed design
 
 1. Profile first: instrument each helper to find which passes actually dominate the
    ~180-270ms. Fold only the ones that pay off; a helper that is already cheap or that needs

@@ -21,11 +21,11 @@ function hasTokens(event) {
   return event && event.tokens && typeof event.tokens.total === "number";
 }
 
-function isTestOperation(event) {
+export function isTestOperation(event) {
   return event?.operation?.category === "test";
 }
 
-function isFullSuite(event) {
+export function isFullSuite(event) {
   return isTestOperation(event) && event.operation.scope === "full";
 }
 

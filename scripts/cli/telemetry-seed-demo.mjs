@@ -1,3 +1,5 @@
+import { conditionDemoEvidence } from "./telemetry-conditions-demo.mjs";
+import { writeSnapshot } from "./telemetry-schemas/persistence.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { privacyHash } from "./telemetry-schemas/hash.mjs";
@@ -234,10 +236,13 @@ function main() {
     console.log(`removed ${target}`);
     return;
   }
-  const records = demoRecords();
+  const evidence = conditionDemoEvidence(demoRecords());
+  const records = evidence.events;
+  for (const snapshot of evidence.snapshots) writeSnapshot(snapshot);
   const body = records.map((record) => JSON.stringify(record)).join("\n") + "\n";
   fs.writeFileSync(target, body);
-  console.log(`seeded ${records.length} demo captures across 5 sessions -> ${target}`);
+  const sessionCount = new Set(records.map((record) => JSON.stringify([record.harness, record.session_id]))).size;
+  console.log(`seeded ${records.length} demo captures across ${sessionCount} sessions (including a synthetic baseline/focused comparison cohort) -> ${target}`);
   console.log("run `roborepo web` to view; rerun with --clear to remove.");
 }
 

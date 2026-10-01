@@ -26,7 +26,8 @@
     "README.md",
     "LICENSE",
     "docs/plans/plans-config.json",
-    "docs/user/"
+    "docs/user/",
+    "docs/images/"
   ],
   "scripts": {
     "build": "npm run --silent pack:dry-run",
@@ -34,7 +35,7 @@
     "test": "scripts/test/test-cli.sh --quiet",
     "test:install-collisions": "scripts/test/test-install-collisions.sh",
     "test:install-smoke": "node scripts/test/install-smoke.mjs",
-    "test:telemetry": "node scripts/test/telemetry-correctness-check.mjs && node scripts/test/telemetry-time-axis-check.mjs",
+    "test:telemetry": "node scripts/test/telemetry-correctness-check.mjs",
     "pack:dry-run": "npm pack --dry-run",
     "pack:smoke": "npm pack",
     "test:package-install": "node scripts/test/package-install-smoke.mjs",

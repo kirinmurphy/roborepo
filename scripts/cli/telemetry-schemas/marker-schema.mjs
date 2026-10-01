@@ -1,7 +1,7 @@
 import { generateId, isValidId } from "./id.mjs";
 import { validateObjectKeys, validateStringArray } from "./validators.mjs";
 
-export const MARKER_SCHEMA_VERSION = 1;
+export const MARKER_SCHEMA_VERSION = 2;
 
 export const MARKER_TYPES = new Set(["change", "phase", "outcome", "experiment-start", "experiment-end", "note"]);
 export const OUTCOME_STATUSES = new Set(["successful", "partial", "failed", "abandoned", "unknown"]);
@@ -16,7 +16,7 @@ const ALLOWED_FIELDS = [
   "schema", "marker_id", "ts", "type", "title", "description", "repo", "branch", "sha",
   "config_snapshot_id", "packages", "skills", "tags", "metric", "expected_direction",
   "supersedes", "session_id", "phase", "status",
-  "task_category", "task_category_source", "task_scale",
+  "task_category", "task_category_source", "task_scale", "effective_at", "repository_id", "scope", "watching_kinds", "finding_id",
 ];
 
 const TASK_SCALE_FIELDS = ["files_touched", "directories_touched", "insertions", "deletions", "cross_cutting", "surface"];
@@ -31,7 +31,7 @@ export function generateMarkerId() {
 export function validateMarker(marker) {
   if (!marker || typeof marker !== "object" || Array.isArray(marker)) throw new Error("marker must be an object");
   validateObjectKeys(marker, ALLOWED_FIELDS, "marker");
-  if (marker.schema !== MARKER_SCHEMA_VERSION) throw new Error(`unsupported marker schema version: ${marker.schema}`);
+  if (![1, MARKER_SCHEMA_VERSION].includes(marker.schema)) throw new Error(`unsupported marker schema version: ${marker.schema}`);
   if (!isValidId(marker.marker_id, "mark")) throw new Error(`invalid marker_id: ${marker.marker_id}`);
   if (typeof marker.ts !== "string" || Number.isNaN(Date.parse(marker.ts))) throw new Error("marker ts must be an ISO timestamp");
   if (!MARKER_TYPES.has(marker.type)) throw new Error(`unknown marker type: ${marker.type}`);
@@ -78,6 +78,15 @@ export function validateMarker(marker) {
     throw new Error("marker task_category_source requires task_category");
   }
   if (marker.task_scale != null) validateTaskScale(marker.task_scale);
+  if (marker.schema === 2) {
+    if (typeof marker.effective_at !== "string" || !Number.isFinite(Date.parse(marker.effective_at))) throw new Error("marker effective_at must be an ISO timestamp");
+    if (!["repository", "all", "unknown"].includes(marker.scope)) throw new Error("marker scope must be repository, all, or unknown");
+    if (marker.scope === "repository" && (typeof marker.repository_id !== "string" || !/^(git|local):/.test(marker.repository_id))) throw new Error("repository marker requires canonical repository_id");
+    if (marker.scope !== "repository" && marker.repository_id != null) throw new Error("repository_id requires repository scope");
+    validateStringArray(marker.watching_kinds, "marker watching_kinds");
+    if (!Array.isArray(marker.watching_kinds) || marker.watching_kinds.some((kind) => !["spike", "loop", "read-warning", "over-testing"].includes(kind))) throw new Error("invalid watching_kinds");
+    if (marker.finding_id != null && typeof marker.finding_id !== "string") throw new Error("finding_id must be a string");
+  }
   return marker;
 }
 

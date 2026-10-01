@@ -181,8 +181,7 @@ same cohort.
 ## Portal
 
 The `/tokens` page shows the same analysis as `roborepo telemetry report`, refreshing every 5
-seconds. The earlier dashboard stays available at `/tokens_v1` with the filter bar, marker
-creation, and Analysis explorer. See the [Telemetry Walkthrough](../guides/telemetry.md) for both.
+seconds. See the [Telemetry Walkthrough](../guides/telemetry.md) for how to read it.
 
 ## Privacy
 

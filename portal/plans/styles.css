@@ -12,20 +12,14 @@ main {
   display: grid;
   gap: 14px;
 }
-.settings,
 .warnings {
   border: 1px solid var(--line);
   background: var(--panel);
   border-radius: 8px;
   padding: 1rem 1.5rem;
 }
-/* Discovery-root ("Project Folders") section: a subtly different background/border from
- * read-only sections (.warnings uses plain --panel/--line) so it visibly reads as
- * an editable control surface, not just another info panel. */
-.settings {
-  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
-  /* border-color: var(--accent); */
-}
+/* Discovery-root ("Project Folders") section: styled by the shared .intro-banner
+ * (portal/shared/base.css) so it reads the same as other pages' setup prompts. */
 /* Whole-page sticky header block: control-bar + lifecycle tabs ride together and stay pinned for
  * the entire scroll, not just the ~2 rows of their old short wrapper. #plans-header is a direct
  * child of <body> (the page scroll container), so a sticky here tracks the full page. It pins to
@@ -211,20 +205,10 @@ main {
 }
 /* Button chrome (default/secondary, cta, text) is defined globally in portal/shared/base.css via
  * data-btn — no page-local button {} override here. */
-/* Matches .empty-state h2's weight/size, so "Add your first Project Folder" reads as the same
- * heading style. Only shown once plan-docs is enabled — while it's disabled the banner is the
- * single visible setup step. Once roots exist, the row-1 "N Repos" control item takes over and
- * this whole block relocates into the control bar (unlabeled). */
-.settings-label {
-  display: block;
-  margin-bottom: 10px;
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--ink);
-}
-.settings-body {
-  margin-top: 10px;
-}
+/* The "Add your first Project Folder" title is .intro-banner-title. Only shown once plan-docs is
+ * enabled — while it's disabled the banner is the single visible setup step. Once roots exist, the
+ * row-1 "N Repos" control item takes over and this whole block relocates into the control bar
+ * (unlabeled). */
 #roots-panel-mount:not([hidden]) .settings-body {
   margin-top: 0;
   padding: 10px 20px 12px;

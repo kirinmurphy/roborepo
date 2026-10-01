@@ -157,7 +157,7 @@ flowchart LR
 
 ![The Tokens page: identifiable waste this week and all time, and a ranked action item](docs/images/tokens.png)
 
-[Telemetry walkthrough →](docs/user/guides/telemetry.md)
+[Tokens page user guide →](docs/user/guides/telemetry.md)
 
 ---
 

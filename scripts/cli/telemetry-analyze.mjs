@@ -3,9 +3,13 @@
 // report and the dashboard JSON API so both speak the same numbers. Pure functions over arrays —
 // no I/O — so the server and CLI can each read the spool their own way.
 
+import { buildConditionsReport } from "./telemetry-conditions.mjs";
+import { createHash } from "node:crypto";
+import { normalizeObservations, canonicalFlowRows } from "./telemetry-observations.mjs";
 import { mcpServerOf } from "../harnesses/transcript-parse.mjs";
 import { deriveInsights } from "./telemetry-insights.mjs";
-import { computeMetric } from "./telemetry-metrics.mjs";
+import { computeMetric, isFullSuite } from "./telemetry-metrics.mjs";
+import { createWasteLedger } from "./telemetry-waste.mjs";
 import { applyCohortFilter, normalizeCohortFilter, describeCohortFilter, activeFilterCount } from "./telemetry-cohort.mjs";
 import { compareAcrossMarker, describeMarkerComparison } from "./telemetry-compare.mjs";
 import { hasHarnessProvider, getHarnessProvider } from "../harnesses/registry.mjs";
@@ -46,28 +50,49 @@ const SOURCE_EXTS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".jso
 //     exploratory fallback when no marker is selected").
 //   - compareMetric: metric id for the marker-relative comparison (only used when markerId is set).
 export function analyzeTelemetry(events, options = {}) {
-  const { cohortFilter = null, markers = [], markerId = null, compareMetric = "tokens.total", repositoryHashIndex = null } = options;
+  const { cohortFilter = null, markers = [], repositoryHashIndex = null } = options;
   const normalizedFilter = cohortFilter ? normalizeCohortFilter(cohortFilter) : null;
   const scopedEvents = normalizedFilter ? applyCohortFilter(events, normalizedFilter, { markers, repositoryHashIndex }) : events;
-  const scopedIndex = indexScopedEvents(scopedEvents);
+  // One representative row per operation, so mirrored captures never double-count.
+  const observations = normalizeObservations(scopedEvents, { repositoryHashIndex });
+  const report = analyzeRows(canonicalFlowRows(observations), scopedEvents, events, normalizedFilter, options);
+  report.conditions = buildConditionsReport(scopedEvents, report, options, observations);
+  for (const [key, kind] of [["spikes", "spike"], ["loops", "loop"], ["read_warnings", "read-warning"]]) {
+    for (const finding of report[key]) finding.condition_context = report.conditions.ledger.find((row) => row.kind === kind && row.session_id === finding.session_id && row.harness === finding.harness)?.context ?? null;
+  }
+  report.version += ":" + createHash("sha256").update(JSON.stringify(report.conditions)).digest("hex").slice(0, 16);
+  return report;
+}
+
+function analyzeRows(rows, scopedEvents, events, normalizedFilter, { markers = [], markerId = null, compareMetric = "tokens.total" }) {
+  const scopedIndex = indexScopedEvents(rows);
   const captures = scopedIndex.captures;
   const captureIndex = indexCaptures(captures);
   const sessions = rollupSessions(captures);
   const spikeThreshold = deltaSpikeThreshold(captures);
   const spikeCaptures = captures.filter((event) => (event.delta_tokens || 0) >= spikeThreshold && spikeThreshold > 0);
+  // Waste ledger: loops and reads nominate their turns from inside detectLoops/readWarnings below;
+  // spike excess and testing are nominated here. Each turn is counted once (see telemetry-waste.mjs).
+  const wasteLedger = createWasteLedger();
+  for (const event of spikeCaptures) wasteLedger.add(event, "spikes", (event.delta_tokens || 0) - spikeThreshold);
+  // Over-testing is only the redundant part of testing: a full-suite rerun with no edit since the
+  // previous test run (same definition as test.full_suite_without_intervening_edit).
+  for (const event of captures) {
+    if (isFullSuite(event) && event.intervening?.edit_since_last_test === false) wasteLedger.add(event, "testing", event.delta_tokens || 0);
+  }
   // Session-context lookup so every flagged event (spike, loop) can carry the same "which chat was
   // this" markers the sessions table shows — title (first prompt), activity summary, repo/branch.
-  const sessionsById = new Map(sessions.map((s) => [s.session_id, s]));
+  const sessionsById = new Map(sessions.map((s) => [sessionKeyOf(s), s]));
   // Deduplicate spikes: show only the worst spike per session, with count so the user sees how
   // many turns exceeded the threshold without seeing the same session repeated on every row.
   const spikeCountBySess = new Map();
   for (const event of spikeCaptures) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     spikeCountBySess.set(id, (spikeCountBySess.get(id) || 0) + 1);
   }
   const bestSpikeBySess = new Map();
   for (const event of spikeCaptures) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     if (!bestSpikeBySess.has(id) || (event.delta_tokens || 0) > (bestSpikeBySess.get(id)?.delta_tokens ?? 0)) {
       bestSpikeBySess.set(id, event);
     }
@@ -84,7 +109,7 @@ export function analyzeTelemetry(events, options = {}) {
     spike_threshold: spikeThreshold,
     // One row per session (worst spike), with spike_count showing how many turns crossed the threshold.
     spikes: [...bestSpikeBySess.values()]
-      .map((event) => ({ ...spikeRow(event, sessionsById), spike_count: spikeCountBySess.get(event.session_id || "unknown") || 1 }))
+      .map((event) => ({ ...spikeRow(event, sessionsById), spike_count: spikeCountBySess.get(sessionKeyOf(event)) || 1 }))
       .sort((a, b) => b.delta_tokens - a.delta_tokens),
     // Also expose harnesses present in the data so the dashboard can render a filter.
     harnesses: scopedIndex.harnesses,
@@ -116,18 +141,22 @@ export function analyzeTelemetry(events, options = {}) {
     // a labeled exploratory fallback when no marker is selected") — marker_comparison below is the
     // PREFERRED path once a change marker exists to compare across. regression() itself is untouched.
     regression: { ...regression(captures), exploratory: true, label: "midpoint (exploratory — not tied to any specific change)" },
-    loops: detectLoops(captures, sessionsById),
+    loops: detectLoops(captures, sessionsById, wasteLedger),
     data_quality_warnings: dataQualityWarnings(scopedEvents),
-    read_warnings: readWarnings(scopedEvents, sessionsById),
+    read_warnings: readWarnings(rows, sessionsById, wasteLedger),
     // Phase 5: testing-efficiency summary (plan: "Derived testing findings"), computed from the same
     // metrics registry the CLI report and portal both read — see telemetry-metrics.mjs.
     testing_efficiency: testingEfficiencySummary(captures),
+    // Identifiable waste, per turn and counted once — built after loops/read_warnings ran above so
+    // their nominations are in the ledger. Filled in just below (object literal order matters).
+    waste: null,
     // Phase 5: cohort context so a filtered response can describe itself (plan: "readable cohort
     // summary" / "expose cohorts and sample size").
     cohort: normalizedFilter
       ? { filter: normalizedFilter, summary: describeCohortFilter(normalizedFilter), active_filter_count: activeFilterCount(normalizedFilter) }
       : null,
   };
+  report.waste = wasteLedger.summarize(captureIndex.latestTs);
   // Marker-relative comparison (Phase 5 "preferred" path) — only computed when the caller selected a
   // marker. Uses the FULL (pre-cohort-filter) event set so the marker's own before/after split isn't
   // additionally restricted by the same filter that might have selected this marker's sessions; a
@@ -299,9 +328,9 @@ function usageWindows(captures, now = captures[0]?.ts ?? new Date().toISOString(
 function rollupSessions(captures) {
   const bySession = new Map();
   for (const event of captures) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     const current = bySession.get(id) ?? {
-      session_id: id,
+      session_id: event.session_id || "unknown",
       repo: event.repo?.label ?? "unknown",
       harness: event.harness,
       branch: event.repo?.branch ?? null,
@@ -408,14 +437,14 @@ function spikeRow(event, sessionsById) {
     harness: event.harness ?? null,
     cause,
     hint,
-    context: sessionContext(event.session_id, sessionsById),
+    context: sessionContext(event, sessionsById),
   };
 }
 
 // The "which chat was this" markers, pulled from the session rollup so every flagged event speaks
 // the same language as the sessions table: opening prompt, activity summary, repo/branch/harness.
-function sessionContext(sessionId, sessionsById) {
-  const s = sessionsById?.get(sessionId);
+function sessionContext(event, sessionsById) {
+  const s = sessionsById?.get(sessionKeyOf(event));
   if (!s) return null;
   return { title: s.title ?? null, activity: s.activity ?? null, repo: s.repo, branch: s.branch ?? null, harness: s.harness ?? null };
 }
@@ -482,7 +511,7 @@ function toolCost(captures) {
 function groupCost(captures) {
   const byGroup = new Map();
   const groupSessions = new Map();
-  const totalSessions = new Set(captures.map((e) => e.session_id).filter(Boolean)).size || 1;
+  const totalSessions = new Set(captures.filter((e) => e.session_id).map(sessionKeyOf)).size || 1;
   for (const event of resultCaptures(captures)) {
     const g = toolGroup(event.last_result.tool);
     const cur = byGroup.get(g) ?? { group: g, calls: 0, total_chars: 0 };
@@ -490,7 +519,7 @@ function groupCost(captures) {
     cur.total_chars += event.last_result.chars;
     byGroup.set(g, cur);
     if (!groupSessions.has(g)) groupSessions.set(g, new Set());
-    if (event.session_id) groupSessions.get(g).add(event.session_id);
+    if (event.session_id) groupSessions.get(g).add(sessionKeyOf(event));
   }
   return [...byGroup.values()]
     .map((r) => {
@@ -623,30 +652,32 @@ function regression(captures) {
 // Runaway detection: per session, the longest run of the SAME tool fired consecutively (from the
 // ordered PostToolUse captures). A long run is the "this skill went off on endless lookups" signal.
 const LOOP_REPEAT_THRESHOLD = 8;
-function detectLoops(captures, sessionsById) {
+function detectLoops(captures, sessionsById, ledger) {
   const bySession = new Map();
   for (const event of captures) {
     if (event.event !== "PostToolUse" || !event.tool?.name) continue;
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     if (!bySession.has(id)) bySession.set(id, []);
     bySession.get(id).push(event);
   }
   const loops = [];
-  for (const [id, events] of bySession) {
+  for (const events of bySession.values()) {
     events.sort((a, b) => a.ts.localeCompare(b.ts));
     let runTool = null, run = 0, bestTool = null, best = 0, bestStartTs = null, runStartTs = null;
     // Wasted tokens for a run = every repeat turn's delta beyond the first (the first call did
     // the work; each consecutive repeat re-spent tokens for the same answer).
     let runWasted = 0, bestWasted = 0;
+    let runRepeats = [], bestRepeats = [];
     for (const e of events) {
       const t = e.tool.mcp_tool || e.tool.name;
-      if (t === runTool) { run += 1; runWasted += e.delta_tokens || 0; }
-      else { runTool = t; run = 1; runStartTs = e.ts; runWasted = 0; }
-      if (run > best) { best = run; bestTool = t; bestStartTs = runStartTs; bestWasted = runWasted; }
+      if (t === runTool) { run += 1; runWasted += e.delta_tokens || 0; runRepeats.push(e); }
+      else { runTool = t; run = 1; runStartTs = e.ts; runWasted = 0; runRepeats = []; }
+      if (run > best) { best = run; bestTool = t; bestStartTs = runStartTs; bestWasted = runWasted; bestRepeats = runRepeats.slice(); }
     }
     if (best >= LOOP_REPEAT_THRESHOLD) {
+      for (const e of bestRepeats) ledger.add(e, "loops", e.delta_tokens || 0);
       loops.push({
-        session_id: id,
+        session_id: events[0].session_id || "unknown",
         repo: events[0].repo?.label ?? "unknown",
         harness: events[0].harness ?? null,
         tool: bestTool,
@@ -656,7 +687,7 @@ function detectLoops(captures, sessionsById) {
         hint: mcpServerOf(events.find((e) => (e.tool.mcp_tool || e.tool.name) === bestTool)?.tool?.name)
           ? "MCP tool firing in a tight loop — check the agent/skill that calls it"
           : bestTool + " repeated " + best + "× in a row — likely a runaway loop",
-        context: sessionContext(id, sessionsById),
+        context: sessionContext(events[0], sessionsById),
       });
     }
   }
@@ -708,18 +739,19 @@ function dataQualityWarnings(events) {
   return warnings;
 }
 
-function readWarnings(events, sessionsById) {
+function readWarnings(events, sessionsById, ledger) {
   const warnings = [];
   const byDoc = new Map();
   const bySession = new Map();
   for (const event of events) {
-    const id = event.session_id || "unknown";
+    const id = sessionKeyOf(event);
     if (!bySession.has(id)) bySession.set(id, []);
     bySession.get(id).push(event);
     const result = event.last_result;
     const fileHash = event.tool?.file_path_hash;
     const ext = event.tool?.file_ext;
     if (event.event === "PostToolUse" && result?.chars >= LARGE_DOCUMENT_READ_CHARS && DOC_EXTS.has(ext)) {
+      ledger.add(event, "reads", approxTokens(result.chars));
       warnings.push(readWarningRow("large_document_read", event, sessionsById, {
         file_ext: ext,
         file_path_hash: fileHash,
@@ -731,14 +763,17 @@ function readWarnings(events, sessionsById) {
     }
     if (event.event === "PostToolUse" && fileHash && DOC_EXTS.has(ext)) {
       const key = `${id}:${fileHash}`;
-      const cur = byDoc.get(key) || { event, count: 0, chars: 0 };
+      const cur = byDoc.get(key) || { event, count: 0, chars: 0, rereads: [] };
       cur.count += 1;
       cur.chars += result?.chars || 0;
+      // Re-reads (every read after the first) are the redundant part of a repeated read.
+      if (cur.count > 1) cur.rereads.push(event);
       byDoc.set(key, cur);
     }
   }
   for (const cur of byDoc.values()) {
     if (cur.count >= REPEATED_DOCUMENT_READ_COUNT && cur.chars >= LARGE_DOCUMENT_READ_CHARS) {
+      for (const event of cur.rereads) ledger.add(event, "reads", approxTokens(event.last_result?.chars || 0));
       warnings.push(readWarningRow("repeated_document_read", cur.event, sessionsById, {
         file_ext: cur.event.tool?.file_ext,
         file_path_hash: cur.event.tool?.file_path_hash,
@@ -749,8 +784,8 @@ function readWarnings(events, sessionsById) {
       }));
     }
   }
-  for (const [id, sessionEvents] of bySession) {
-    const repeatedDocs = warnings.filter((warning) => warning.session_id === id && warning.type === "repeated_document_read").length;
+  for (const sessionEvents of bySession.values()) {
+    const repeatedDocs = warnings.filter((warning) => warning.type === "repeated_document_read" && sessionKeyOf(warning) === sessionKeyOf(sessionEvents[0])).length;
     const jdocCalls = sessionEvents.filter((event) => mcpServerOf(event.last_result?.tool || event.tool?.name) === "jdocmunch").length;
     if (repeatedDocs > 0 && jdocCalls === 0) {
       warnings.push(readWarningRow("stale_doc_lookup", sessionEvents[0], sessionsById, {
@@ -781,7 +816,7 @@ function readWarningRow(type, event, sessionsById, extra) {
     harness: event.harness || null,
     repo: event.repo?.label || "unknown",
     ts: event.ts,
-    context: sessionContext(sessionId, sessionsById),
+    context: sessionContext(event, sessionsById),
     ...extra,
   };
 }
@@ -795,6 +830,11 @@ function isNativeSourceRead(event) {
 
 function hasTokens(event) {
   return event && event.tokens && typeof event.tokens.total === "number";
+}
+
+// Provider session ids are only unique within a harness; every per-session rollup keys on both.
+function sessionKeyOf(event) {
+  return JSON.stringify([event.harness ?? null, event.session_id || "unknown"]);
 }
 
 const minStr = (a, b) => (a <= b ? a : b);
