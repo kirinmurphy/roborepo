@@ -7,6 +7,7 @@ depends_on: []
 related:
   - h4tqm2wz
   - pljvmyh
+  - nl40n9vr
 reviewed_commit:
 ---
 
@@ -244,10 +245,12 @@ Thresholds are shares, not byte counts, and live in the inventory rather than in
 
 #### Where it renders
 
-- **Bottom of the Tokens page** (`portal/telemetry/`) — the receipt, scoped to the page whose data
+- **Bottom of the Tokens page** (`portal/tokens/`) — the receipt, scoped to the page whose data
   it describes. Deliberately not the shared portal footer: storage is a telemetry concern, and a
   readout on every page would put it in front of users looking at Plans or Runtime, where it is
-  noise.
+  noise. The page header already leads with the report period (first to last session); the
+  receipt's retained-days figure should extend that line rather than add a second period readout.
+  [[nl40n9vr]] adds range controls to the same header area.
 - **`roborepo doctor`** — a finding at `warning` and above, plus a line for any store actively
   discarding data. Follows doctor's existing check conventions.
 - **`roborepo telemetry status`** — already exists as a command and is where someone asks about
@@ -311,7 +314,7 @@ stores one obvious way to write safely.
       never lands on the render path.
 - [ ] Add one shared level calculation returning `receipt` / `warning` / `alert`, so the Tokens
       page, doctor, and `telemetry status` cannot disagree about the same state.
-- [ ] Render the receipt at the bottom of the Tokens page (`portal/telemetry/`): size plus the
+- [ ] Render the receipt at the bottom of the Tokens page (`portal/tokens/`): size plus the
       retained window in days, escalating its treatment at `warning` and `alert`.
 - [ ] Add a `roborepo doctor` finding at `warning` and above, considering only `unbounded` stores as
       growth drivers.

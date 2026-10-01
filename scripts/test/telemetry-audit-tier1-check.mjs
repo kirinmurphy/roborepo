@@ -50,7 +50,7 @@ console.log("telemetry audit tier 1: legacy and canonical boundary splits agree"
 
 // Finding 15: change comparisons report sessions left out for unknown condition data.
 import { compareObservationBoundary } from "../cli/telemetry-boundaries.mjs";
-import { changePresentation } from "../../portal/tokens2/conditions-format.js";
+import { changePresentation } from "../../portal/tokens/conditions-format.js";
 import { normalizeObservations } from "../cli/telemetry-observations.mjs";
 const conditionEvents = [1, 2].map((id) => ({ ...event(id), config_snapshot_id: null }));
 const compared = compareObservationBoundary(normalizeObservations(conditionEvents).sessions, marker("mark_c"), new Set(),

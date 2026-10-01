@@ -11,6 +11,14 @@
 
 const MARGIN = 8; // keep this far inside the viewport
 const GAP = 8; // space between trigger and bubble
+// Hover must rest this long before a tip appears, so sweeping the pointer across a list does not
+// flash a bubble for every row it crosses. Keyboard focus shows immediately: focus is deliberate.
+const SHOW_DELAY_MS = 500;
+// `data-tip-placement="panel"` marks a tip too large to float beside its trigger. On a wide enough
+// screen it docks to the right edge instead, reading as a side panel rather than a popup over the
+// row being read; below this width there is no room for that and it floats like any other tip.
+const PANEL_MIN_VIEWPORT = 1100;
+const PANEL_GUTTER = 24;
 
 let bubble = null;
 
@@ -55,6 +63,14 @@ function position(el) {
     tip.style.maxHeight = `${vh - MARGIN * 2}px`;
   }
 
+  if (tip.classList.contains("portal-tooltip--panel")) {
+    // Docked: gutter from the top and right edges, and never taller than the viewport allows.
+    tip.style.maxHeight = `${vh - PANEL_GUTTER * 2}px`;
+    tip.style.top = `${PANEL_GUTTER}px`;
+    tip.style.left = `${Math.round(vw - tip.offsetWidth - PANEL_GUTTER)}px`;
+    return;
+  }
+
   // Re-measure: the max-height above can change the height when it forces content to re-wrap.
   const finalHeight = tip.offsetHeight;
   // Anchor to the preferred side, then clamp so the whole bubble stays on screen. Clamping rather
@@ -80,18 +96,32 @@ function show(el) {
     if (!template) return;
     tip.replaceChildren(template.content.cloneNode(true));
     tip.classList.add("portal-tooltip--rich");
+    tip.classList.remove("portal-tooltip--lines");
   } else {
     const text = el.getAttribute("data-tip");
     if (!text) return;
     tip.textContent = text;
     tip.classList.remove("portal-tooltip--rich");
+    tip.classList.toggle("portal-tooltip--lines", text.includes("\n"));
   }
+  const panel = el.getAttribute("data-tip-placement") === "panel";
+  // Wide wherever it shows; docked only where the screen has room for a side panel.
+  tip.classList.toggle("portal-tooltip--wide", panel);
+  tip.classList.toggle("portal-tooltip--panel", panel && window.innerWidth >= PANEL_MIN_VIEWPORT);
   tip.hidden = false;
   // Position after it's laid out so offsetWidth/Height are real.
   position(el);
 }
 
+let pendingShow = null;
+
+function cancelPendingShow() {
+  clearTimeout(pendingShow);
+  pendingShow = null;
+}
+
 function hide() {
+  cancelPendingShow();
   if (bubble) bubble.hidden = true;
 }
 
@@ -101,7 +131,13 @@ function install() {
   // Delegated so it covers elements added after load (insight rows are rendered per repaint).
   document.addEventListener("pointerover", (e) => {
     const el = e.target.closest?.(TRIGGER_SELECTOR);
-    if (el) show(el);
+    // Moving between children of the same trigger is not a new hover.
+    if (!el || el.contains(e.relatedTarget)) return;
+    cancelPendingShow();
+    pendingShow = setTimeout(() => {
+      pendingShow = null;
+      if (el.isConnected) show(el);
+    }, SHOW_DELAY_MS);
   });
   document.addEventListener("pointerout", (e) => {
     const el = e.target.closest?.(TRIGGER_SELECTOR);
@@ -110,7 +146,9 @@ function install() {
   // Keyboard accessibility: focus/blur mirror hover.
   document.addEventListener("focusin", (e) => {
     const el = e.target.closest?.(TRIGGER_SELECTOR);
-    if (el) show(el);
+    if (!el) return;
+    cancelPendingShow();
+    show(el);
   });
   document.addEventListener("focusout", hide);
   // Anything that shifts layout out from under an open tip should dismiss it.

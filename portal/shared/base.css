@@ -66,6 +66,20 @@
    * This tints whatever surface it is used on, so one token works at every depth. */
   --row-hover-overlay: rgba(255, 255, 255, 0.07);
   --modal-shadow: rgba(0, 0, 0, 0.6);
+  /* Nested surface layers, for content that stacks deeper than page > panel: a band of rows inside
+   * a card, a list opened from one of those rows, and units inside that list. Explicit per-theme
+   * values rather than color-mix() tints, so the whole hierarchy is visible (and checked) in one
+   * place. The rules, checked by scripts/test/portal-surface-layers-check.mjs: every layer differs
+   * visibly from the one it sits on, and each deeper layer contrasts with its surroundings MORE
+   * than the layer around it does — so the innermost units (inset) are always the most distinct. */
+  --surface-band: #242b35;
+  --surface-sunken: #1a212b;
+  --surface-inset: #0b0f14;
+  /* Soft fills: a control that opens something, and a heading band inside a tooltip. The control
+   * wash is translucent so it reads the same on any of the surfaces above. */
+  --wash-control: rgba(230, 237, 243, 0.1);
+  --wash-control-strong: rgba(230, 237, 243, 0.16);
+  --wash-heading: #1d242e;
   --backdrop: rgba(0, 0, 0, 0.6);
   /* ink for text sitting ON a solid level-colored chip. level bg colors are deliberately darker
    * than --ok/--warn (which are tuned for text-on-transparent) so white chip text stays
@@ -158,6 +172,15 @@
    * to go. Same token, inverted direction — see the dark theme's definition for why it exists. */
   --row-hover-overlay: rgba(31, 35, 40, 0.06);
   --modal-shadow: rgba(31, 35, 40, 0.15);
+  /* Nested surface layers — see the dark-theme block. Light theme steps the other way from the
+   * white panel (band a touch grey, sunken greyer), and the inset layer returns to white so a
+   * bordered unit inside a grey list is the strongest contrast. */
+  --surface-band: #f3f5f7;
+  --surface-sunken: #e9ecef;
+  --surface-inset: #ffffff;
+  --wash-control: rgba(31, 35, 40, 0.1);
+  --wash-control-strong: rgba(31, 35, 40, 0.16);
+  --wash-heading: #e9ecef;
   --backdrop: rgba(31, 35, 40, 0.4);
   --chip-ink: #ffffff;
   --chip-muted-bg: #d0d7de;
@@ -944,6 +967,34 @@ portal-menu-button {
   } */
 }
 
+/* Shared intro banner: the one "do this first" prompt a page shows before it has anything to report
+ * (Plans' "Add your first Project Folder", Tokens' "Telemetry setup required"). Title, optional
+ * body, then an optional action row; callers fill the slots and never restyle spacing themselves. */
+.intro-banner {
+  display: grid;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+}
+.intro-banner-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+.intro-banner-body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--dim);
+}
+.intro-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Shared JS-positioned tooltip bubble (portal/shared/tooltip.js). Fixed to the viewport; tooltip.js
  * sets top/left clamped so it never crosses the screen edges. */
 .portal-tooltip {
@@ -963,6 +1014,22 @@ portal-menu-button {
 /* Structured/multi-row content (key-value grids, badges) needs more room than a one-line hint. */
 .portal-tooltip.portal-tooltip--rich {
   max-width: 360px;
+}
+/* Plain-text tips containing "\n" render one line per row. */
+.portal-tooltip.portal-tooltip--lines {
+  white-space: pre-line;
+}
+/* Opted into by a trigger with data-tip-placement="panel" (portal/shared/tooltip.js): content large
+ * enough to want more width than a hint. */
+.portal-tooltip.portal-tooltip--wide {
+  max-width: 460px;
+}
+/* The same tip docked to the right edge on a wide screen: a fixed width, so it reads as a side
+ * panel rather than a bubble sized to its longest line. */
+.portal-tooltip.portal-tooltip--panel {
+  width: min(44vw, 520px);
+  max-width: none;
+  padding: 16px 20px;
 }
 .portal-tooltip[hidden] {
   display: none;

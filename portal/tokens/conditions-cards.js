@@ -20,14 +20,18 @@ function categoryCard(dimension, rows, report, inspect) {
   const card = conditionTemplate("condition-card-template");
   const title = DIMENSION_NAMES[dimension] ?? dimension;
   setText(card, ".condition-card-head h3", title);
-  const coverage = report.data_quality.condition_coverage[dimension];
-  setText(card, "[data-coverage]", `${coverage.known} / ${coverage.eligible} known`);
-  const dialog = card.querySelector("dialog");
+  const dialog = card.querySelector("[data-condition-dialog]");
   setText(dialog, "h3", `${title} — full outcomes`);
   dialog.setAttribute("aria-label", `${title} full outcomes`);
   card.querySelector("[data-condition-open]").onclick = () => dialog.showModal();
   card.querySelector("[data-condition-close]").onclick = () => dialog.close();
   portalWireBackdropClose(dialog, () => dialog.close());
+  const thinDialog = card.querySelector("[data-condition-thin-dialog]");
+  setText(thinDialog, "h3", `${title} — more evidence needed`);
+  thinDialog.setAttribute("aria-label", `${title} more evidence needed`);
+  card.querySelector("[data-condition-thin-open]").onclick = () => thinDialog.showModal();
+  card.querySelector("[data-condition-thin-close]").onclick = () => thinDialog.close();
+  portalWireBackdropClose(thinDialog, () => thinDialog.close());
   const presented = rows.map((row) => ({ row, view: comparisonPresentation(row) }));
   for (const { row, view } of presented) {
     const detail = conditionTemplate("condition-outcome-row-template");
@@ -40,9 +44,9 @@ function categoryCard(dimension, rows, report, inspect) {
     detail.classList.add(`outcome-${view.state}`);
     card.querySelector("[data-condition-details]").appendChild(detail);
   }
-  for (const state of ["fewer", "more", "thin"]) {
+  for (const state of ["fewer", "more"]) {
     const list = card.querySelector(`[data-${state}]`);
-    const matches = presented.filter(({ row, view }) => view.state === state && (state !== "thin" || row.with_affected || row.without_affected))
+    const matches = presented.filter(({ view }) => view.state === state)
       .sort((a, b) => Math.abs(b.row.relative_delta ?? 0) - Math.abs(a.row.relative_delta ?? 0));
     // One row per condition: its name, then every outcome for it stacked in the second column.
     const byCondition = new Map();
@@ -53,22 +57,53 @@ function categoryCard(dimension, rows, report, inspect) {
     }
     const conditions = [...byCondition.entries()];
     for (const [name, outcomes] of conditions.slice(0, MAX_PREVIEW_OUTCOMES)) list.appendChild(conditionItem(name, outcomes, inspect));
-    if (!matches.length && state !== "thin") list.textContent = "Nothing stands out.";
-    if (state === "thin") list.parentElement.hidden = !matches.length;
+    if (!matches.length) list.textContent = "-";
     if (conditions.length > MAX_PREVIEW_OUTCOMES) {
       const more = document.createElement("li");
       more.textContent = `${conditions.length - MAX_PREVIEW_OUTCOMES} more in Full outcomes`;
       list.appendChild(more);
     }
   }
+  const thin = presented.filter(({ row, view }) => view.state === "thin" && (row.with_affected || row.without_affected));
+  fillThinDialog(thinDialog, thin);
+  card.querySelector("[data-condition-thin-open]").hidden = !thin.length;
   const strong = presented.some(({ view }) => ["fewer", "more"].includes(view.state));
   card.querySelector(".condition-columns").hidden = !strong;
   const empty = card.querySelector("[data-empty]");
-  empty.hidden = strong || !card.querySelector("[data-thin]").parentElement.hidden;
+  empty.hidden = strong || thin.length > 0;
   empty.textContent = presented.some(({ view }) => view.state === "unavailable") ? "A comparison group is missing. Collect sessions with and without this condition."
     : presented.some(({ view }) => view.state === "thin") ? "Too little evidence to judge a difference. Raw rates are in Full outcomes."
       : "No clear difference.";
   return card;
+}
+
+// "More evidence needed" = the raw counts exist but are too small to print a percentage. Each row
+// says exactly what is still missing, from the same policy the server used to withhold the percent.
+function fillThinDialog(dialog, thin) {
+  const policy = thin[0]?.row.policy ?? { minimum_cohort: 10, minimum_events: 3 };
+  setText(dialog, "[data-thin-explainer]", `A percentage appears once a comparison has at least ${policy.minimum_cohort} sessions with and without the condition, and at least ${policy.minimum_events} sessions with the problem in each group. Until then only the raw counts are shown.`);
+  const body = dialog.querySelector("[data-thin]");
+  body.replaceChildren();
+  for (const { row } of thin) {
+    const item = conditionTemplate("condition-thin-row-template");
+    const event = EVENT_NAMES[row.event_kind] ?? row.event_kind;
+    setText(item, "[data-condition]", conditionName(row));
+    setText(item, "[data-problem]", event);
+    setText(item, "[data-with]", `${row.with_affected} of ${row.with_condition} sessions`);
+    setText(item, "[data-without]", `${row.without_affected} of ${row.without_condition} sessions`);
+    setText(item, "[data-needed]", evidenceNeeded(row, event).join("; "));
+    body.appendChild(item);
+  }
+}
+
+function evidenceNeeded(row, event) {
+  const { minimum_cohort: cohort, minimum_events: events } = row.policy;
+  const needs = [];
+  if (row.with_condition < cohort) needs.push(`${cohort - row.with_condition} more sessions with it`);
+  if (row.without_condition < cohort) needs.push(`${cohort - row.without_condition} more sessions without it`);
+  if (row.with_affected < events) needs.push(`${events - row.with_affected} more with ${event} among sessions with it`);
+  if (row.without_affected < events) needs.push(`${events - row.without_affected} more with ${event} among sessions without it`);
+  return needs.length ? needs : ["No " + event + " seen in the sessions without it"];
 }
 
 function conditionItem(name, outcomes, inspect) {
@@ -82,18 +117,29 @@ function conditionItem(name, outcomes, inspect) {
 
 function outcomeLine(row, view, inspect) {
   const line = conditionTemplate("condition-outcome-line-template");
-  // Thin evidence has no percentage, so the pill names the problem only; the counts live in the
-  // info icon with the rest of the detail.
-  setText(line, ".condition-outcome-pill", view.state === "thin" ? EVENT_NAMES[row.event_kind] ?? row.event_kind : view.label);
-  const info = `${view.raw} · ${row.unknown_condition} unknown`;
+  setText(line, ".condition-outcome-pill", view.label);
+  const info = outcomeTip(row, view);
   const icon = line.querySelector("portal-info-icon");
   icon.dataset.tip = info;
-  icon.setAttribute("aria-label", info);
+  icon.setAttribute("aria-label", info.replaceAll("\n", ". "));
   const button = line.querySelector("button");
   button.hidden = !row.with_affected;
   button.setAttribute("aria-label", `Inspect ${row.event_kind} sessions with ${conditionName(row)}`);
   button.onclick = () => inspect(row);
   return line;
+}
+
+// One fact per line: what each group looked like, what was left out, and the caveat.
+function outcomeTip(row, view) {
+  const event = EVENT_NAMES[row.event_kind] ?? row.event_kind;
+  const group = (affected, total, rate) => `${affected} of ${total} sessions had ${event}${rate == null ? "" : ` (${percent(rate)})`}`;
+  const lines = [
+    `With ${conditionName(row)}: ${group(row.with_affected, row.with_condition, row.with_rate)}`,
+    `Without it: ${group(row.without_affected, row.without_condition, row.without_rate)}`,
+  ];
+  if (row.unknown_condition) lines.push(`Not counted: ${row.unknown_condition} sessions with unknown ${DIMENSION_NAMES[row.dimension]?.toLowerCase() ?? row.dimension}`);
+  if (view.state !== "thin") lines.push("Association only; tasks and other conditions may differ.");
+  return lines.join("\n");
 }
 
 function markedChanges(changes) {

@@ -8,7 +8,8 @@ import { createHash } from "node:crypto";
 import { normalizeObservations, canonicalFlowRows } from "./telemetry-observations.mjs";
 import { mcpServerOf } from "../harnesses/transcript-parse.mjs";
 import { deriveInsights } from "./telemetry-insights.mjs";
-import { computeMetric } from "./telemetry-metrics.mjs";
+import { computeMetric, isFullSuite } from "./telemetry-metrics.mjs";
+import { createWasteLedger } from "./telemetry-waste.mjs";
 import { applyCohortFilter, normalizeCohortFilter, describeCohortFilter, activeFilterCount } from "./telemetry-cohort.mjs";
 import { compareAcrossMarker, describeMarkerComparison } from "./telemetry-compare.mjs";
 import { hasHarnessProvider, getHarnessProvider } from "../harnesses/registry.mjs";
@@ -70,6 +71,15 @@ function analyzeRows(rows, scopedEvents, events, normalizedFilter, { markers = [
   const sessions = rollupSessions(captures);
   const spikeThreshold = deltaSpikeThreshold(captures);
   const spikeCaptures = captures.filter((event) => (event.delta_tokens || 0) >= spikeThreshold && spikeThreshold > 0);
+  // Waste ledger: loops and reads nominate their turns from inside detectLoops/readWarnings below;
+  // spike excess and testing are nominated here. Each turn is counted once (see telemetry-waste.mjs).
+  const wasteLedger = createWasteLedger();
+  for (const event of spikeCaptures) wasteLedger.add(event, "spikes", (event.delta_tokens || 0) - spikeThreshold);
+  // Over-testing is only the redundant part of testing: a full-suite rerun with no edit since the
+  // previous test run (same definition as test.full_suite_without_intervening_edit).
+  for (const event of captures) {
+    if (isFullSuite(event) && event.intervening?.edit_since_last_test === false) wasteLedger.add(event, "testing", event.delta_tokens || 0);
+  }
   // Session-context lookup so every flagged event (spike, loop) can carry the same "which chat was
   // this" markers the sessions table shows — title (first prompt), activity summary, repo/branch.
   const sessionsById = new Map(sessions.map((s) => [sessionKeyOf(s), s]));
@@ -131,18 +141,22 @@ function analyzeRows(rows, scopedEvents, events, normalizedFilter, { markers = [
     // a labeled exploratory fallback when no marker is selected") — marker_comparison below is the
     // PREFERRED path once a change marker exists to compare across. regression() itself is untouched.
     regression: { ...regression(captures), exploratory: true, label: "midpoint (exploratory — not tied to any specific change)" },
-    loops: detectLoops(captures, sessionsById),
+    loops: detectLoops(captures, sessionsById, wasteLedger),
     data_quality_warnings: dataQualityWarnings(scopedEvents),
-    read_warnings: readWarnings(rows, sessionsById),
+    read_warnings: readWarnings(rows, sessionsById, wasteLedger),
     // Phase 5: testing-efficiency summary (plan: "Derived testing findings"), computed from the same
     // metrics registry the CLI report and portal both read — see telemetry-metrics.mjs.
     testing_efficiency: testingEfficiencySummary(captures),
+    // Identifiable waste, per turn and counted once — built after loops/read_warnings ran above so
+    // their nominations are in the ledger. Filled in just below (object literal order matters).
+    waste: null,
     // Phase 5: cohort context so a filtered response can describe itself (plan: "readable cohort
     // summary" / "expose cohorts and sample size").
     cohort: normalizedFilter
       ? { filter: normalizedFilter, summary: describeCohortFilter(normalizedFilter), active_filter_count: activeFilterCount(normalizedFilter) }
       : null,
   };
+  report.waste = wasteLedger.summarize(captureIndex.latestTs);
   // Marker-relative comparison (Phase 5 "preferred" path) — only computed when the caller selected a
   // marker. Uses the FULL (pre-cohort-filter) event set so the marker's own before/after split isn't
   // additionally restricted by the same filter that might have selected this marker's sessions; a
@@ -644,7 +658,7 @@ function regression(captures) {
 // Runaway detection: per session, the longest run of the SAME tool fired consecutively (from the
 // ordered PostToolUse captures). A long run is the "this skill went off on endless lookups" signal.
 const LOOP_REPEAT_THRESHOLD = 8;
-function detectLoops(captures, sessionsById) {
+function detectLoops(captures, sessionsById, ledger) {
   const bySession = new Map();
   for (const event of captures) {
     if (event.event !== "PostToolUse" || !event.tool?.name) continue;
@@ -659,13 +673,15 @@ function detectLoops(captures, sessionsById) {
     // Wasted tokens for a run = every repeat turn's delta beyond the first (the first call did
     // the work; each consecutive repeat re-spent tokens for the same answer).
     let runWasted = 0, bestWasted = 0;
+    let runRepeats = [], bestRepeats = [];
     for (const e of events) {
       const t = e.tool.mcp_tool || e.tool.name;
-      if (t === runTool) { run += 1; runWasted += e.delta_tokens || 0; }
-      else { runTool = t; run = 1; runStartTs = e.ts; runWasted = 0; }
-      if (run > best) { best = run; bestTool = t; bestStartTs = runStartTs; bestWasted = runWasted; }
+      if (t === runTool) { run += 1; runWasted += e.delta_tokens || 0; runRepeats.push(e); }
+      else { runTool = t; run = 1; runStartTs = e.ts; runWasted = 0; runRepeats = []; }
+      if (run > best) { best = run; bestTool = t; bestStartTs = runStartTs; bestWasted = runWasted; bestRepeats = runRepeats.slice(); }
     }
     if (best >= LOOP_REPEAT_THRESHOLD) {
+      for (const e of bestRepeats) ledger.add(e, "loops", e.delta_tokens || 0);
       loops.push({
         session_id: events[0].session_id || "unknown",
         repo: events[0].repo?.label ?? "unknown",
@@ -729,7 +745,7 @@ function dataQualityWarnings(events) {
   return warnings;
 }
 
-function readWarnings(events, sessionsById) {
+function readWarnings(events, sessionsById, ledger) {
   const warnings = [];
   const byDoc = new Map();
   const bySession = new Map();
@@ -741,6 +757,7 @@ function readWarnings(events, sessionsById) {
     const fileHash = event.tool?.file_path_hash;
     const ext = event.tool?.file_ext;
     if (event.event === "PostToolUse" && result?.chars >= LARGE_DOCUMENT_READ_CHARS && DOC_EXTS.has(ext)) {
+      ledger.add(event, "reads", approxTokens(result.chars));
       warnings.push(readWarningRow("large_document_read", event, sessionsById, {
         file_ext: ext,
         file_path_hash: fileHash,
@@ -752,14 +769,17 @@ function readWarnings(events, sessionsById) {
     }
     if (event.event === "PostToolUse" && fileHash && DOC_EXTS.has(ext)) {
       const key = `${id}:${fileHash}`;
-      const cur = byDoc.get(key) || { event, count: 0, chars: 0 };
+      const cur = byDoc.get(key) || { event, count: 0, chars: 0, rereads: [] };
       cur.count += 1;
       cur.chars += result?.chars || 0;
+      // Re-reads (every read after the first) are the redundant part of a repeated read.
+      if (cur.count > 1) cur.rereads.push(event);
       byDoc.set(key, cur);
     }
   }
   for (const cur of byDoc.values()) {
     if (cur.count >= REPEATED_DOCUMENT_READ_COUNT && cur.chars >= LARGE_DOCUMENT_READ_CHARS) {
+      for (const event of cur.rereads) ledger.add(event, "reads", approxTokens(event.last_result?.chars || 0));
       warnings.push(readWarningRow("repeated_document_read", cur.event, sessionsById, {
         file_ext: cur.event.tool?.file_ext,
         file_path_hash: cur.event.tool?.file_path_hash,

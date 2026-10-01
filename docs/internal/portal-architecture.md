@@ -21,8 +21,7 @@ portal/
   config/{index.html,styles.css,app.js}
   plans/{index.html,styles.css,app.js}
   developer-runtime/{index.html,styles.css,app.js,api.js,state.js,templates.js}
-  tokens2/{index.html,styles.css,app.js}     — /tokens (v2 token report)
-  telemetry/{index.html,styles.css,app.js}   — /tokens_v1 (v1 dashboard, hidden from nav)
+  tokens/{index.html,styles.css,app.js}      — /tokens (token report)
 scripts/cli/portal-server.mjs   — the server: page manifest, route dispatch, static assets
 scripts/cli/portal-router.mjs   — the route table matcher every domain file builds on
 scripts/cli/portal-routes-metadata.mjs — /manifest.json, /sitemap.xml, /robots.txt (generated from PAGES)

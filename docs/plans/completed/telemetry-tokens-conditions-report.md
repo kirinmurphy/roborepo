@@ -1,13 +1,14 @@
 ---
 id: k8mngttv
 priority: high
-next_action: Review the documented remaining reference and product differences before integration
+next_action:
 blocked_by: []
 depends_on: []
 related:
   - roborepo-telemetry-events-experiments
   - f0j4j8y2
-reviewed_commit: 23461644b797332a2ba213f1e8948ed482ce3a92
+  - nl40n9vr
+reviewed_commit: d4c1fae5e5090940ce2dd15a14c6e9d451d6c686
 ---
 
 # Tokens Conditions Report: Events × Conditions Correlation on /tokens
@@ -31,7 +32,7 @@ boundaries below; they are not proof that current telemetry supports those examp
 
 ## Context
 
-The current dashboard in `portal/tokens2/` renders a waste decision line, action items,
+The current dashboard in `portal/tokens/` (the legacy `/tokens_v1` page was removed) renders a waste decision line, action items,
 Investigate evidence sections, and an agent-ready prompt. The next goal is to associate the
 events already tracked with the conditions observed around them, and to add relative metrics
 such as tokens-per-call and input:output mix that make model/tool behavior easier to compare.
@@ -57,13 +58,14 @@ The first two ship without requiring the third.
 | 6 | Review view | Marker rows use honest states: recorded → collecting → comparison available → can't compare fairly. |
 | 7 | Ledger over chart | A chronological ledger replaces the marks-only strip. Comparable persisted order breaks timestamp ties; otherwise boundary placement is ambiguous. |
 | 8 | Marker management | "Your changes" is the canonical marker management surface. |
-| 9 | Conditions report | Condition cards compare known presence with known absence. Use **Fewer with condition / More with condition**, never Better/Worse and never silently substitute a category mean. Percent deviation requires a minimum event-count floor; otherwise show raw rates and both cohort denominators. |
+| 9 | Conditions report | Condition cards compare known presence with known absence. The two columns read **Cheaper** and **More expensive**, never Better/Worse, and a category mean is never silently substituted. Percent deviation requires a minimum event-count floor; otherwise show raw rates and both cohort denominators. |
 | 10 | Copy diet | One-line subtitles; dense explanations live in tooltips/popups. |
 | 11 | Condition scope tiers | AMBIENT conditions affect the session continuously; INTERACTION-SCOPED conditions exist only for a specific invocation. |
 | 12 | Observation unit | Each metric declares its observation unit. Tool/capture-derived metrics collapse telemetry to one operation flow using persisted `(harness, session_id, call_id)`; session-derived metrics use one session. Multiple rows from one flow are never independent samples. |
 | 13 | Unknown is first-class | "Without condition" means known absence. Missing/unresolvable condition data is `unknown`, excluded from with-vs-without deltas and shown as coverage. |
 | 14 | Token coverage is first-class | Relative token metrics carry `valid / eligible` coverage. Partial or unavailable token data is visible and never silently treated as complete. |
 | 15 | Shared semantics | Portal, marker comparison, CLI/report output, and future revision analysis consume one pure normalized telemetry analysis API. No surface reimplements dedupe, condition-state, or denominator rules. |
+| 16 | Waste counts each turn once | The waste cards come from a server-side per-turn ledger (`scripts/cli/telemetry-waste.mjs`). Loops, redundant reads, spike excess, and over-testing each nominate turns; the largest nomination wins, so the sources add up to the total. Over-testing is only full-suite reruns with no edit since the previous test run. |
 
 ### Condition scope tiers
 
@@ -155,12 +157,12 @@ row.
 
 | Capability | Location | Gap for this plan |
 |---|---|---|
-| Flagged-event strip | `portal/tokens2/app.js` `renderTimelineStrip` | Superseded by the ledger after the ledger ships |
+| Flagged-event strip | `portal/tokens/app.js` `renderTimelineStrip` | Superseded by the ledger after the ledger ships |
 | Marker persistence + endpoints | `scripts/cli/telemetry-markers.mjs`, `scripts/cli/portal-routes-telemetry.mjs` `/api/telemetry/markers` | Existing `repo` is a Git basename; add canonical scope, effective time separate from recorded `ts`, watching-kinds, and finding attachment |
 | Before/after comparison | `scripts/cli/telemetry-compare.mjs` `compareAcrossMarker` | Session cohorts only; marker-spanning sessions excluded; should consume the shared normalized analysis layer rather than remain a separate semantic implementation |
 | Per-model data | `capture.session.model`; cohort filter `models` dimension | Not surfaced per event; mixed-model attribution can be approximate |
 | Capture record | schema v3 with `config_snapshot_id` | Snapshot not currently joined for /tokens display |
-| Mock pipeline | `portal/tokens2/mock-spool.jsonl` + seeding scripts | Needs unknown/partial coverage, cohort-denominator, and honesty-state fixtures |
+| Mock pipeline | `portal/tokens/mock-spool.jsonl` + seeding scripts | Needs unknown/partial coverage, cohort-denominator, and honesty-state fixtures |
 
 ### Verified integration touchpoints
 
@@ -174,7 +176,7 @@ row.
 | I/O and cache | `scripts/cli/telemetry.mjs`: supply snapshot indexes to CLI and portal analysis outside pure functions; extend analysis cache invalidation to snapshot availability/content and new options, including changes without a new capture. Retain background refresh and bounded reads. |
 | Repository scope | `scripts/cli/telemetry-repository.mjs`: reuse canonical repository resolution; basename labels are display metadata and cannot distinguish repositories with the same name. |
 | Marker schema | `scripts/cli/telemetry-schemas/marker-schema.mjs`, `scripts/cli/telemetry-markers.mjs`: preserve append/supersede history and experiment consumers when adding Phase 2 fields. |
-| Portal and fixtures | `portal/tokens2/app.js`, `portal/tokens2/index.html`, `portal/tokens2/styles.css`, `portal/tokens2/mock-spool.jsonl`, `scripts/cli/telemetry-seed-demo.mjs`, `scripts/cli/portal-routes-telemetry.mjs`: wire real and mock data through the same report contract. |
+| Portal and fixtures | `portal/tokens/app.js`, `portal/tokens/index.html`, `portal/tokens/styles.css`, `portal/tokens/mock-spool.jsonl`, `scripts/cli/telemetry-seed-demo.mjs`, `scripts/cli/portal-routes-telemetry.mjs`: wire real and mock data through the same report contract. |
 
 ### Delivery and follow-up boundary
 
@@ -396,24 +398,39 @@ The popup repeats those facts and distinguishes configured state from observed i
 
 ### Do problems follow a condition?
 
-Each category card uses:
+Each category card is a heading and two columns, **Cheaper** and **More expensive**, with two
+links right-aligned beneath them: **More evidence needed** and **Full outcomes**.
 
-- **Fewer with condition**
-- **More with condition**
+- One row per condition and outcome: name, percentage, an info icon, and a **Sessions** button
+  that opens the matching sessions. An empty column shows a dash.
+- The info icon lists one fact per line: the with-condition group, the without-condition group,
+  sessions not counted because the condition is unknown, and the association-only caveat.
+- **More evidence needed** is a popup, shown only when raw counts exist but cannot support a
+  percentage. It states the floor (at least 10 sessions with and without the condition, and at
+  least 3 sessions with the problem in each group) and lists what each row still needs.
+- **Full outcomes** is the popup with every item, including approximately no-difference and
+  unknown-data rows, with both known-cohort denominators and coverage per row.
 
 The comparison is always known condition presence vs known condition absence. Never "Better
-outcomes" / "Worse outcomes" and never silently substitute a category mean.
-
-Cards show only deviations; the category popup includes every item, including approximately
-no-difference and unknown-data rows. Each comparison carries both known-cohort denominators and
-known-data coverage. When event counts are below the configured floor, show raw rates rather
-than unstable percentages.
+outcomes" / "Worse outcomes" and never silently substitute a category mean. When event counts are
+below the floor, raw rates are shown instead of unstable percentages. The card header no longer
+carries a known/eligible coverage count; coverage lives in the popups and under "What context was
+captured?".
 
 Marked-change cards are a special case: their internal columns are **Fewer after** /
 **More after**, because the comparison is before-vs-after rather than condition presence-vs-
 absence.
 
+### Header and waste cards
+
+The header leads with the report period, then the session count, sessions with token data, and
+recorded events. The waste cards show each source as a share of total usage; their totals come
+from the per-turn ledger described in decision 16.
+
 ### Relative model metrics
+
+> **Removed, 2026-09-30.** The panel left the page in `74b60fc` and its code was removed later:
+> per-model averages compared sessions of different tasks with no shared baseline of activity, so they could not support a comparison between models; the panel's own copy already said not to rank models because tasks differ. This section records the original design only.
 
 When supported by attributable usage, an Investigate panel shows model token usage per operation with:
 
@@ -510,7 +527,7 @@ For implementation, extend the existing focused checks first:
 - `node scripts/test/telemetry-cohort-check.mjs`
 - `node scripts/test/telemetry-compare-check.mjs`
 - `node scripts/test/telemetry-marker-cli-check.mjs`
-- `node scripts/test/telemetry-portal-state-check.mjs`
+- `node scripts/test/tokens-page-state-check.mjs`
 - `npm run test:telemetry`
 
 Add dedicated normalization/conditions checks to `scripts/test/run-checks.mjs` as needed, then
@@ -646,7 +663,7 @@ and append-only corrections. The ledger initially shows 12 rows with an explicit
   `telemetry-schemas/{snapshot-schema,marker-schema,persistence}.mjs`.
 - I/O/cache/CLI: `telemetry.mjs`, including snapshot-only invalidation and
   `roborepo telemetry report --conditions`; ordinary report output remains unchanged.
-- Portal: `portal/tokens2/{app.js,index.html,styles.css}` and the approved mockup.
+- Portal: `portal/tokens/{app.js,index.html,styles.css}` and the approved mockup.
 - Shared synthetic evidence: `telemetry-conditions-demo.mjs`, used by bundled mock and seed.
 - Verification: four new telemetry check suites, schema compatibility updates, three browser
   cases, and user-guide documentation.
@@ -677,16 +694,56 @@ Exact file fingerprints remain the separate `f0j4j8y2` follow-up.
 The [portal review](../../internal/tokens-portal-review.md) records the reference inventory,
 correctness fixes, remaining code opportunities, and recommended product decisions.
 This review applies the requested code-style and JavaScript conventions; new condition UI
-responsibilities live in `portal/tokens2/conditions-*.js`, with markup in HTML templates.
+responsibilities live in `portal/tokens/conditions-*.js`, with markup in HTML templates.
 
 - [x] Collapse and bound recent-session evidence, combine repeated sessions, and simplify context chips.
 - [x] Name condition outcomes and distinguish small samples from no difference.
 - [x] Add deterministic demo activity and condition-to-session navigation.
 - [x] Correct equal-rate change verdicts and remove duplicated comparison details.
 - [x] Preserve open dialogs and drafts across refresh; guard stale session responses.
-- [ ] Review the remaining intentional reference differences and recommended product follow-ups before integration.
+- [x] Review the remaining intentional reference differences and recommended product follow-ups; the follow-ups moved to [[nl40n9vr]].
 
 The remaining review includes the shared portal geometry, session-based metrics, one-repository
 marker scope, linked change summaries, and the legacy/canonical detector reconciliation described
 in the review. This record does not claim pixel-identical reproduction or newly supported
 per-operation attribution.
+
+## Execution record — 2026-09-30
+
+Delivered on `codex/telemetry-tokens-conditions-report` and integrated with that branch's merge to `main`.
+
+- Tokens page: a shared intro banner for setup prompts; the harness notice appears only once
+  telemetry is on; the header leads with the period; condition cards use one row per condition,
+  a **Sessions** button, and a "More evidence needed" popup.
+- Waste: the cards no longer present an upper bound. A server-side per-turn ledger counts each
+  turn once, and over-testing counts only full-suite reruns with no intervening edit. See
+  decision 16.
+- Legacy removal: the `/tokens_v1` dashboard and its route were deleted, `pageState` moved to
+  `portal/tokens/page-state.js`, and `tokens2` was renamed to `tokens` throughout.
+- Removal: the relative model metrics panel, its analysis code (`relativeModelMetrics`, `tokenCoverage`,
+  `relative_models`), and its guide section were removed; see the note under "Relative model metrics".
+- Follow-ups: scope controls, deeper change comparison, the remaining product iteration, and the
+  fate of endpoints that lost their caller are tracked in [[nl40n9vr]].
+
+Verification on commit `d4c1fae`:
+
+- `bash scripts/test/test-cli.sh --quiet`: 420 passed, 0 failed.
+- `node scripts/test/portal-ui/run.mjs`: 21 passed, 2 skipped (documentation screenshots).
+- `bash scripts/doctor.sh --quiet`: 101 checks passed.
+- `node scripts/test/telemetry-waste-check.mjs`: passed.
+- `npm run check` was not run, so Docker clean-machine coverage is not claimed.
+
+## Verification
+
+Run on the branch after merging `origin/main` (merge base advanced by the Runtime layout work, #20):
+
+- `npm run check` (full CI parity gate, Docker available, `CLEAN_MACHINE_STRICT=1`): passed. This
+  includes the unit suites (`roborepo tests: 420 passed, 0 failed`), the portal browser suite
+  (31 passed, 2 skipped opt-in screenshot cases), the clean-machine container checks, and the
+  install-sandbox checks.
+- `bash scripts/doctor.sh --quiet`: 101 checks passed.
+- `node scripts/test/telemetry-waste-check.mjs`: passed (per-turn waste ledger).
+- Plan validation of this plan and every plan it links: dependencies and related ids resolve.
+
+Not verified: the per-operation token attribution and exact file-revision tracking this plan
+excludes (`f0j4j8y2` owns revisions), and any causal reading of an association.

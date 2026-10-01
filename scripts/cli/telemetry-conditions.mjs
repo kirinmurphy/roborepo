@@ -1,5 +1,5 @@
 import { compareObservationBoundary, ambientChanges } from "./telemetry-boundaries.mjs";
-import { normalizeObservations, evaluateCondition, aggregateCondition, relativeModelMetrics, CONDITIONS_POLICY } from "./telemetry-observations.mjs";
+import { normalizeObservations, evaluateCondition, aggregateCondition, CONDITIONS_POLICY } from "./telemetry-observations.mjs";
 
 // All initial finding rates use sessions. Read warnings and loops can span flows;
 // report-wide testing warnings have no supported session denominator and stay outside.
@@ -58,7 +58,7 @@ export function buildConditionsReport(events, report, options = {}, normalized =
     session_id: marker.session_id, harness: null, context: { model: null, model_attribution: "unknown", repository_id: marker.repository_id, harness: null, conditions: [] } });
   ledger.sort((a, b) => String(b.ts).localeCompare(String(a.ts)) || String(a.provenance?.source ?? "").localeCompare(String(b.provenance?.source ?? "")) || (b.provenance?.sequence ?? 0) - (a.provenance?.sequence ?? 0) || (b.persisted_order ?? 0) - (a.persisted_order ?? 0) || a.id.localeCompare(b.id));
   return { schema: 1, policy: CONDITIONS_POLICY, finding_units: FINDING_UNITS,
-    comparisons, changes, ambient_changes: ambient, relative_models: relativeModelMetrics(normalized.sessions), ledger,
+    comparisons, changes, ambient_changes: ambient, ledger,
     data_quality: { fallback_flows: normalized.fallback_flows, unidentified_sessions: normalized.unidentified_sessions, findings_lost_to_fallback: findingsLostToFallback, sessions: normalized.sessions.length,
       flows: normalized.flows.length,
       condition_coverage: Object.fromEntries(["model", "repo", "harness", "packages", "skills"].map((dimension) => {

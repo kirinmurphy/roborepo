@@ -67,6 +67,11 @@ export {
   parseLsofFieldOutput,
 } from "./lsof.mjs";
 export {
+  MEMBER_ROLES,
+  classifyMemberRole,
+  createRoleComparator,
+} from "./member-role.mjs";
+export {
   originCandidatesForListener,
 } from "./origin.mjs";
 export {

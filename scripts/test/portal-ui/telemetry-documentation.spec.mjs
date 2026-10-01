@@ -21,6 +21,8 @@ for (const theme of ["light", "dark"]) {
     await page.goto("/tokens");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(page.locator("#condition-report")).toBeVisible();
+    // Sticky section heads and the portal header would paint over the top of an element screenshot.
+    await page.addStyleTag({ content: ".t2-sec-head, .portal-header { position: static !important; margin-top: 0 !important; }" });
     const capture = async (locator, name) => {
       await locator.scrollIntoViewIfNeeded();
       await locator.screenshot({ path: path.join(destination, `${name}-${theme}.png`), animations: "disabled" });
@@ -29,14 +31,12 @@ for (const theme of ["light", "dark"]) {
     await capture(page.locator("#condition-report"), "conditions");
     const packageCard = page.locator(".condition-card").filter({ has: page.getByRole("heading", { name: "Configured packages", exact: true }) });
     await packageCard.locator("[data-condition-open]").click();
-    const detail = packageCard.locator("dialog");
+    const detail = packageCard.locator("[data-condition-dialog]");
     await expect(detail).toContainText("with 3/12 (25%)");
     await expect(detail).toContainText("without 9/12 (75%)");
     await expect(detail).toContainText("2 unknown");
     await capture(detail, "comparison-detail");
     await detail.getByRole("button", { name: "Close", exact: true }).click();
-    await expect(page.getByText("Model token usage per session", { exact: true })).toBeVisible();
-    await capture(page.locator("#condition-model-metrics").locator(".."), "model-metrics");
     await expect(page.locator("#condition-ledger")).toContainText("sample-project");
     await page.setViewportSize({ width: 1440, height: 2600 });
     await capture(page.locator("#condition-ledger-section"), "event-ledger");
@@ -58,7 +58,7 @@ test("Tokens user guide serves its screenshots inside the portal", async ({ page
   expect(guide.ok).toBe(true);
   expect(guide.title).toBe("Tokens page user guide");
   const images = [...guide.html.matchAll(/<img src="([^"]+)"/g)].map((match) => match[1]);
-  expect(images).toHaveLength(5);
+  expect(images).toHaveLength(4);
   for (const image of images) {
     expect(image).toMatch(/^\/docs\/images\/tokens\//);
     const response = await request.get(image);
@@ -67,7 +67,7 @@ test("Tokens user guide serves its screenshots inside the portal", async ({ page
   }
   await page.goto("/tokens");
   await page.locator('portal-info-icon[data-doc-anchor="testing-efficiency"]').click();
-  const dialog = page.locator("#tokens2docmodal");
+  const dialog = page.locator("#tokensdocmodal");
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("#testing-efficiency")).toBeVisible();
   const image = dialog.locator("img").first();

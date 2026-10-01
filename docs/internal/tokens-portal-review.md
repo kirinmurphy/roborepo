@@ -6,8 +6,9 @@ Reviewed on 2026-09-21.
 
 This review compares the conditions portal with the approved primary-checkout
 `portal/mockups/tokens-connectivity-vision.html` and evaluates whether each section helps
-someone choose an action. It covers the uncommitted conditions feature in
-`codex/telemetry-tokens-conditions-report`, including the follow-up simplification.
+someone choose an action. It covers the conditions feature in
+`codex/telemetry-tokens-conditions-report` (committed, not yet merged), including the follow-up
+simplification. Open follow-ups from this review are tracked in plan `nl40n9vr`.
 
 The review used the repository copies of the requested code-style and JavaScript skills.
 The GitHub links were unavailable during retrieval. JavaScript, ESM, DOM-template, ownership,
@@ -23,11 +24,11 @@ and test rules applied; TypeScript and React conventions did not.
 | Event evidence hierarchy | Recent sessions competed with Action items and the existing investigation lists. | Recent sessions start collapsed and scroll within 440px or 60vh. Action items recommend; recent sessions provide evidence. |
 | Condition coverage band | Always visible below an already dense list. | Available under “What context was captured?” inside the evidence section. Unknowns stay explicit in comparison details. |
 | Session title, subtitle, close control, fact grid | Present, but repeated the same metadata in two grids and chips. | Next step leads one condition fact grid. Captured findings remain available without a transcript. |
-| Several model metric cards | Demo only had one model above the display threshold. Partial coverage was plain gray. | Demo shows three eligible models, with partial coverage highlighted. |
+| Several model metric cards | Demo only had one model above the display threshold. Partial coverage was plain gray. | Demo showed three eligible models. The panel was later removed; see "Removed: relative model metrics". |
 | Tokens per operation and exact attribution | Not supported by persisted cumulative session counters. | Still session-based and approximately attributed. Per-operation claims require new evidence. |
 | Stacked condition cards | Present. | Retained, with named model/repository/package/skill rows and green/red outcomes. |
 | Named condition items | The condition value was omitted from main-card rows. | Names now appear before outcome pills. Canonical repository identifiers remain in data and details. |
-| Low-count raw rates | A null percentage was incorrectly presented as no difference. | “More evidence needed” exposes raw rates; full outcomes retains all rows. Missing baselines, small samples, and neutral outcomes are distinct. |
+| Low-count raw rates | A null percentage was incorrectly presented as no difference. | “More evidence needed” opens a popup of raw counts and what each row still needs; full outcomes retains all rows. Missing baselines, small samples, and neutral outcomes are distinct. |
 | Category full-outcomes dialogs | Tables existed, but low samples were mislabeled; refresh could remove an open dialog. | Correct labels, raw counts, coverage, and colored outcome text. Refresh waits while a dialog is open. |
 | Section help controls | New condition/ledger/change sections lacked help entry points. | Added controls opening the corresponding guide sections. |
 | Marked changes comparison | Duplicated full before/after numbers from Your changes. | Compact linked summaries; Your changes owns counts and next steps. This intentionally differs from the mockup’s repeated two-column layout. |
@@ -44,14 +45,23 @@ and test rules applied; TypeScript and React conventions did not.
 | Shared page geometry | Reference uses a 1060px column and its own palette; portal uses shared page styles. | Shared portal width, palette, and surrounding section spacing remain. This is not a pixel-identical reproduction. |
 | Page order | Existing waste, actions, investigate, conditions, ledger, changes, and prompt were preserved. | Retained. |
 
+### Removed: relative model metrics
+
+The "Model token usage per session" panel (average tokens per session, input/output mix, and
+valid/eligible coverage for each model) no longer exists. It left the page in `74b60fc` without a
+recorded reason. The code (`relativeModelMetrics`, `tokenCoverage`, the `relative_models` report
+field, and the `minimum_model_sessions` policy) and its guide section were removed afterward,
+because per-model averages compared sessions of different tasks with no shared baseline of activity, so they could not support a comparison between models; the panel's own copy already said not to rank models because tasks differ. Models are still compared through the Conditions cards, which
+compare sessions with and without a condition rather than averaging usage per model.
+
 ### Code correctness and maintainability
 
 | Finding | Resolution | Source |
 | --- | --- | --- |
 | An older action headline described a falling token share as “up,” because its trigger measures per-call cost. | Superseded by the 2026-09-30 audit below: the headline now speaks only in per-call cost. | `scripts/cli/telemetry-insights.mjs` |
-| Missing percentages were treated as no difference. | Centralized presentation states distinguish missing baseline, low sample, neutral, fewer, and more. | `portal/tokens2/conditions-format.js` |
+| Missing percentages were treated as no difference. | Centralized presentation states distinguish missing baseline, low sample, neutral, fewer, and more. | `portal/tokens/conditions-format.js` |
 | Equal before/after rates became “More.” | Explicit equality branch; low-count changes remain provisional. | `conditions-format.js` |
-| A late session request could overwrite a later-opened session. | Request identity guards success and error paths. | `portal/tokens2/app.js` |
+| A late session request could overwrite a later-opened session. | Request identity guards success and error paths. | `portal/tokens/app.js` |
 | Background refresh replaced open comparison dialogs. | Defer rendering while a dialog is open; resume on later polls. | `app.js` |
 | Session metadata lookup ignored harness identity. | Match the session and harness together in the modal lookup. | `app.js`, `conditions-context.js` |
 | Demo sessions lacked useful fallback findings when transcripts were absent. | Render captured ledger findings when the session API has none. | `conditions-context.js` |
@@ -59,7 +69,7 @@ and test rules applied; TypeScript and React conventions did not.
 | Multiple problem records occupied multiple recent-session rows. | Group by harness/session identity; retain all underlying ledger events. | `conditions-evidence.js` |
 | Coverage and ancillary panels could retain stale content when conditions disappeared. | Explicit visibility and empty-state updates for the whole feature. | `conditions-report.js` |
 | “Show all” rebuilt the entire conditions feature and unbounded the ledger. | Ledger controller adds 12 rows at a time without rebuilding other panels. | `conditions-ledger.js` |
-| Rendering, form submission, comparison wording, metrics, and context were mixed in one large function. | Separate feature modules with a short orchestration entry point; pure presentation is independently tested. | `portal/tokens2/conditions-*.js` |
+| Rendering, form submission, comparison wording, metrics, and context were mixed in one large function. | Separate feature modules with a short orchestration entry point; pure presentation is independently tested. | `portal/tokens/conditions-*.js` |
 | Analysis rebuilt normalization, snapshot maps, and session context repeatedly. | Reuse normalized observations; index snapshots/sessions and memoize per-session context. | `scripts/cli/telemetry-conditions.mjs`, `telemetry-analyze.mjs` |
 | Demo assignment performed repeated linear session lookups. | Index session positions once. Synthetic evidence still runs through production analysis. | `telemetry-conditions-demo.mjs` |
 | Top-level session count omitted sessions without token-bearing captures while coverage counted them. | Page meta uses the canonical observed-session count when conditions are available. | `app.js` |
@@ -84,18 +94,20 @@ they protect are listed in [Telemetry Internals](telemetry-internals.md#analytic
 | Editing a change dropped packages, skills and tags, and “response” silently moved the boundary to now. | Exposure is carried through; moving to now needs confirmation. |
 | Emerging patterns still said “Investigate why…”. | Anything below a strong signal reads as an early signal. |
 | Demo baseline and focused cohorts differed in repo and model. | Both cohorts share both. |
-| Legacy rollups keyed on bare `session_id`, merging harnesses and fabricating cross-harness loops; tables dropped tokenless sessions while conditions counted them. | One harness-keyed pipeline on canonical rows; the conditions report is always built. Meta line shows observed vs token-bearing sessions. |
+| Legacy rollups keyed on bare `session_id`, merging harnesses and fabricating cross-harness loops; tables dropped tokenless sessions while conditions counted them. | One harness-keyed pipeline on canonical rows; the conditions report is always built. Meta line shows sessions and sessions with token data. |
 | Findings on unidentified sessions vanished silently. | Counted in `data_quality.findings_lost_to_fallback` (not yet displayed). |
-| Waste card read as a disjoint sum. | Labeled “upper bound” with an overlap explanation; not de-duplicated. |
+| Waste card read as a disjoint sum. | De-duplicated per turn server-side (`report.waste`); each turn counts once, under its largest source. |
 | Change rows hid how many sessions had unknown condition data. | `unknown_condition` returned and shown. |
 | Cross-mirror duplicate findings (latent). | Not possible now that analysis runs on deduplicated rows. |
 
 ### Remaining code opportunities
 
+Except where noted, these are tracked in plan `nl40n9vr` (Phase 5).
+
 | Priority | Opportunity | Why it matters |
 | --- | --- | --- |
 | Medium | Finish extracting legacy investigation and session markup from `app.js` into HTML templates and focused modules. | New condition markup follows the template convention; older renderers still contain HTML strings and the remaining file exceeds the skill’s size guideline. |
-| Medium | Profile condition serialization on large spools. | Each ledger context still includes evaluated conditions. Index reuse reduces computation, but payload size grows with findings and condition cardinality. No large-spool performance benchmark was run. |
+| Medium | Profile condition serialization on large spools. | Each ledger context still includes evaluated conditions. Index reuse reduces computation, but payload size grows with findings and condition cardinality. No large-spool performance benchmark was run. Tracked in `telemetry-analyze-single-pass-perf`. |
 | Medium | Disambiguate repositories sharing the same display name in selectors. | Canonical values remain distinct, but readable basenames can still look identical. Show owner/path only when labels collide. |
 | Low | Replace broad screenshot selectors in older portal tests with semantic locators. | New interaction checks use roles and names; some layout assertions still rely on IDs/classes. |
 
@@ -106,11 +118,12 @@ they protect are listed in [Telemetry Internals](telemetry-internals.md#analytic
 | Action items | What should I investigate first? | Ranked recommendation and jump to evidence. |
 | Recent problem sessions | Which session explains this recommendation or condition signal? | Collapsed, bounded list; session dialog contains the detail. |
 | Conditions | Which setup is worth comparing on similar work? | Named signals and inspect-session actions; raw/unknown detail on demand. |
-| Model metrics | Which model’s expensive sessions deserve inspection? | Context only; task mix prevents a fair efficiency ranking. |
 | Event ledger | Did problems appear around a recorded or observed change? | Chronology with change links and boundary status. |
 | Your changes | Should I keep monitoring, investigate a regression, or collect more evidence? | Before/after rates, exclusions, and next step in one place. |
 
 ### Recommended next product iteration
+
+Tracked in plan `nl40n9vr` (Phases 2 and 3).
 
 1. Make Action items the single prioritized decision list. Fold condition signals into those
    recommendations once task comparability is established; keep conditions as supporting evidence.

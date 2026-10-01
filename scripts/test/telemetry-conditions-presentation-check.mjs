@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { comparisonPresentation, changePresentation } from "../../portal/tokens2/conditions-format.js";
+import { comparisonPresentation, changePresentation } from "../../portal/tokens/conditions-format.js";
 import { conditionDemoEvidence } from "../cli/telemetry-conditions-demo.mjs";
 import { analyzeTelemetry } from "../cli/telemetry-analyze.mjs";
 
@@ -25,7 +25,7 @@ assert.doesNotMatch(thinChange.label, /No .*change/);
 assert.doesNotMatch(thinChange.detail, /%/);
 assert.equal(changePresentation({ ...equal, relative_delta: null, after: { affected: 0, observations: 12, rate: 0 } }).state, "collecting");
 assert.match(changePresentation({ ...equal, relative_delta: null, after: { affected: 0, observations: 12, rate: 0 } }).label, /Early signal: fewer/);
-const records = fs.readFileSync(new URL("../../portal/tokens2/mock-spool.jsonl", import.meta.url), "utf8").trim().split("\n").map(JSON.parse);
+const records = fs.readFileSync(new URL("../../portal/tokens/mock-spool.jsonl", import.meta.url), "utf8").trim().split("\n").map(JSON.parse);
 const evidence = conditionDemoEvidence(records);
 const report = analyzeTelemetry(evidence.events, { snapshots: evidence.snapshots });
 // The demo must not confound the intervention with repo or model: both cohorts share them.
@@ -37,7 +37,6 @@ for (const pick of [(row) => row.repo?.label, (row) => row.session?.model]) asse
 assert.ok(cohortValues(true, (row) => row.repo?.label).length > 1);
 const states = new Set(report.conditions.comparisons.map((row) => comparisonPresentation(row).state));
 assert.ok(states.has("fewer") && states.has("more") && states.has("thin"));
-assert.ok(report.conditions.relative_models.filter((row) => row.meets_sample_floor).length >= 3);
 assert.deepEqual(conditionDemoEvidence(records), evidence);
 const midpoint = report.insights.find((finding) => finding.kind === "midpoint_regression");
 assert.match(midpoint.headline, /heavier: .* → .* tok\/call/);

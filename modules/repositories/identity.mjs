@@ -180,6 +180,21 @@ export function resolveGitDir(projectRoot, options = {}) {
   return { gitDir, commonDir, isWorktree: commonDir !== gitDir };
 }
 
+// The main checkout shared by any of these checkout paths (main or linked worktree), or null.
+// Confirmed from both ends: the common directory must be a non-bare `.git`, and the directory
+// holding it must itself resolve to that same git directory as an ordinary (non-worktree) checkout.
+export function mainCheckoutPath(checkoutPaths, options = {}) {
+  const { pathApi = path } = options;
+  for (const checkoutPath of checkoutPaths) {
+    const resolved = resolveGitDir(checkoutPath, options);
+    if (!resolved || pathApi.basename(resolved.commonDir) !== ".git") continue;
+    const mainRoot = pathApi.dirname(resolved.commonDir);
+    const main = resolveGitDir(mainRoot, options);
+    if (main && !main.isWorktree && main.gitDir === resolved.commonDir) return mainRoot;
+  }
+  return null;
+}
+
 function readGitRemote(projectRoot, { fsApi, pathApi }) {
   const resolved = resolveGitDir(projectRoot, { fsApi, pathApi });
   if (!resolved) return null;

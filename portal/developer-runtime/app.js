@@ -2,12 +2,13 @@ import { portalHideLoading, portalSetUpdatedAt } from "/portal/shared/api.js";
 import * as api from "./api.js";
 import * as state from "./state.js";
 import * as tmpl from "./templates.js";
+import { isCheckoutRowOpen, setCheckoutRowOpen } from "./repository-root-row.js";
 import * as fields from "./form-fields.js";
 import { createHistoryView } from "./history-view.js";
 import { buildRoutesDropdown, fillApiRouteDialog } from "./suggestions-view.js";
 import "/portal/shared/menu-button.js";
 import "/portal/shared/copy-menu.js";
-// The API-route rows in the Pages/Routes panel use <portal-copy-button> for their curl commands.
+// The API-route rows in the Links panel use <portal-copy-button> for their curl commands.
 import "/portal/shared/copy-button.js";
 
 // A stale opaque key (the app moved ports since this render) resolves by reloading the snapshot
@@ -163,9 +164,12 @@ function render(snapshot, { reconcile }) {
             {
               name: state.UNMATCHED_PROJECT_NAME,
               identity: instance.project?.identity,
+              unrecognized: true,
             },
             instance,
-            cardActions(),
+            // No Links: saved links belong to an app slot these listeners do not have, and adding one
+            // would create a stray saved app. See instanceCard for the menu entries dropped too.
+            { ...cardActions(), onMountRoutesTrigger: null },
           ),
       })),
     },
@@ -302,10 +306,10 @@ function reconcileSection(section) {
       }
       const prevRoots = existing.node.querySelectorAll(".repository-root[data-root-id]");
       if (prevRoots.length) {
-        const openByRootId = new Map([...prevRoots].map((el) => [el.dataset.rootId, el.open]));
+        const openByRootId = new Map([...prevRoots].map((el) => [el.dataset.rootId, isCheckoutRowOpen(el)]));
         for (const nextRoot of node.querySelectorAll(".repository-root[data-root-id]")) {
           if (openByRootId.has(nextRoot.dataset.rootId)) {
-            nextRoot.open = openByRootId.get(nextRoot.dataset.rootId);
+            setCheckoutRowOpen(nextRoot, openByRootId.get(nextRoot.dataset.rootId));
           }
         }
       }
@@ -539,39 +543,45 @@ async function deleteLink(project, instance, linkId) {
   }
 }
 
-// Mounts a portal-menu-button (portal/shared/menu-button.js) into the card's reserved
-// routes-trigger slot (see index.html). Panel content is fetched live, so it is built once on
-// first open rather than for every card on every render — same lazy-fetch discipline
-// historyView uses, just per-card now instead of one shared dialog.
-function mountRoutesTrigger(slotNode, project, instance) {
+// Mounts a portal-menu-button (portal/shared/menu-button.js) into a reserved Links slot: a member
+// card's routes-trigger, or a checkout row's root-links (see index.html). Panel content is fetched
+// live, so it is built once on first open rather than for every card on every render — same
+// lazy-fetch discipline historyView uses, just per-card now instead of one shared dialog.
+//
+// `discoveredOnly` is for a promoted Compose container. Its discovered pages and APIs load by opaque
+// key like any instance's, but saved links are keyed by project identity and app id in settings,
+// which Compose containers do not have — so the panel offers no add, edit, capture, or delete.
+function mountRoutesTrigger(slotNode, project, instance, { discoveredOnly = false } = {}) {
   const button = document.createElement("portal-menu-button");
-  // "Pages/Routes", not "Routes": the panel lists both navigable HTML pages and API endpoints, and
-  // "Routes" alone read as framework-internal plumbing rather than as pages you can open.
-  button.label = "Pages/Routes";
+  // "Links": the panel lists navigable pages, API endpoints, and the user's own saved links, and
+  // one plain word covers all three.
+  button.label = "Links";
   let loaded = false;
   // Rebuilt when the app's saved links change, not on every open: the discovered half costs a fetch
   // and does not change between polls, but the user-added half is now editable from inside this very
   // panel — so an add, edit, or delete has to invalidate the cached content or the list would still
   // show what it held when it was first opened.
   let renderedLinkState = null;
-  const linkStateKey = () => JSON.stringify(currentLinksFor(project, instance));
+  const linkStateKey = () => (discoveredOnly ? "" : JSON.stringify(currentLinksFor(project, instance)));
   const originalToggle = button.toggle.bind(button);
   button.toggle = async () => {
     if (!loaded || renderedLinkState !== linkStateKey()) {
       loaded = true;
       renderedLinkState = linkStateKey();
-      button.panelContent = await buildRoutesDropdown(project, instance, {
-        onStale: () => load({ force: true }),
-        captureLink: captureRouteLink,
-        isSaved: isRouteSaved,
-        onOpenApiRoute: openApiRouteDialog,
-        // User-added links render in the Pages section as their own source, alongside discovered
-        // ones — this is where adding and editing them now lives, rather than on the three-dot menu.
-        userLinks: currentLinksFor(project, instance),
-        onAddLink: openAddLinkDialog,
-        onEditLink: openLinkDialog,
-        onDeleteLink: deleteLink,
-      });
+      button.panelContent = await buildRoutesDropdown(project, instance, discoveredOnly
+        ? { onStale: () => load({ force: true }), onOpenApiRoute: openApiRouteDialog }
+        : {
+          onStale: () => load({ force: true }),
+          captureLink: captureRouteLink,
+          isSaved: isRouteSaved,
+          onOpenApiRoute: openApiRouteDialog,
+          // User-added links render in the Pages section as their own source, alongside discovered
+          // ones — this is where adding and editing them now lives, rather than on the three-dot menu.
+          userLinks: currentLinksFor(project, instance),
+          onAddLink: openAddLinkDialog,
+          onEditLink: openLinkDialog,
+          onDeleteLink: deleteLink,
+        });
     }
     originalToggle();
   };

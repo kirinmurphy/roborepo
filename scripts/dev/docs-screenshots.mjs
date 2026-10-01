@@ -4,12 +4,13 @@
 // Usage:
 //   node scripts/dev/docs-screenshots.mjs            # write PNGs to docs/images/
 //   node scripts/dev/docs-screenshots.mjs --survey   # list each page's sections, write nothing
+//   node scripts/dev/docs-screenshots.mjs --pages /tokens   # only these pages (comma-separated); skips the CLI menu shot
 //   node scripts/dev/docs-screenshots.mjs --out <dir>
 //
 // Everything runs against a disposable HOME, so no screenshot shows the machine it was taken on:
 //   - Harnesses: stub `claude` / `codex` binaries on PATH, then `roborepo init`, a typical package
 //     set, and telemetry enabled.
-//   - Tokens: the repo's own mock spool (portal/tokens2/mock-spool.jsonl).
+//   - Tokens: the repo's own mock spool (portal/tokens/mock-spool.jsonl).
 //   - Plans: this repository's docs/plans (public content).
 //   - Runtime: two demo apps in throwaway git repos with example remotes (acme/*). Discovery
 //     scans the real machine's listeners, so the page's snapshot is filtered to the demo apps
@@ -89,7 +90,7 @@ function setUpHome() {
   roborepo("telemetry", "enable");
   const spoolDir = path.join(home, ".roborepo", "telemetry", "spool");
   fs.mkdirSync(spoolDir, { recursive: true });
-  fs.copyFileSync(path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl"), path.join(spoolDir, "claude.jsonl"));
+  fs.copyFileSync(path.join(repoRoot, "portal", "tokens", "mock-spool.jsonl"), path.join(spoolDir, "claude.jsonl"));
 }
 
 // ── Demo apps for Runtime ──
@@ -209,7 +210,7 @@ const SHOTS = [
   { file: "plans.png", page: "/plans", from: "header.portal-header", fromEdge: "bottom", to: "article.plan-card >> nth=0" },
   { file: "agents-config.png", page: "/config", element: "section.panel:has(h2:text-is('Skills - Development Life Cycle'))" },
   { file: "harness-files.png", page: "/config", element: "section.panel.wide >> nth=0" },
-  { file: "tokens.png", page: "/tokens", from: "#tokens2meta", to: "div.finding >> nth=0" },
+  { file: "tokens.png", page: "/tokens", from: "#tokensmeta", to: "div.finding >> nth=0" },
 ];
 const PAD = 20;
 const BOTTOM_PAD = 12;
@@ -306,18 +307,20 @@ if (survey) {
   console.log("\n== CLI menu\n" + captureMenu().join("\n").replace(/\x1b\[[0-9;]*m/g, ""));
 } else {
   fs.mkdirSync(outDir, { recursive: true });
-  for (const shot of SHOTS) {
+  for (const shot of SHOTS.filter((candidate) => !onlyPages || onlyPages.includes(candidate.page))) {
     await openPage(shot.page);
     const file = path.join(outDir, shot.file);
     await captureShot(shot, file);
     console.log(`wrote ${path.relative(repoRoot, file)}`);
   }
-  const menuHtml = ansiToHtml(captureMenu());
-  await page.setContent(
-    `<body style="margin:0;background:#0d1117"><pre id="term" style="margin:0;display:inline-block;padding:20px 28px;background:#0d1117;color:#d0d0d0;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace">${menuHtml}</pre></body>`,
-  );
-  await page.locator("#term").screenshot({ path: path.join(outDir, "cli-menu.png") });
-  console.log(`wrote ${path.relative(repoRoot, path.join(outDir, "cli-menu.png"))}`);
+  if (!onlyPages) {
+    const menuHtml = ansiToHtml(captureMenu());
+    await page.setContent(
+      `<body style="margin:0;background:#0d1117"><pre id="term" style="margin:0;display:inline-block;padding:20px 28px;background:#0d1117;color:#d0d0d0;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace">${menuHtml}</pre></body>`,
+    );
+    await page.locator("#term").screenshot({ path: path.join(outDir, "cli-menu.png") });
+    console.log(`wrote ${path.relative(repoRoot, path.join(outDir, "cli-menu.png"))}`);
+  }
 }
 
 await browser.close();

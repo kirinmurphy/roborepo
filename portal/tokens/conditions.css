@@ -2,8 +2,10 @@
 .condition-card { padding: 13px 15px; }
 .condition-card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .condition-card-head h3 { margin: 0; font-size: var(--text-sm); }
-.condition-card-head [data-coverage] { color: var(--dim); font-size: var(--text-2xs); margin-left: auto; }
-.condition-card-head button { border: 0; background: none; color: var(--accent); font-size: var(--text-2xs); cursor: pointer; }
+.condition-card-foot { display: flex; justify-content: flex-end; align-items: baseline; gap: 16px; margin-top: 10px; }
+.condition-card-foot button { border: 0; padding: 0; background: none; color: var(--accent); font-size: var(--text-2xs); cursor: pointer; }
+.condition-card-foot button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.condition-card-foot [data-condition-thin-open] { color: var(--warn); }
 .condition-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 24px; margin-top: 8px; }
 .condition-columns h4 { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
 .condition-fewer h4 { color: var(--ok); } .condition-more h4 { color: var(--danger); }
@@ -15,7 +17,10 @@
 .condition-card li + li { border-top: 1px dotted var(--line); }
 .condition-card li > strong { font-weight: 600; color: var(--ink); }
 .condition-outcome-list { display: grid; gap: 4px; }
-.condition-outcome-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+/* One row per outcome: pill, info icon, then the Sessions button pushed to the right edge. */
+.condition-outcome-line { display: flex; align-items: center; gap: 8px; }
+.condition-outcome-pill { min-width: 0; overflow-wrap: anywhere; }
+.condition-outcome-line .condition-inspect { margin-left: auto; flex: none; }
 .condition-outcome-line portal-info-icon .info-icon { width: 14px; height: 14px; font-size: 9px; }
 .condition-outcome-pill { font-weight: 600; }
 .condition-fewer .condition-outcome-pill { color: var(--ok); }
@@ -153,9 +158,8 @@
 .condition-chip { border-style: solid; border-color: transparent; border-radius: 4px; background: var(--raised); padding: 1px 6px; font-size: 11px; }
 .condition-coverage-details { margin-top: 10px; color: var(--dim); font-size: var(--text-2xs); }
 .condition-coverage-details summary { cursor: pointer; }
-.condition-thin { margin-top: 10px; padding: 8px; background: color-mix(in srgb, var(--warn) 5%, var(--raised)); border-radius: 7px; }
-.condition-thin summary { cursor: pointer; margin: 0 0 4px; color: var(--warn); font-size: var(--text-2xs); }
-.condition-inspect { justify-self: start; border: 0; padding: 2px 0; background: transparent; color: var(--accent); font-size: var(--text-2xs); cursor: pointer; }
+.condition-inspect { border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; background: var(--raised); color: var(--accent); font-size: var(--text-2xs); cursor: pointer; }
+.condition-inspect:hover { border-color: var(--accent); }
 .condition-change-link { display: grid; gap: 3px; padding: 8px 0; font-size: var(--text-xs); }
 .condition-change-link span { color: var(--dim); font-size: var(--text-2xs); }
 .condition-change-link a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
@@ -179,13 +183,9 @@
   .condition-investigate-row .condition-context { grid-column: 2; }
   .condition-investigate-meta { grid-column: 2; grid-row: auto; flex-direction: row; justify-content: flex-start; }
   .condition-card-head { gap: 5px 8px; }
-  .condition-card-head h3 { flex-basis: 100%; }
-  .condition-card-head [data-coverage] { margin-left: 0; }
-  .condition-card-head button { margin-left: auto; }
 }
 
 #condition-report > .t2-sec-head, #condition-ledger-section > .t2-sec-head, #condition-changes-section > .t2-sec-head { display: flex; align-items: center; gap: 8px; }
-.condition-thin summary span { color: var(--dim); font-weight: 400; }
 
 .condition-ledger-panel .condition-ledger-note {
   margin-top: 12px;

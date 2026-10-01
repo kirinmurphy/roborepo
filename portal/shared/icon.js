@@ -76,6 +76,13 @@ const ICONS = {
     viewBox: "0 0 16 16",
     body: `<path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M4 6l4 4 4-4" />`,
   },
+  // A linked worktree on the Runtime page's checkout rows: a crown on a stem. (The main checkout
+  // uses `home`.) Kept to a single stroke colour so a later status tint can recolour the whole glyph
+  // at once.
+  tree: {
+    viewBox: "0 0 16 16",
+    body: `<path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" d="M5.2 9.6a2.6 2.6 0 0 1-.5-5.1 3.4 3.4 0 0 1 6.6 0 2.6 2.6 0 0 1-.5 5.1Z" /><path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" d="M8 9.6v4.9M5.8 14.5h4.4" />`,
+  },
 
   // Portal section glyphs — the monochrome entry-point icons for Home's destination cards.
   // Same stroke family as the rest of this set (1.3 weight, round caps/joins, currentColor).
@@ -138,7 +145,10 @@ class PortalIcon extends HTMLElement {
       this.replaceChildren();
       return;
     }
-    const size = ICON_SIZES[this.getAttribute("size")] || ICON_SIZES[DEFAULT_ICON_SIZE];
+    // An explicit `size` wins; otherwise the nearest `data-icon-size` ancestor sets the step, so a
+    // page can pick one standard size for its own icons in a single place (<body data-icon-size>).
+    const step = this.getAttribute("size") || this.closest("[data-icon-size]")?.dataset.iconSize;
+    const size = ICON_SIZES[step] || ICON_SIZES[DEFAULT_ICON_SIZE];
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", icon.viewBox);
     svg.setAttribute("width", String(size));

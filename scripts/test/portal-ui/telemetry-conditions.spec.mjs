@@ -18,7 +18,7 @@ for (const theme of ["light", "dark"]) {
     await expect(page.locator("#condition-investigate-events")).not.toContainText("Package configured:");
     await expect(page.locator("#condition-investigate-events")).not.toContainText("Repository:");
     await page.getByRole("region", { name: "Problem sessions" }).getByRole("button", { name: "Session details", exact: true }).first().click();
-    const sessionDialog = page.locator("#tokens2session-modal");
+    const sessionDialog = page.locator("#tokenssession-modal");
     await expect(sessionDialog).toBeVisible();
     await expect(sessionDialog).toContainText("Observation unit");
     await expect(sessionDialog).toContainText("Next step");
@@ -49,7 +49,7 @@ for (const theme of ["light", "dark"]) {
 }
 
 test("mark change records backdated scope and keeps editing history", async ({ page, request }) => {
-  const demo = await (await request.get("/api/tokens2/mock")).json();
+  const demo = await (await request.get("/api/tokens/mock")).json();
   const config = await (await request.get("/api/config")).json();
   config.telemetry = { ...config.telemetry, enabled: true };
   config.machineHarnesses = [{ id: "claude", enabled: true, confidence: "confirmed" }];
@@ -119,7 +119,7 @@ test("condition signals lead to compact session evidence", async ({ page }) => {
 });
 
 test("polling preserves an open comparison and a change draft", async ({ page, request }) => {
-  const demo = await (await request.get("/api/tokens2/mock")).json();
+  const demo = await (await request.get("/api/tokens/mock")).json();
   const config = await (await request.get("/api/config")).json();
   config.telemetry = { ...config.telemetry, enabled: true };
   config.machineHarnesses = [{ id: "claude", enabled: true, confidence: "confirmed" }];

@@ -1283,14 +1283,14 @@ function cachedAnalysisJson(window, harness, extra = {}) {
   return cachedAnalysisEntry(window, harness, extra).json;
 }
 
-// Mock analysis for the /tokens2 page: reads the bundled mock spool file
-// (portal/tokens2/mock-spool.jsonl) and runs it through the same analyzeTelemetry()
+// Mock analysis for the /tokens page: reads the bundled mock spool file
+// (portal/tokens/mock-spool.jsonl) and runs it through the same analyzeTelemetry()
 // pipeline as real data. The mock spool is a committed .jsonl file with the same
 // schema-2 record shape telemetryCapture() writes, so the only difference from real
 // data is the source file — analyzeTelemetry() processes it identically. Cached so
 // repeated requests don't re-parse the file.
 let _mockAnalysisJson = null;
-const MOCK_SPOOL_PATH = path.join(repoRoot, "portal", "tokens2", "mock-spool.jsonl");
+const MOCK_SPOOL_PATH = path.join(repoRoot, "portal", "tokens", "mock-spool.jsonl");
 // Demo marker for the mock report: the mock spool is seeded with sessions on both sides of
 // this timestamp so the "Before vs after your change" section has real pipeline output.
 const MOCK_MARKER = {

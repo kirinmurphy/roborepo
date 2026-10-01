@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { analyzeTelemetry } from "../cli/telemetry-analyze.mjs";
 import { conditionDemoEvidence } from "../cli/telemetry-conditions-demo.mjs";
-import { comparisonPresentation, changePresentation } from "../../portal/tokens2/conditions-format.js";
+import { comparisonPresentation, changePresentation } from "../../portal/tokens/conditions-format.js";
 
 // This file deliberately does not import telemetry observations, conditions, boundaries, metrics,
 // or finding helpers. The implementation below starts again from persisted event fields so a bug
@@ -446,7 +446,7 @@ function requireCoverage(ok, message) {
   if (!ok) throw new Error(`oracle fixture lost required coverage: ${message}`);
 }
 
-const records = fs.readFileSync(new URL("../../portal/tokens2/mock-spool.jsonl", import.meta.url), "utf8").trim().split("\n").map(JSON.parse);
+const records = fs.readFileSync(new URL("../../portal/tokens/mock-spool.jsonl", import.meta.url), "utf8").trim().split("\n").map(JSON.parse);
 const demo = conditionDemoEvidence(records);
 const demoCase = { ...demo, markers: [marker("demo-boundary", "2026-06-12T00:00:00.000Z")] };
 const demoStates = new Set(oracle(demoCase.events, demoCase).conditions.map((row) => row.presentation_state));

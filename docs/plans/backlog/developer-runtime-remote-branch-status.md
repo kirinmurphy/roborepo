@@ -7,6 +7,7 @@ depends_on: []
 related:
   - developer-runtime-metadata-suggestions
   - git-exec-consolidation
+  - zdhivxtb
 reviewed_commit:
 ---
 
@@ -14,8 +15,8 @@ reviewed_commit:
 
 ## Summary
 
-Surface, per repository card, whether the branch has an open pull request and whether its latest
-commit passed CI — sourced from the hosting forge rather than local Git state.
+Surface, per checkout row, whether the checkout's branch has an open pull request and whether its
+latest commit passed CI — sourced from the hosting forge rather than local Git state.
 
 ## Context
 
@@ -131,7 +132,24 @@ limit is 5,000 requests/hour shared across everything on the machine.
 The existing severity ladder in `portal/developer-runtime/templates.js` (`DRIFT_RULES`) already picks one
 phrase from a ranked list and stays silent otherwise. CI status is a different axis — it describes
 the remote's verdict, not the user's divergence — so it should be its own indicator rather than a
-new rung on that ladder. The node-graph icon beside the branch is the natural carrier.
+new rung on that ladder.
+
+Git is per checkout: each repository card has one row per checkout (main, then each linked
+worktree), and each row shows its own branch. The Repository Rows plan (`zdhivxtb`) removes the
+branch icon from those rows and gives each row an icon column instead: a home glyph for the main
+checkout and a tree glyph for each linked worktree. CI status tints that glyph:
+
+- Each row shows the verdict for its own branch. How several checkouts' branches share the
+  one-lookup-per-repository budget under Caching is listed under Open Questions.
+- `unknown` leaves the glyph in its default color, which keeps it indistinguishable from "no CI
+  feature at all".
+- Color is never the only signal. The checkout tooltip gains a CI line stating the verdict in
+  words, and the glyph's accessible name includes it.
+- Base-branch status, if kept, tints the main checkout's home glyph when the main checkout is on the
+  base branch; otherwise it is a tooltip line only.
+
+Standalone cards (shared-service Compose cards and unmatched instance cards) keep the shared git row
+and its branch icon, and get no CI indicator in this plan.
 
 ## Implementation Plan
 
@@ -145,8 +163,9 @@ Four phases, each independently shippable.
       into the snapshot so `forge` data rides alongside `git` without touching it.
 - [ ] **Phase 3 — PR surfacing.** Show open-PR presence, number, and draft state on the card.
       Valuable alone, and independent of any CI verdict.
-- [ ] **Phase 4 — CI status indicator.** Colored node-graph icon for the active branch and the base
-      branch, with `unknown` rendering nothing.
+- [ ] **Phase 4 — CI status indicator.** Tint each checkout row's glyph, and add a CI line to the
+      checkout tooltip, as described under Placement, with `unknown` rendering nothing. Needs the
+      icon column from the Repository Rows plan (`zdhivxtb`).
 - [ ] **Phase 5 (optional) — baseline CI workflow.** A minimal GitHub Actions workflow in this repo,
       purely as a live fixture. Note that it only produces status for *this* repository; the feature
       must work against arbitrary repos with arbitrary workflows, so this is a test aid, not
@@ -188,3 +207,6 @@ Four phases, each independently shippable.
 - Is base-branch CI status worth a second lookup per repository, given it doubles the request count?
 - What TTL balances freshness against the rate limit — 2 minutes, 5, or adaptive to poll interval?
 - Should a failing base branch escalate to a card-level warning, or stay a quiet icon?
+- With several checkouts running on different branches, does one per-repository call (for example
+  `gh pr list` over open PRs, matched by head branch) cover every row, or does each branch need
+  its own lookup?
