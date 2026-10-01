@@ -23,6 +23,13 @@ assert.equal(projection.repositories[REPOSITORY].highestSeverity, "high");
 assert.deepEqual(projection.repositories[REPOSITORY].recent.map((finding) => finding.kind), ["read-warning", "spike"]);
 assert.equal(Object.keys(projection.repositories).length, 1, "unresolved sessions stay out of repository summaries");
 
+const manyWarnings = buildTelemetryRepositoryProjection(events, {
+  ...report,
+  spikes: Array.from({ length: 8 }, (_, index) => ({ session_id: "s1", harness: "codex", ts: `2026-09-30T10:${String(index).padStart(2, "0")}:00.000Z` })),
+}, null).repositories[REPOSITORY];
+assert.equal(manyWarnings.warningCount, 9);
+assert.equal(manyWarnings.warnings.length, 9, "Home can list every warning, beyond the five recent items");
+assert.equal(manyWarnings.recent.length, 5);
 console.log("telemetry repository overview checks passed");
 
 function event(sessionId, ts, repositoryId) {

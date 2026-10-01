@@ -120,3 +120,80 @@
     </div>
   </portal-notice>
 </template>
+
+    <dialog id="api-route-dialog" aria-labelledby="api-route-dialog-title">
+      <div class="modal-head">
+        <h2 id="api-route-dialog-title">
+          <span class="route-api-method" data-slot="method"></span>
+          <span class="route-api-path" data-slot="path"></span>
+        </h2>
+        <portal-close-button data-close aria-label="Close"></portal-close-button>
+      </div>
+      <div class="modal-body">
+        <p class="route-api-description" data-slot="summary" hidden></p>
+        <div data-slot="params"></div>
+        <div class="route-api-curl">
+          <div class="route-api-curl-head">
+            <span class="route-api-curl-label">curl</span>
+            <portal-copy-button data-slot="curl-copy" label="Copy"></portal-copy-button>
+          </div>
+          <pre class="route-api-curl-text" data-slot="curl-text"></pre>
+          <p class="route-api-curl-hint" data-slot="curl-hint" hidden></p>
+        </div>
+      </div>
+    </dialog>
+    <template id="tpl-route-link-row">
+      <a class="route-link-row" data-slot="href" target="_blank" rel="noreferrer">
+        <span class="history-type" data-slot="source"></span>
+        <span class="history-detail" data-slot="path"></span>
+        <portal-icon name="check" data-slot="saved-check" hidden></portal-icon>
+        <span class="route-link-actions" data-slot="row-actions" hidden>
+          <button type="button" class="route-row-action" data-action="edit-link" aria-label="Edit link">
+            <portal-icon name="pencil"></portal-icon>
+          </button>
+          <!-- `close` rather than a trash glyph: the icon set has no trash, and close already reads
+               as "remove this" everywhere else in the portal. Adding a one-use glyph for parity with
+               a convention this UI does not otherwise follow is not worth the surface. -->
+          <button type="button" class="route-row-action" data-action="delete-link" aria-label="Delete link">
+            <portal-icon name="close"></portal-icon>
+          </button>
+        </span>
+      </a>
+    </template>
+    <!-- Section heading with an optional right-aligned action. Used by the Pages heading to carry
+         "+ Add", which is a plain button rather than a CTA: adding a link is one option among the
+         rows below it, not the panel's primary purpose. -->
+    <template id="tpl-routes-section-heading">
+      <div class="routes-section-heading">
+        <span data-slot="title"></span>
+        <button type="button" class="routes-heading-action" data-slot="action" hidden>
+          + Add
+        </button>
+      </div>
+    </template>
+    <!-- An API route is described, not opened. Most need a method, a body, or auth, so a plain link
+         would 404/405 or dump JSON. The row is a button that opens the contract modal
+         (#api-route-dialog) instead of an anchor that navigates. -->
+    <template id="tpl-route-api-row">
+      <button type="button" class="route-api-row">
+        <span class="route-api-method" data-slot="method"></span>
+        <span class="route-api-path" data-slot="path"></span>
+        <!-- A saved API route renders here only, never as a duplicate row under Pages, so this is
+             where its saved state has to appear. -->
+        <portal-icon name="check" data-slot="saved-check" hidden></portal-icon>
+      </button>
+    </template>
+    <template id="tpl-route-param-table">
+      <div class="route-param-table">
+        <div class="route-param-title" data-slot="title"></div>
+        <div class="route-param-rows" data-slot="rows"></div>
+      </div>
+    </template>
+    <template id="tpl-route-param-row">
+      <div class="route-param-row">
+        <span class="route-param-name" data-slot="name"></span>
+        <span class="route-param-type" data-slot="type"></span>
+        <span class="route-param-required" data-slot="required"></span>
+        <span class="route-param-example" data-slot="example"></span>
+      </div>
+    </template>

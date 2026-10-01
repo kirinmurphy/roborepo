@@ -60,7 +60,7 @@ const plans = {
   errors: [],
   repositories: [{ repositoryId: ACTIVE }],
   plans: [
-    { repository: { repositoryId: ACTIVE }, plan: { id: "active-plan", title: "Active plan", lifecycle: "active", gitLastChangedAt: "2026-09-29T12:00:00.000Z", modifiedAt: "2026-09-20T12:00:00.000Z" } },
+    { repository: { repositoryId: ACTIVE }, plan: { id: "active-plan", title: "Active plan", lifecycle: "active", taskCounts: { total: 8, complete: 3 }, gitLastChangedAt: "2026-09-29T12:00:00.000Z", modifiedAt: "2026-09-20T12:00:00.000Z" } },
     { repository: { repositoryId: ACTIVE }, plan: { id: "backlog-plan", title: "Backlog plan", lifecycle: "backlog", gitLastChangedAt: null, modifiedAt: "2026-09-28T12:00:00.000Z" } },
     { repository: { repositoryId: ACTIVE }, plan: { id: "old-plan", title: "Old plan", lifecycle: "completed", gitLastChangedAt: "2026-09-23T11:59:59.999Z", modifiedAt: null } },
     { repository: { repositoryId: ACTIVE }, plan: { id: "future-plan", title: "Future plan", lifecycle: "completed", gitLastChangedAt: "2026-10-01T12:00:00.000Z", modifiedAt: null } },
@@ -93,16 +93,18 @@ const active = home.repositories.find((repository) => repository.repositoryId ==
 assert.equal(active.urlKey, "active-app");
 assert.equal(active.domains.runtime.data.checkouts[0].primaryEntrypoint.kind, "container", "container and host entrypoints share the same projection");
 assert.equal(active.domains.runtime.data.checkouts[0].primaryEntrypoint.port, 4317);
-assert.equal("opaqueKey" in active.domains.runtime.data.checkouts[0].primaryEntrypoint, false, "runtime keys are not exposed on Home");
+assert.equal(active.domains.runtime.data.checkouts[0].primaryEntrypoint.opaqueKey, "secret-runtime-key", "Home reuses the promoted app key for route discovery");
 assert.equal(JSON.stringify(active).includes("9999"), false, "secondary ports are absent from the overview payload");
 assert.equal(active.domains.git.data.warnings.length, 3);
 assert.deepEqual(active.domains.plans.data.counts, { active: 1, backlog: 1 });
 assert.equal(active.domains.plans.data.recent[0].changedAt, "2026-09-29T12:00:00.000Z", "Git last-change time wins over mtime");
 assert.deepEqual(active.domains.plans.data.recent.map((plan) => plan.id), ["active-plan", "backlog-plan"], "recent plans stay inside the trailing seven-day window");
 assert.equal(active.domains.tokens.data.warningCount, 2);
+assert.equal(active.domains.tokens.data.warnings[0].kind, "spike");
+assert.deepEqual(active.domains.plans.data.active[0].taskCounts, { total: 8, complete: 3 });
 assert.equal(active.domains.agents.status, "unavailable");
 assert.equal(home.repositories.find((repository) => repository.repositoryId === PINNED).domains.plans.status, "unavailable", "unscanned Plans coverage is not reported as zero");
-assert.ok(!JSON.stringify(home).includes("/private/"), "overview payload contains no absolute paths");
+assert.equal(active.domains.runtime.data.checkouts[0].projectRoot, "/private/worktrees/active-feature", "shared checkout tooltips and copy controls receive the checkout path");
 
 const detail = service.loadDetail({ urlKey: "active-app" });
 assert.equal(detail.repository.repositoryId, ACTIVE);

@@ -27,6 +27,7 @@ import {
   resolveGitDir,
   supersededBy,
   ageOutCandidates,
+  forgetRepository,
   hideRepository,
   pinRepository,
   updateRegistry,
@@ -252,6 +253,29 @@ export function setDeveloperRuntimeRepositoryPinned({ repositoryId, pinned }) {
   return { ok: true, developerRuntime: loadDeveloperRuntimeSnapshot() };
 }
 
+export function forgetDeveloperRuntimeRepository({ repositoryId }) {
+  if (!repositoryId || typeof repositoryId !== "string") {
+    return { ok: false, status: 400, error: "repositoryId is required", developerRuntime: loadDeveloperRuntimeSnapshot() };
+  }
+  const current = loadDeveloperRuntimeSnapshot();
+  const repository = current.repositories?.find((candidate) => candidate.repositoryId === repositoryId);
+  if (repository?.roots?.length) {
+    return {
+      ok: false,
+      status: 400,
+      error: "cannot forget a repository with known checkouts; hide it instead",
+      developerRuntime: current,
+    };
+  }
+  try {
+    updateRegistry({ stateRoot, mutate: (reg) => forgetRepository(reg, repositoryId) });
+  } catch (err) {
+    return { ok: false, status: 400, error: String(err?.message || err), developerRuntime: loadDeveloperRuntimeSnapshot() };
+  }
+  scheduleRefresh();
+  return { ok: true, developerRuntime: loadDeveloperRuntimeSnapshot() };
+}
+
 export function setDeveloperRuntimePortalInfo(info) {
   portalInfo = info;
   if (lastSnapshot) {
@@ -421,6 +445,7 @@ function buildSnapshot({ discovery, settings = loadSettings({ stateRoot }), refr
     refresh,
     now,
     repositoryNames: registryDisplayNames(registry),
+    repositoryUrlKeys: registryUrlKeys(registry),
     persistedRepositories,
     idleMainCheckouts,
     hiddenRepositories: collectHiddenRepositories(registry),
@@ -732,6 +757,15 @@ function registryDisplayNames(registry = loadRegistrySafe()) {
     if (record.displayName) names.set(id, record.displayName);
   }
   return names;
+}
+
+function registryUrlKeys(registry = loadRegistrySafe()) {
+  if (!registry) return new Map();
+  const keys = new Map();
+  for (const [id, record] of Object.entries(registry.repositories || {})) {
+    if (record.urlKey) keys.set(id, record.urlKey);
+  }
+  return keys;
 }
 
 // Same read-and-degrade shape as registryDisplayNames: an unreadable registry costs the pins, not

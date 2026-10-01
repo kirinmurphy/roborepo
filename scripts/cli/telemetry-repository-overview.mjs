@@ -15,6 +15,7 @@ export function buildTelemetryRepositoryProjection(events, report, repositoryHas
     warningCount: 0,
     highestSeverity: null,
     recent: [],
+    warnings: [],
   });
   for (const session of report.sessions || []) {
     const repositoryId = repositoryBySession.get(sessionKey(session));
@@ -28,8 +29,8 @@ export function buildTelemetryRepositoryProjection(events, report, repositoryHas
     for (const row of rows) addWarning(repositoryBySession, ensure, kind, severity, row);
   }
   for (const summary of Object.values(repositories)) {
-    summary.recent.sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
-    summary.recent = summary.recent.slice(0, 5);
+    summary.warnings.sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+    summary.recent = summary.warnings.slice(0, 5);
   }
   return { status: "available", updatedAt, repositories };
 }
@@ -40,7 +41,7 @@ function addWarning(repositoryBySession, ensure, kind, severity, row) {
   const summary = ensure(repositoryId);
   summary.warningCount += 1;
   if (summary.highestSeverity !== "high") summary.highestSeverity = severity;
-  summary.recent.push({ kind, severity, sessionId: row.session_id, harness: row.harness || null, at: row.ts || null });
+  summary.warnings.push({ kind, severity, sessionId: row.session_id, harness: row.harness || null, at: row.ts || null });
 }
 
 function sessionKey(record) {

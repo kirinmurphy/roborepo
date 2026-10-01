@@ -6,7 +6,9 @@
 // safe because neither module calls into the other while it is being evaluated — only from inside
 // functions invoked later, at render time.
 
-import { portalMiddleEllipsis, portalTpl as tpl } from "/portal/shared/api.js";
+import { portalMiddleEllipsis } from "/portal/shared/api.js";
+import { createRepositoryCheckoutRow } from "/portal/shared/repository-row-template.js";
+import { mountCheckoutRow } from "/portal/shared/repository-components.js";
 import { healthState, statusDetail, statusText } from "./state.js";
 import {
   applyGitDrift,
@@ -34,8 +36,8 @@ let memberListSequence = 0;
 
 // `root` is undefined for the main slot when nothing has resolved a rootId yet (no active listener
 // on the main checkout) — the row still renders, so the card never looks like it is missing a piece.
-export function buildRootSection({ root, departed, repository, composeActions, instanceActions }) {
-  const section = tpl("tpl-repository-root");
+export function buildRootSection({ root, departed = [], repository, composeActions, instanceActions, mode = "runtime", onMountLinks }) {
+  const section = createRepositoryCheckoutRow({ controls: mode !== "home" });
   // Lets a rebuild find "this same checkout's" row across renders (see reconcileSection in app.js)
   // to carry its open/closed state forward — rootId is stable across polls, DOM position is not.
   section.dataset.rootId = root?.rootId || "main";
@@ -47,11 +49,17 @@ export function buildRootSection({ root, departed, repository, composeActions, i
 
   const composeGroups = root?.composeGroups || [];
   fillIdentity(section, root, composeGroups);
+  mountCheckoutRow(section);
   if (root?.git) {
     applyGitDrift(section, root.git);
     mountCopyDropdown(section, root);
   }
   fillPromotedLink(section, root);
+  if (mode === "home") {
+    if (root?.primaryEntrypoint?.opaqueKey) onMountLinks?.(section.querySelector("[data-slot=root-links]"), root.primaryEntrypoint);
+    section.querySelector("[data-slot=members]")?.remove();
+    return section;
+  }
   const promotedKey = mountRowLinks(section, root, repository, { composeActions, instanceActions });
   // The promoted member's Links dropdown now lives in the row; its card dropping its own copy keeps
   // one app from offering the same panel twice, a few pixels apart.
@@ -118,8 +126,8 @@ export function setCheckoutRowOpen(section, open) {
   toggle.title = name;
 }
 
-// Branch label, info icon, and the checkout tooltip behind both. The row shows the capped label;
-// the tooltip leads with the untruncated identity.
+// Branch/worktree label and the checkout tooltip behind it. The row shows the capped label; the
+// tooltip leads with the untruncated identity.
 function fillIdentity(section, root, composeGroups) {
   const trigger = section.querySelector("[data-slot=root-info]");
   const tooltip = trigger.querySelector("template").content;

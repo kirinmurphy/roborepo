@@ -78,6 +78,7 @@ export {
   priorRepositoryForRoot,
   setEnrollment,
   hideRepository,
+  forgetRepository,
   pinRepository,
   setAlias,
 } from "./registry.mjs";

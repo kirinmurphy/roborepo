@@ -3,15 +3,11 @@
   {{HEAD}}
   <body>
     {{CHROME}}
-    {{WIDGET_TEMPLATES}}
-    <main id="main" class="inner home-main">
-      {{LOADING}}
-      <section class="home-heading" aria-labelledby="home-title">
-        <div>
-          <p class="home-eyebrow">Workspace</p>
-          <h1 id="home-title">Repositories</h1>
-          <p>Open a running checkout, or see what needs attention across your current work.</p>
-        </div>
+      {{WIDGET_TEMPLATES}}
+      <main id="main" class="inner home-main">
+        {{LOADING}}
+        <section class="home-heading" aria-labelledby="home-title">
+        <h1 id="home-title">Repositories</h1>
         <div class="home-action-slot" aria-hidden="true"></div>
       </section>
       <section id="home-warning" class="notice warn" hidden></section>
@@ -29,39 +25,49 @@
       <div class="repository-directory" data-slot="repositories"></div>
     </template>
     <template id="tpl-repository-card">
-      <article class="repository-card">
-        <header class="repository-card-head">
-          <div>
-            <div class="repository-title-line">
-              <h2 data-slot="name"></h2>
-              <span class="repository-lifecycle" data-slot="lifecycle"></span>
+      <article class="instance-card repository-card">
+        <div class="card-head card-title-row">
+          <div class="card-main">
+            <div class="card-title">
+              <h3><a data-slot="repository-name"></a></h3>
+              <a class="git-repo-link repository-nested-control" data-slot="provider-link" target="_blank" rel="noreferrer" hidden>
+                <span data-slot="provider-link-label">GitHub</span><portal-icon name="external-link"></portal-icon>
+              </a>
+              <span class="repository-card-badges">
+                <span class="repository-state-badge" data-slot="lifecycle-state" hidden></span>
+              </span>
             </div>
-            <p class="repository-meta" data-slot="meta"></p>
           </div>
-          <a class="repository-detail-link" data-slot="detail-link">View repository <span aria-hidden="true">→</span></a>
-        </header>
-        <div class="checkout-list" data-slot="checkouts"></div>
-        <dl class="domain-grid" data-slot="domains"></dl>
+          <span data-slot="repository-menu"></span>
+        </div>
+        <div class="repository-roots" data-slot="checkouts"></div>
+        <div class="home-domain-rows" data-slot="domains"></div>
       </article>
     </template>
-    <template id="tpl-checkout-row">
-      <div class="checkout-row">
-        <span class="checkout-name" data-slot="name"></span>
-        <span class="checkout-git" data-slot="git"></span>
-        <span class="checkout-entrypoint" data-slot="entrypoint"></span>
-      </div>
-    </template>
-    <template id="tpl-checkout-overflow">
-      <details class="checkout-overflow">
-        <summary data-slot="summary"></summary>
-        <div data-slot="rows"></div>
-      </details>
-    </template>
     <template id="tpl-domain-row">
-      <div class="domain-row">
-        <dt data-slot="label"></dt>
-        <dd><span class="domain-status" data-slot="status"></span><span data-slot="summary"></span></dd>
-      </div>
+      <section class="home-domain-row">
+        <div class="domain-heading">
+          <h4><portal-icon name="warning" data-slot="warning-icon" hidden></portal-icon><span data-slot="label"></span></h4>
+          <span class="domain-summary" data-slot="summary"></span>
+          <a class="domain-link" data-slot="link"></a>
+        </div>
+        <div class="domain-details" data-slot="details" hidden></div>
+      </section>
+    </template>
+    <template id="tpl-plan-item">
+      <a class="plan-item">
+        <span class="plan-title" data-slot="title"></span>
+        <span class="plan-completion">
+          <span class="plan-progress" data-slot="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span data-slot="fill"></span></span>
+          <span class="plan-percent" data-slot="percent"></span>
+        </span>
+      </a>
+    </template>
+    <template id="tpl-token-warnings">
+      <ul class="token-warnings" aria-label="Token warnings"></ul>
+    </template>
+    <template id="tpl-token-warning">
+      <li class="token-warning"><span data-slot="label"></span><span class="warning-context" data-slot="context"></span></li>
     </template>
     <template id="tpl-unresolved-activity">
       <aside class="unresolved-activity">
@@ -72,6 +78,11 @@
 
     <script src="/portal/shared/icon.js" type="module"></script>
     <script src="/portal/shared/theme.js" type="module"></script>
+    <script src="/portal/shared/tooltip.js" type="module"></script>
+    <script src="/portal/shared/menu-button.js" type="module"></script>
+    <script src="/portal/shared/close-button.js" type="module"></script>
+    <script src="/portal/shared/copy-button.js" type="module"></script>
+    <script src="/portal/shared/copy-menu.js" type="module"></script>
     <script src="/portal/home/app.js" type="module"></script>
   </body>
 </html>

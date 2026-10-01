@@ -6,6 +6,7 @@ import { isCheckoutRowOpen, setCheckoutRowOpen } from "./repository-root-row.js"
 import * as fields from "./form-fields.js";
 import { createHistoryView } from "./history-view.js";
 import { buildRoutesDropdown, fillApiRouteDialog } from "./suggestions-view.js";
+import { configureLinksTrigger } from "/portal/shared/repository-components.js";
 import "/portal/shared/menu-button.js";
 import "/portal/shared/copy-menu.js";
 // The API-route rows in the Links panel use <portal-copy-button> for their curl commands.
@@ -555,7 +556,7 @@ function mountRoutesTrigger(slotNode, project, instance, { discoveredOnly = fals
   const button = document.createElement("portal-menu-button");
   // "Links": the panel lists navigable pages, API endpoints, and the user's own saved links, and
   // one plain word covers all three.
-  button.label = "Links";
+  configureLinksTrigger(button);
   let loaded = false;
   // Rebuilt when the app's saved links change, not on every open: the discovered half costs a fetch
   // and does not change between polls, but the user-added half is now editable from inside this very

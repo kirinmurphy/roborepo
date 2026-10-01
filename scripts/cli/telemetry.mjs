@@ -32,6 +32,7 @@ import {
   updateDeveloperRuntimeSettings,
   setDeveloperRuntimeRepositoryVisibility,
   setDeveloperRuntimeRepositoryPinned,
+  forgetDeveloperRuntimeRepository,
   setDeveloperRuntimePortalInfo,
 } from "./developer-runtime.mjs";
 import {
@@ -812,6 +813,7 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     updateDeveloperRuntimeSettings: (params) => updateDeveloperRuntimeSettings(params),
     setDeveloperRuntimeRepositoryVisibility: (params) => setDeveloperRuntimeRepositoryVisibility(params),
     setDeveloperRuntimeRepositoryPinned: (params) => setDeveloperRuntimeRepositoryPinned(params),
+    forgetDeveloperRuntimeRepository: (params) => forgetDeveloperRuntimeRepository(params),
     loadDeveloperRuntimeHistory: (key) => loadDeveloperRuntimeHistory(key),
     loadDeveloperRuntimeMetadata: (key) => loadDeveloperRuntimeMetadata(key),
     loadRepositories: () => { reconcileTelemetryRepositories(); return loadRepositoriesPayload(); },

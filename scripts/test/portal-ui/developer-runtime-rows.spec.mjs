@@ -171,6 +171,7 @@ test.describe("Runtime checkout rows (developer-runtime-repository-row-layout)",
   test("the promoted member's Links dropdown moves into the checkout row", async ({ page }) => {
     const main = row(page, "demo-main");
     await expect(main.locator(".repository-root-head").getByRole("button", { name: "Links", exact: true })).toBeVisible();
+    await expect(main.getByRole("button", { name: "Links", exact: true }).locator("portal-icon[name=link] svg")).toBeVisible();
     await main.getByRole("button", { name: "Show 2 members" }).click();
     const memberCard = (port) => main.locator("[data-slot=members] .instance-card")
       .filter({ has: page.getByRole("link", { name: `:${port}`, exact: true }) });

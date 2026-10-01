@@ -23,6 +23,10 @@ const ICONS = {
     viewBox: "0 0 24 24",
     body: `<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="15 3 21 3 21 9" /><line stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" x1="10" y1="14" x2="21" y2="3" />`,
   },
+  link: {
+    viewBox: "0 0 16 16",
+    body: `<path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" d="m6.2 9.8 3.6-3.6M6.5 5.2l2-2a3 3 0 0 1 4.3 4.3l-2 2M9.5 10.8l-2 2a3 3 0 0 1-4.3-4.3l2-2" />`,
+  },
   warning: {
     viewBox: "0 0 16 16",
     body: `<path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" d="M8 1.5 15 13.8H1L8 1.5Z" /><path fill="currentColor" d="M7.4 6h1.2v4.2H7.4V6Z" /><circle fill="currentColor" cx="8" cy="11.7" r="0.75" />`,

@@ -36,11 +36,13 @@ export function telemetryByRepository(projection, registry) {
     const repositoryId = resolveRegistryAlias(registry, sourceId);
     if (!registry.repositories?.[repositoryId]) continue;
     const summary = repositories[repositoryId] || (repositories[repositoryId] = {
-      sessionCount: 0, warningCount: 0, highestSeverity: null, recent: [],
+      sessionCount: 0, warningCount: 0, highestSeverity: null, recent: [], warnings: [],
     });
     summary.sessionCount += source.sessionCount || 0;
     summary.warningCount += source.warningCount || 0;
     if (source.highestSeverity === "high" || !summary.highestSeverity) summary.highestSeverity = source.highestSeverity || null;
+    summary.warnings.push(...(source.warnings || source.recent || []));
+    summary.warnings.sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
     summary.recent.push(...(source.recent || []));
     summary.recent.sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
     summary.recent = summary.recent.slice(0, 5);
@@ -73,7 +75,11 @@ function planSummary(plans, now) {
     })
     .sort((a, b) => Date.parse(b.changedAt) - Date.parse(a.changedAt))
     .slice(0, 5);
-  return { counts, recent };
+  const active = plans
+    .filter((plan) => plan.lifecycle === "active")
+    .map((plan) => ({ id: plan.id, title: plan.title, lifecycle: plan.lifecycle, changedAt: planChangedAt(plan), taskCounts: { total: plan.taskCounts?.total || 0, complete: plan.taskCounts?.complete || 0 } }))
+    .sort((a, b) => Date.parse(b.changedAt || 0) - Date.parse(a.changedAt || 0) || a.title.localeCompare(b.title));
+  return { counts, active, recent };
 }
 
 function projectWorkspace(repository) {
@@ -81,8 +87,10 @@ function projectWorkspace(repository) {
     lifecycle: repository.lifecycle || { state: "active", reason: null },
     lastSeenAt: repository.lastSeenAt || null,
     checkouts: (repository.roots || []).map((root) => ({
+      rootId: root.rootId || null,
       name: root.git?.branch || (root.isWorktree ? "Worktree" : "Main checkout"),
       isWorktree: root.isWorktree === true,
+      projectRoot: root.projectRoot || null,
       checkoutState: root.checkoutState || "present",
       checkoutReason: root.checkoutReason || null,
       git: root.git ? {
@@ -95,12 +103,17 @@ function projectWorkspace(repository) {
         upstream: root.git.upstream || null,
         baseBranch: root.git.baseBranch || null,
         baseBehind: root.git.baseBehind ?? null,
+        baseMergeBaseAt: root.git.baseMergeBaseAt ?? null,
+        upstreamTipAt: root.git.upstreamTipAt ?? null,
         fetchedAt: root.git.fetchedAt ?? null,
+        provider: root.git.provider ? { ok: root.git.provider.ok !== false } : { ok: true },
       } : null,
       primaryEntrypoint: root.primaryEntrypoint ? {
         kind: root.primaryEntrypoint.kind,
+        opaqueKey: root.primaryEntrypoint.opaqueKey || null,
         origin: root.primaryEntrypoint.origin,
         port: root.primaryEntrypoint.port,
+        links: root.primaryEntrypoint.links || [],
       } : null,
     })),
   };

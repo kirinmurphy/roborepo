@@ -230,6 +230,21 @@ export function hideRepository(registry, id, { hidden, now = new Date().toISOStr
   return true;
 }
 
+// Explicitly forget an observed repository. This is reserved for the UI's no-known-checkout
+// action: it removes the registry observation, not files in the checkout and not domain data held
+// elsewhere. A future scan can register the repository again if it is observed later.
+export function forgetRepository(registry, id) {
+  requireRecord(registry, id, "forget");
+  delete registry.repositories[id];
+  for (const [source, target] of Object.entries(registry.aliases || {})) {
+    if (source === id || target === id) delete registry.aliases[source];
+  }
+  for (const [rootId, entry] of Object.entries(registry.localRootPaths || {})) {
+    if (entry.repositoryId === id) delete registry.localRootPaths[rootId];
+  }
+  return true;
+}
+
 // Pin or unpin a repository. Idempotent — returns false when nothing changed.
 //
 // Deliberately a repository-level fact rather than a per-member one: pinning survives the process
