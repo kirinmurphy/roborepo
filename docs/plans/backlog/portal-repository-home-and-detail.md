@@ -1,6 +1,6 @@
 ---
 id: jqi1dof
-priority: medium
+priority: high
 next_action: After pljvmyh is complete, register Home at `/`, move Agents navigation to `/config`, and build the repository directory/detail data contracts before adding richer Attention summaries
 blocked_by: []
 depends_on:

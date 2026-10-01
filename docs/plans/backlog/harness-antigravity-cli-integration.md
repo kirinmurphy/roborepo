@@ -1,6 +1,6 @@
 ---
 id: antigravity-cli-provider-integration
-priority: high
+priority: medium
 next_action: Confirm the four unverified capability paths (slash commands, permissions, hooks, global rules scope) against a live authenticated agy install, then implement Phase 2
 blocked_by: []
 depends_on:
