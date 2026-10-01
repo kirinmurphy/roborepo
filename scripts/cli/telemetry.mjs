@@ -23,7 +23,7 @@ import { startPortalServer } from "./portal-server.mjs";
 import { computePortalSourceHash } from "./portal-source-hash.mjs";
 import { readConfigSnapshot, loadConfigSource } from "./config.mjs";
 import { mutatePackage, setSkillInstalled, setBehaviorBucket, setCommandBucket } from "./config-mutate.mjs";
-import { loadPlansSnapshot, loadPlanDocument, buildPlansPrompt, updatePlanSettings, updatePlanPriority, updatePlanLifecycle, refreshPlans } from "./plans.mjs";
+import { loadPlansSnapshot, loadCachedPlansSnapshot, loadPlanDocument, buildPlansPrompt, updatePlanSettings, updatePlanPriority, updatePlanLifecycle, refreshPlans } from "./plans.mjs";
 import {
   loadDeveloperRuntimeSnapshot,
   loadDeveloperRuntimeHistory,
@@ -43,6 +43,8 @@ import {
 } from "./repositories.mjs";
 import { loadRegistry, updateRegistry, upsertRepository, recordDiscovery } from "../../modules/repositories/index.mjs";
 import { buildRepositoryHashIndex } from "./telemetry-repository.mjs";
+import { createRepositoryOverviewService } from "./repository-overview.mjs";
+import { buildTelemetryRepositoryProjection } from "./telemetry-repository-overview.mjs";
 import { privacyHash } from "./telemetry-schemas/hash.mjs";
 import { buildAnalysisPrompt } from "../harnesses/transcript-locate.mjs";
 import { insightsSummary } from "./telemetry-insights.mjs";
@@ -768,6 +770,12 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
   // `window` ({ rangeMs, end }) scopes the whole report to a trailing time slice before analysis, so
   // every panel — not just the chart — reflects the dashboard's time filter. loadSession bridges a
   // flagged event to its chat transcript (file I/O lives here, not in the server).
+  const repositoryOverview = createRepositoryOverviewService({
+    loadRegistry: () => loadRegistry({ stateRoot }),
+    loadRuntime: () => loadDeveloperRuntimeSnapshot(),
+    loadPlans: () => loadCachedPlansSnapshot(),
+    loadTelemetry: () => loadTelemetryRepositoryProjection(),
+  });
   startPortalServer({
     port: options.port,
     // Phase 6 additions (model/repo/markerId) layer a normalized cohort filter on top of the
@@ -809,6 +817,8 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
     loadRepositories: () => { reconcileTelemetryRepositories(); return loadRepositoriesPayload(); },
     loadRepository: (params) => loadRepositoryPayload(params),
     loadRepositoryAssociations: (params) => loadRepositoryAssociations(params),
+    loadHomeOverview: () => repositoryOverview.loadHome(),
+    loadRepositoryOverview: (params) => repositoryOverview.loadDetail(params),
     enrollRepositoryInPlans: (params) => enrollRepositoryInPlans(params),
     patchRepository: (params) => patchRepository(params),
     mutatePackage: (id, enabled) => mutatePackage(id, enabled),
@@ -832,7 +842,11 @@ export async function serveCommand(args, { allowPortFallback = false, openPath =
       // ever sees the child as ready. The dashboard's first request may still race it and pay the
       // analyze cost itself, which is the pre-existing behavior for a cold portal — the difference
       // is that the server is now listening while it happens.
-      setTimeout(() => startAnalysisRefresh(), 0);
+      setTimeout(() => {
+        reconcileTelemetryRepositories();
+        try { refreshPlans(); } catch {}
+        startAnalysisRefresh();
+      }, 0);
     },
   });
 }
@@ -1268,7 +1282,10 @@ function cachedAnalysisEntry(window, harness, extra = {}) {
   // Cache the serialized JSON, not the report object: the only consumer is the /api/data route,
   // which sends the string, so retaining the ~10MB object per entry would be dead memory. The report
   // object is discarded once stringified.
-  const entry = { json: JSON.stringify(report) };
+  const entry = {
+    json: JSON.stringify(report),
+    repositoryProjection: buildTelemetryRepositoryProjection(allEvents, report, repositoryHashIndex),
+  };
   // Prune the oldest entry once over the cap. Signature changes mint fresh keys on every new
   // capture, so stale-signature entries accumulate otherwise; Map preserves insertion order.
   if (_analysisCache.size >= ANALYSIS_CACHE_MAX) {
@@ -1281,6 +1298,15 @@ function cachedAnalysisEntry(window, harness, extra = {}) {
 // Serialized report JSON for the hot /api/data path, memoized per signature+window+harness+cohort.
 function cachedAnalysisJson(window, harness, extra = {}) {
   return cachedAnalysisEntry(window, harness, extra).json;
+}
+
+export function loadTelemetryRepositoryProjection() {
+  const key = analysisKey(null, null);
+  return _analysisCache.get(key)?.repositoryProjection || {
+    status: "unavailable",
+    updatedAt: null,
+    repositories: {},
+  };
 }
 
 // Mock analysis for the /tokens page: reads the bundled mock spool file

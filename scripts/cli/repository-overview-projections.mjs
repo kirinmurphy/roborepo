@@ -1,0 +1,132 @@
+import {
+  lastSeenAtFor,
+  repositoryDetailPayload,
+  repositorySummary,
+  resolveRegistryAlias,
+} from "../../modules/repositories/index.mjs";
+import {
+  planChangedAt,
+  plansByRepository,
+  runtimeByRepository,
+  telemetryByRepository,
+  unresolvedRuntimeActivity,
+} from "./repository-overview-sources.mjs";
+
+export function composeHomeOverview({ registry, runtimeState, plansState, telemetryState, now = new Date() }) {
+  const runtimeById = runtimeByRepository(runtimeState.data, registry);
+  const planCoverage = plansByRepository(plansState.data, now, registry);
+  const telemetryById = telemetryByRepository(telemetryState.data, registry);
+  const repositories = Object.values(registry.repositories || {})
+    .filter((record) => record.visibility !== "hidden" && resolveRegistryAlias(registry, record.id) === record.id)
+    .map((record) => repositoryOverview(record, {
+      runtimeState,
+      workspace: runtimeById.get(record.id) || null,
+      plansState,
+      plans: planCoverage.get(record.id) || null,
+      telemetryState,
+      telemetry: telemetryById[record.id] || null,
+    }));
+
+  return {
+    updatedAt: newestTimestamp([runtimeState.updatedAt, plansState.updatedAt, telemetryState.updatedAt]) || now.toISOString(),
+    repositories: sortRepositories(repositories),
+    unresolvedActivity: unresolvedRuntimeActivity(runtimeState, registry),
+  };
+}
+
+export function composeRepositoryDetail(record, homeOverview) {
+  const overview = homeOverview.repositories.find((repository) => repository.repositoryId === record.id);
+  if (!overview) return null;
+  return { ...overview, identity: repositoryDetailPayload(record) };
+}
+
+export function runtimeDomainState(snapshot) {
+  if (!snapshot) return unavailableState("Runtime data is unavailable");
+  const failed = snapshot.refresh?.state === "failed";
+  return {
+    status: failed ? "stale" : "available",
+    updatedAt: snapshot.generatedAt || null,
+    data: snapshot,
+    ...(failed ? { message: snapshot.refresh?.error || "Runtime refresh failed" } : {}),
+  };
+}
+
+export function plansDomainState(snapshot) {
+  if (!snapshot) return unavailableState("Plans data is unavailable");
+  const partial = snapshot.truncated || (snapshot.errors || []).length > 0;
+  return {
+    status: partial ? "partial" : "available",
+    updatedAt: newestTimestamp((snapshot.plans || []).map((record) => planChangedAt(record.plan))),
+    data: snapshot,
+    ...(partial ? { message: "Plans coverage is incomplete" } : {}),
+  };
+}
+
+export function telemetryDomainState(projection) {
+  if (!projection) return unavailableState("Tokens data is unavailable");
+  return { status: projection.status || "available", updatedAt: projection.updatedAt || null, data: projection };
+}
+
+export function unavailableState(message) {
+  return { status: "unavailable", updatedAt: null, data: null, message };
+}
+
+function repositoryOverview(record, context) {
+  const workspace = context.workspace;
+  const lifecycle = workspace?.lifecycle || { state: "idle", reason: "Runtime has not observed this repository yet" };
+  const runtime = perRepositoryEnvelope(context.runtimeState, workspace || { lifecycle, checkouts: [] });
+  const git = perRepositoryEnvelope(context.runtimeState, workspace ? gitSummary(workspace) : { checkouts: [], warnings: [] });
+  const plans = context.plans
+    ? perRepositoryEnvelope(context.plansState, context.plans)
+    : unavailableEnvelope("Plans has not scanned this repository");
+  const tokens = perRepositoryEnvelope(context.telemetryState, context.telemetry || { sessionCount: 0, warningCount: 0, highestSeverity: null, recent: [] });
+  return {
+    ...repositorySummary(record),
+    lifecycle,
+    lastSeenAt: workspace?.lastSeenAt || lastSeenAtFor(record),
+    domains: {
+      runtime,
+      git,
+      plans,
+      tokens,
+      agents: unavailableEnvelope("Repository-scoped agent configuration is not available yet"),
+    },
+  };
+}
+
+function gitSummary(workspace) {
+  const warnings = [];
+  for (const checkout of workspace.checkouts) {
+    if (checkout.git?.dirty) warnings.push(`${checkout.name} has uncommitted changes`);
+    if ((checkout.git?.behind || 0) > 0) warnings.push(`${checkout.name} is behind ${checkout.git.behind}`);
+    if ((checkout.git?.baseBehind || 0) > 0) warnings.push(`${checkout.name} has drifted ${checkout.git.baseBehind} commits from ${checkout.git.baseBranch}`);
+  }
+  return { checkouts: workspace.checkouts.map(({ primaryEntrypoint, ...checkout }) => checkout), warnings };
+}
+
+function perRepositoryEnvelope(state, data) {
+  if (!state || state.status === "unavailable") return unavailableEnvelope(state?.message || "Domain unavailable");
+  return { status: state.status, updatedAt: state.updatedAt || null, data, ...(state.message ? { message: state.message } : {}) };
+}
+
+function unavailableEnvelope(message) {
+  return { status: "unavailable", updatedAt: null, data: null, message };
+}
+
+function sortRepositories(repositories) {
+  const rank = { active: 0, idle: 1, stale: 2 };
+  return repositories.sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    const lifecycle = (rank[a.lifecycle.state] ?? 3) - (rank[b.lifecycle.state] ?? 3);
+    if (lifecycle !== 0) return lifecycle;
+    if (a.lifecycle.state === "idle") {
+      const recency = (Date.parse(b.lastSeenAt || 0) || 0) - (Date.parse(a.lastSeenAt || 0) || 0);
+      if (recency !== 0) return recency;
+    }
+    return a.displayName.localeCompare(b.displayName) || a.repositoryId.localeCompare(b.repositoryId);
+  });
+}
+
+function newestTimestamp(values) {
+  return values.filter(Boolean).reduce((latest, value) => !latest || Date.parse(value) > Date.parse(latest) ? value : latest, null);
+}

@@ -1,7 +1,7 @@
 ---
 id: jqi1dof
 priority: high
-next_action: Reset the registry at v2 and implement stable repository urlKey allocation (Phase 1), then add the dynamic detail route (Phase 2)
+next_action: Review the completed implementation and decide whether to commit it or begin integration closeout
 blocked_by: []
 depends_on: []
 related:
@@ -9,7 +9,7 @@ related:
   - canonical-repository-identity-plan-v2
   - h4tqm2wz
   - nl40n9vr
-reviewed_commit: 80728a7
+reviewed_commit: 4ad4eeb
 ---
 
 # Evolve Portal Home into a Repository-First Workspace
@@ -392,76 +392,98 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 
 ### Phase 1 — Stable repository browser identity
 
-- [ ] Add persisted `urlKey` to the registry schema with a version bump.
-- [ ] Reset an older registry directly to a fresh v2 registry; do not migrate or create a backup.
-- [ ] Allocate `urlKey` at record creation, deterministically, with collision handling (`roborepo`, `roborepo-a31f`).
-- [ ] Add `urlKey -> repositoryId` lookup at the repository service boundary.
-- [ ] Add browser-safe URL helpers and expose `urlKey` in summary/detail payloads.
-- [ ] Test required/unique schema validation, allocation stability, collisions, canonical alias resolution, hidden repositories, reset behavior, absence of a backup, and path privacy.
+- [x] Add persisted `urlKey` to the registry schema with a version bump.
+- [x] Reset an older registry directly to a fresh v2 registry; do not migrate or create a backup.
+- [x] Allocate `urlKey` at record creation, deterministically, with collision handling (`roborepo`, `roborepo-a31f`).
+- [x] Add `urlKey -> repositoryId` lookup at the repository service boundary.
+- [x] Add browser-safe URL helpers and expose `urlKey` in summary/detail payloads.
+- [x] Test required/unique schema validation, allocation stability, collisions, canonical alias resolution, hidden repositories, reset behavior, absence of a backup, and path privacy.
 
 ### Phase 2 — Repository detail route infrastructure
 
-- [ ] Generalize the page router to match `:param` segments with the shared matcher while keeping `/repositories/:urlKey` outside `PAGES`.
-- [ ] Serve the `portal/repositories/` shell for a decoded route key.
-- [ ] Return API 404 for unknown/hidden keys and render that as an explicit unavailable state; malformed encoding stays a server 404.
-- [ ] Keep the five-item static nav, status payload, manifest, and sitemap unchanged while marking Home active on detail routes.
+- [x] Generalize the page router to match `:param` segments with the shared matcher while keeping `/repositories/:urlKey` outside `PAGES`.
+- [x] Serve the `portal/repositories/` shell for a decoded route key.
+- [x] Return API 404 for unknown/hidden keys and render that as an explicit unavailable state; malformed encoding stays a server 404.
+- [x] Keep the five-item static nav, status payload, manifest, and sitemap unchanged while marking Home active on detail routes.
 
 ### Phase 3 — Repository Home directory
 
-- [ ] Build server-side Home repository summaries keyed by canonical `repositoryId`.
-- [ ] Render visible canonical Git and `local:` repositories; reuse existing visibility/`includeHidden` handling and expose resolution/confidence honestly.
-- [ ] Order by pinned → active → idle(recent) → stale in the server overview, using `deriveLifecycle`/`lastSeenAtFor`/`pinned` rather than the Runtime comparator's alphabetical idle fallback.
-- [ ] Add the zero-repository Runtime-discovery guidance and a stable future action slot; do not render a dead repository-management link before [[pljvmyh]].
-- [ ] Keep unresolved activity out of normal repository cards.
-- [ ] Add per-repository/per-domain partial-failure handling.
+- [x] Build server-side Home repository summaries keyed by canonical `repositoryId`.
+- [x] Render visible canonical Git and `local:` repositories; reuse existing visibility/`includeHidden` handling and expose resolution/confidence honestly.
+- [x] Order by pinned → active → idle(recent) → stale in the server overview, using `deriveLifecycle`/`lastSeenAtFor`/`pinned` rather than the Runtime comparator's alphabetical idle fallback.
+- [x] Add the zero-repository Runtime-discovery guidance and a stable future action slot; do not render a dead repository-management link before [[pljvmyh]].
+- [x] Keep unresolved activity out of normal repository cards.
+- [x] Add per-repository/per-domain partial-failure handling.
 
 ### Phase 4 — Checkout/worktree Home model
 
-- [ ] Add the narrow server-side workspace projection over `loadDeveloperRuntimeSnapshot()`.
-- [ ] Render every known checkout/worktree with branch/name.
-- [ ] Associate the promoted Runtime entrypoint per checkout.
-- [ ] Keep inactive checkouts visible without a link.
-- [ ] Use a compact/collapsible presentation for repositories with many worktrees.
+- [x] Add the narrow server-side workspace projection over `loadDeveloperRuntimeSnapshot()`.
+- [x] Render every known checkout/worktree with branch/name.
+- [x] Associate the promoted Runtime entrypoint per checkout.
+- [x] Keep inactive checkouts visible without a link.
+- [x] Use a compact/collapsible presentation for repositories with many worktrees.
 
 ### Phase 5 — Runtime quick accessibility
 
-- [ ] Show the promoted `primaryEntrypoint` per active checkout with a clickable port/URL.
-- [ ] Treat host-process and container/Compose sources identically (already true in `primaryEntrypointFor`).
-- [ ] Show only the primary entrypoint; keep secondary ports on `/runtime`.
-- [ ] Deep-link to the full Runtime page.
+- [x] Show the promoted `primaryEntrypoint` per active checkout with a clickable port/URL.
+- [x] Treat host-process and container/Compose sources identically (already true in `primaryEntrypointFor`).
+- [x] Show only the primary entrypoint; keep secondary ports on `/runtime`.
+- [x] Deep-link to the full Runtime page.
 
 ### Phase 6 — Git repository summary
 
-- [ ] Include the thin Git fields in the shared repository workspace contract without exposing the rest of Runtime's view-model.
-- [ ] Surface clean/dirty, ahead/behind, and worktree-level status on Home rows.
-- [ ] Aggregate repository-level Git warnings for the card.
-- [ ] Reuse existing Runtime checkout Git data/caches.
+- [x] Include the thin Git fields in the shared repository workspace contract without exposing the rest of Runtime's view-model.
+- [x] Surface clean/dirty, ahead/behind, and worktree-level status on Home rows.
+- [x] Aggregate repository-level Git warnings for the card.
+- [x] Reuse existing Runtime checkout Git data/caches.
 
 ### Phase 7 — Plans integration
 
-- [ ] Add a cached repository-associated Plans projection rather than refreshing discovery on every Home poll.
-- [ ] Represent coverage explicitly (`available`/`partial`/`unavailable`/`stale`); never render a misleading authoritative `0 plans`.
-- [ ] Add seven-day recently-changed data on detail (Git last-commit, mtime fallback; label "Recently changed").
+- [x] Add a cached repository-associated Plans projection rather than refreshing discovery on every Home poll.
+- [x] Represent coverage explicitly (`available`/`partial`/`unavailable`/`stale`); never render a misleading authoritative `0 plans`.
+- [x] Add seven-day recently-changed data on detail (Git last-commit, mtime fallback; label "Recently changed").
 
 ### Phase 8 — Tokens integration
 
-- [ ] Retain a compact per-repository token/session warning projection alongside the default telemetry analysis cache.
-- [ ] Read that compact projection from Home/detail without parsing or returning the full `/api/data` report.
-- [ ] Expand recent/high-severity findings on detail.
+- [x] Retain a compact per-repository token/session warning projection alongside the default telemetry analysis cache.
+- [x] Read that compact projection from Home/detail without parsing or returning the full `/api/data` report.
+- [x] Expand recent/high-severity findings on detail.
 
 ### Phase 9 — Agents/config integration
 
-- [ ] Render the repository agent/config slot as `unavailable`; reserve `configured`/`not-configured` for a future real repository-scoped check.
+- [x] Render the repository agent/config slot as `unavailable`; reserve `configured`/`not-configured` for a future real repository-scoped check.
 
 ### Phase 10 — Repository detail composition and polish
 
-- [ ] Compose the deeper cross-domain detail sections and domain navigation.
-- [ ] Apply partial-failure handling on detail.
-- [ ] Handle responsive layout and large-worktree repositories.
-- [ ] Add consistent healthy/loading/empty/error states and keyboard-accessible navigation; preserve focus across refreshes; avoid rebuilding open controls during polling.
-- [ ] Update portal reference docs for Home-as-directory and the repository detail route.
+- [x] Compose the deeper cross-domain detail sections and domain navigation.
+- [x] Apply partial-failure handling on detail.
+- [x] Handle responsive layout and large-worktree repositories.
+- [x] Add consistent healthy/loading/empty/error states and keyboard-accessible navigation; preserve focus across refreshes; avoid rebuilding open controls during polling.
+- [x] Update portal reference docs for Home-as-directory and the repository detail route.
 
 Adjust ordering if implementation inspection suggests a stronger sequence; Phases 1–2 (identity + routing) should land before the visible directory work in Phase 3.
+
+## Implementation Status
+
+All ten phases are implemented on `codex/portal-repository-home-and-detail`. No implementation task
+is blocked. The implementation kept these material decisions from the plan and review pass:
+
+- registry v1 resets directly to a fresh v2 file with no migration or backup;
+- `urlKey` is stable browser identity, while every domain join resolves to canonical
+  `repositoryId`, including aliases;
+- Home/detail polls read cached Runtime, Plans, and Tokens projections and never start their
+  expensive refresh paths synchronously;
+- dynamic route parameters are escaped before they enter the inline browser manifest;
+- detail links remain unscoped until [[pljvmyh]] supplies shared repository scope.
+
+Verification completed successfully:
+
+- the exhaustive unit run passed 117/117 suites;
+- the portal browser run passed 24 tests with two opt-in documentation screenshot cases skipped;
+- `npm run check` passed its doctor, CLI integration, install-collision, CI unit, package-install,
+  available Docker clean-machine, and browser gates; Windows installer parity was skipped because
+  PowerShell is unavailable on the validation host;
+- `git diff --check` and syntax checks for the changed server/browser modules passed.
 
 ## Risks
 

@@ -17,6 +17,8 @@ import {
   updateRegistry,
   registryPathFor,
   upsertRepository,
+  repositoryIdForUrlKey,
+  repositoryUrl,
   recordDiscovery,
   registerLocalRoot,
   setEnrollment,
@@ -114,6 +116,19 @@ try {
   upsertRepository(reg, { id: "git:github.com/kirinmurphy/roborepo", kind: "git", displayName: "roborepo", providerUrl: "https://github.com/kirinmurphy/roborepo", now });
   upsertRepository(reg, { id: "git:github.com/kirinmurphy/roborepo", kind: "git", displayName: "roborepo", now: later });
   assert.equal(Object.keys(reg.repositories).length, 1, "upsert is idempotent");
+  assert.equal(reg.repositories["git:github.com/kirinmurphy/roborepo"].urlKey, "roborepo");
+  assert.equal(repositoryUrl("roborepo"), "/repositories/roborepo");
+
+  upsertRepository(reg, { id: "git:github.com/example/roborepo", kind: "git", displayName: "RoboRepo", now });
+  const collidedUrlKey = reg.repositories["git:github.com/example/roborepo"].urlKey;
+  assert.match(collidedUrlKey, /^roborepo-[a-z0-9]{4,}$/);
+  assert.notEqual(collidedUrlKey, "roborepo", "a display-name collision receives a deterministic suffix");
+  assert.equal(repositoryIdForUrlKey(reg, collidedUrlKey), "git:github.com/example/roborepo");
+  assert.equal(upsertRepository(reg, { id: "git:github.com/example/roborepo", kind: "git", displayName: "Renamed", now: later }).urlKey, collidedUrlKey, "urlKey is stable across display-name changes");
+  assert.throws(() => validateRegistry({ ...reg, repositories: {
+    ...reg.repositories,
+    "git:github.com/example/duplicate": { ...reg.repositories["git:github.com/example/roborepo"], id: "git:github.com/example/duplicate" },
+  } }), /duplicate repository urlKey/);
 
   assert.equal(recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "developer-runtime", evidence: "git-remote", confidence: "high", now }), true);
   assert.equal(recordDiscovery(reg, "git:github.com/kirinmurphy/roborepo", { source: "developer-runtime", evidence: "git-remote", confidence: "high", now }), false, "same-source rediscovery within debounce is a no-op");
@@ -143,6 +158,7 @@ try {
   setAlias(reg, "local:deadbeefdeadbeef", "git:github.com/kirinmurphy/roborepo", { now });
   setAlias(reg, "path:/tmp/old", "local:deadbeefdeadbeef", { now });
   assert.equal(resolveRegistryAlias(reg, "path:/tmp/old"), "git:github.com/kirinmurphy/roborepo", "transitive alias resolves to terminal");
+  assert.equal(repositoryIdForUrlKey(reg, reg.repositories["local:deadbeefdeadbeef"].urlKey, { includeHidden: true }), "git:github.com/kirinmurphy/roborepo", "an old urlKey resolves through a canonical alias");
   // cycle rejection: a canonical id already aliases -> roborepo; aliasing roborepo back to it cycles.
   assert.throws(() => setAlias(reg, "git:github.com/kirinmurphy/roborepo", "local:deadbeefdeadbeef", { now }), /cycle/);
 
@@ -163,10 +179,17 @@ try {
   fs.writeFileSync(registryPathFor(badState), "{ not json");
   assert.throws(() => loadRegistry({ stateRoot: badState }), /malformed JSON/);
 
-  // Unknown future version -> backup written, still throws (no v2 migration exists yet)
+  // Older registries reset directly to a fresh v2 registry, without retaining a backup.
+  const legacyState = path.join(tempRoot, "legacy-state");
+  fs.mkdirSync(path.join(legacyState, "repositories"), { recursive: true });
+  fs.writeFileSync(registryPathFor(legacyState), JSON.stringify({ version: 1, revision: 7, repositories: { old: {} }, aliases: { old: "new" } }));
+  assert.deepEqual(loadRegistry({ stateRoot: legacyState }), defaultRegistry());
+  assert.equal(fs.existsSync(path.join(legacyState, "repositories", "registry.v1.backup.json")), false, "v1 reset creates no backup");
+
+  // Unknown future versions are refused without rewriting the file.
   const futureState = path.join(tempRoot, "future-state");
   fs.mkdirSync(path.join(futureState, "repositories"), { recursive: true });
-  fs.writeFileSync(registryPathFor(futureState), JSON.stringify({ version: 2, revision: 1, repositories: {}, aliases: {} }));
+  fs.writeFileSync(registryPathFor(futureState), JSON.stringify({ version: 3, revision: 1, repositories: {}, aliases: {} }));
   assert.throws(() => loadRegistry({ stateRoot: futureState }), /unsupported repository registry version/);
 
   // Optimistic concurrency

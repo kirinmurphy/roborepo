@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PAGES } from "../../scripts/cli/portal-server.mjs";
+import { PAGES, PAGE_ROUTES, matchPortalPage, serializeInlineJson } from "../../scripts/cli/portal-server.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -57,19 +57,30 @@ assert.equal(defaults[0].id, "home", "the default page id must be home");
 assert.equal(new Set(PAGES.map((p) => p.path)).size, PAGES.length, "every route must be unique");
 assert.equal(new Set(PAGES.map((p) => p.id)).size, PAGES.length, "every page id must be unique");
 
-// Each page's index.html must exist on disk, and Home must be fully static: no {{LOADING}} marker
-// (the overlay is only injected where it appears) and no page-local script module.
+// Each navigable page's index.html must exist on disk. Home is now repository-first and therefore
+// owns a loading state plus a page-local module.
 for (const page of PAGES) {
   const indexHtml = path.join(repoRoot, "portal", page.dir, "index.html");
   assert.ok(fs.existsSync(indexHtml), `portal/${page.dir}/index.html must exist`);
   const html = fs.readFileSync(indexHtml, "utf8");
   if (page.id === "home") {
-    assert.ok(!html.includes("{{LOADING}}"), "Home must not render the loading overlay");
-    assert.ok(
-      !html.includes(`/portal/${page.dir}/app.js`),
-      "Home must be static — no page-local script module",
-    );
+    assert.ok(html.includes("{{LOADING}}"), "repository Home renders a first-load state");
+    assert.ok(html.includes(`/portal/${page.dir}/app.js`), "repository Home loads its page module");
   }
 }
+
+assert.equal(PAGES.length, 5, "dynamic detail must not enter the five-item navigation manifest");
+assert.equal(PAGE_ROUTES.length, 6, "page-route table adds exactly one non-navigable dynamic route");
+const detailRoute = PAGE_ROUTES.find((page) => page.path === "/repositories/:urlKey");
+assert.ok(detailRoute, "repository detail route is registered");
+assert.equal(detailRoute.navId, "home", "repository detail belongs to Home navigation");
+assert.ok(fs.existsSync(path.join(repoRoot, "portal", detailRoute.dir, "index.html")));
+assert.equal(matchPortalPage("/repositories/roborepo").params.urlKey, "roborepo");
+assert.equal(matchPortalPage("/repositories/hello%20world").params.urlKey, "hello world", "route params decode once");
+assert.equal(matchPortalPage("/repositories/%E0%A4%A"), null, "malformed path encoding does not match");
+assert.equal(matchPortalPage("/repositories/roborepo/extra"), null);
+const inlineJson = serializeInlineJson({ routeParams: { urlKey: "</script><script>alert(1)</script>" } });
+assert.equal(inlineJson.includes("</script>"), false, "decoded route parameters cannot end the inline manifest script");
+assert.deepEqual(JSON.parse(inlineJson), { routeParams: { urlKey: "</script><script>alert(1)</script>" } });
 
 console.log("ok: portal page manifest (routes, default, nav order) checks passed");

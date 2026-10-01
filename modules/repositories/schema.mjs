@@ -2,7 +2,9 @@
 // developer-runtime settings-schema convention exactly: a *_VERSION const, allow-list validators that
 // THROW on any unknown key, no I/O in this file. See modules/developer-runtime/settings-schema.mjs.
 
-export const REGISTRY_VERSION = 1;
+import { validateRepositoryUrlKey } from "./url-key.mjs";
+
+export const REGISTRY_VERSION = 2;
 
 // Lifecycle is multi-dimensional — never one mutually exclusive enum. Each dimension is validated
 // independently so a repository can be e.g. visible + resolved + active + unmonitored at once.
@@ -107,21 +109,25 @@ function validateLocalRootPaths(localRootPaths) {
 
 function validateRepositories(repositories) {
   if (!repositories || typeof repositories !== "object" || Array.isArray(repositories)) throw new Error("registry repositories must be an object");
+  const urlKeys = new Set();
   for (const [id, record] of Object.entries(repositories)) {
     safeRepositoryId(id);
     validateRepositoryRecord(id, record);
+    if (urlKeys.has(record.urlKey)) throw new Error(`duplicate repository urlKey: ${record.urlKey}`);
+    urlKeys.add(record.urlKey);
   }
 }
 
 export function validateRepositoryRecord(id, record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("repository record must be an object");
   validateObjectKeys(record, [
-    "id", "kind", "displayName", "providerUrl", "normalizedRemote",
+    "id", "kind", "urlKey", "displayName", "providerUrl", "normalizedRemote",
     "localRoots", "discoveries", "enrollments", "aliases",
     "visibility", "resolution", "activity", "pinned", "createdAt", "updatedAt", "restoredAt",
   ], "repository record");
   if (record.id !== id) throw new Error("repository record id must match its key");
   safeRepositoryId(record.id);
+  validateRepositoryUrlKey(record.urlKey);
   if (!["git", "local"].includes(record.kind)) throw new Error("repository kind must be git or local");
   safeString(record.displayName, "repository displayName", 120);
   if (record.providerUrl != null) validateProviderUrl(record.providerUrl);
@@ -247,11 +253,12 @@ export function assertAliasGraph(aliases) {
 }
 
 // Build a fresh, valid repository record with sane lifecycle defaults.
-export function newRepositoryRecord(id, { kind, displayName, now = new Date().toISOString(), providerUrl = null, normalizedRemote = null }) {
+export function newRepositoryRecord(id, { kind, urlKey, displayName, now = new Date().toISOString(), providerUrl = null, normalizedRemote = null }) {
   safeRepositoryId(id);
   const record = {
     id,
     kind,
+    urlKey,
     displayName,
     providerUrl: providerUrl ?? null,
     normalizedRemote: normalizedRemote ?? null,

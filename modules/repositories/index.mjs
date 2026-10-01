@@ -56,11 +56,20 @@ export {
 } from "./schema.mjs";
 
 export {
+  URL_KEY_PATTERN,
+  URL_KEY_MAX_LENGTH,
+  validateRepositoryUrlKey,
+  allocateRepositoryUrlKey,
+  repositoryUrl,
+} from "./url-key.mjs";
+
+export {
   registryPathFor,
   loadRegistry,
   writeRegistry,
   updateRegistry,
   upsertRepository,
+  repositoryIdForUrlKey,
   recordDiscovery,
   registerLocalRoot,
   registerLocalRootPath,

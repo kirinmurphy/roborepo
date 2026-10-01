@@ -21,6 +21,10 @@ export function loadPlansSnapshot() {
   return publicSnapshot(cachedSnapshot);
 }
 
+export function loadCachedPlansSnapshot() {
+  return cachedSnapshot ? publicSnapshot(cachedSnapshot) : null;
+}
+
 export function loadPlanDocument({ key }) {
   const snapshot = cachedSnapshot || buildPlanSnapshot({ stateRoot, packageState: planDocsPackageState() });
   return readPlanDocument(snapshot, key);

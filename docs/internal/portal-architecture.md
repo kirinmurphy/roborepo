@@ -3,11 +3,13 @@
 ## Purpose
 
 The portal is the local `roborepo web` UI: Home (`/`), Config (`/config`), Plans (`/plans`),
-Runtime (`/runtime`), and Tokens (`/tokens`). It is static HTML/CSS/browser JavaScript
+Runtime (`/runtime`), Tokens (`/tokens`), and bookmarkable repository detail pages
+(`/repositories/<urlKey>`). It is static HTML/CSS/browser JavaScript
 served by a loopback-only Node HTTP server — no build step, no framework, no bundler. This doc
 covers the shared architecture (page manifest, browser API helpers, server route dispatch) that
 every page relies on. Page-specific behavior lives in
-`docs/user/reference/config-control-panel.md` and `docs/user/reference/plans-portal.md`.
+`docs/user/reference/config-control-panel.md`, `docs/user/reference/plans-portal.md`, and
+`docs/user/reference/repositories.md`.
 
 ## Directory Layout
 
@@ -17,7 +19,8 @@ portal/
     base.css     — shared palette + chrome styles
     theme.js     — header/footer/nav/theme-toggle, reads window.PORTAL_MANIFEST
     api.js       — shared fetch/token/clipboard/DOM helpers (ES module)
-  home/{index.html,styles.css}
+  home/{index.html,styles.css,app.js,api.js,templates.js}
+  repositories/{index.html,styles.css,app.js,api.js,templates.js}
   config/{index.html,styles.css,app.js}
   plans/{index.html,styles.css,app.js}
   developer-runtime/{index.html,styles.css,app.js,api.js,state.js,templates.js}
@@ -33,16 +36,21 @@ attribute is needed).
 
 ## How the Manifest Reaches the Browser
 
-`PAGES` in `scripts/cli/portal-server.mjs` is the single source of truth for page metadata
-(`id`, `path`, `title`, `dir`, optional `default`). There is no browser-side copy to hand-sync:
+`PAGES` in `scripts/cli/portal-server.mjs` is the single source of truth for the five static
+navigation entries (`id`, `path`, `title`, `dir`, optional `default`). `PAGE_ROUTES` extends that
+table with non-navigation dynamic routes such as `/repositories/:urlKey`. There is no browser-side
+copy to hand-sync:
 
 1. `pageManifest()` derives the browser-safe `{ path, id, title }` shape from `PAGES`.
-2. `pageHtml()` injects `window.PORTAL_MANIFEST = { token, pages: [...] }` into every served
-   page's `<head>`, right beside the existing `<meta name="cli-portal-token">` tag.
+2. `pageHtml()` injects `window.PORTAL_MANIFEST = { token, pages: [...], currentPageId,
+   routeParams }` into every served page's `<head>`, right beside the existing
+   `<meta name="cli-portal-token">` tag. `currentPageId` lets a dynamic page identify the static
+   nav entry it belongs to; `routeParams` carries its decoded segment values.
 3. `/api/portal/status` returns the same `pageManifest()` shape, so the terminal-facing status
    check and the browser nav can never drift.
-4. `portal/shared/theme.js` reads `window.PORTAL_MANIFEST.pages` to render the nav and mark the
-   active link. If the global is missing (e.g. a page opened directly as a file, or a broken
+4. `portal/shared/theme.js` reads `window.PORTAL_MANIFEST.pages` to render the nav and uses
+   `currentPageId` to mark the active link. Repository detail therefore marks Home active without
+   adding a sixth nav item. If the global is missing (e.g. a page opened directly as a file, or a broken
    injection), `theme.js` throws `"portal manifest missing"` immediately instead of silently
    rendering an empty nav.
 5. `theme.js` also injects a full-page loading overlay (`#page-loading`) alongside the header and
@@ -53,11 +61,12 @@ attribute is needed).
 
 ## Adding a Page
 
-1. Add an entry to `PAGES` in `scripts/cli/portal-server.mjs` (`id`, `path`, `title`, `dir`).
+1. For a static navigation destination, add an entry to `PAGES` in
+   `scripts/cli/portal-server.mjs` (`id`, `path`, `title`, `dir`). For a parameterized destination,
+   add only a `PAGE_ROUTES` entry and point its `navId` at the owning static page.
 2. Create `portal/<dir>/{index.html,styles.css}`. `index.html` links
    `/portal/shared/base.css`, then loads `/portal/shared/theme.js` (and, for data-driven pages,
-   `/portal/<dir>/app.js`) as `type="module"`. A fully static page like Home (`portal/home/`) needs
-   no `app.js` at all — it renders immediately with no API dependency.
+   `/portal/<dir>/app.js`) as `type="module"`.
 3. In `app.js`, import what you need from `/portal/shared/api.js` (see below) instead of writing
    page-local fetch/token/clipboard helpers.
 4. If the page needs its own read or mutating API routes, add a `scripts/cli/portal-routes-<domain>.mjs`
@@ -65,8 +74,10 @@ attribute is needed).
    `API_ROUTE_TABLES` in `portal-server.mjs`.
 5. Run the checks in "Checks to Run" below.
 
-Nothing else needs updating — the nav and `/api/portal/status` are all driven by `PAGES` and
-`PAGE_BY_PATH`. Each route is canonical (one path per page); Home owns `/`, Agents owns `/config`.
+Nothing else needs updating for a static page — the nav and `/api/portal/status` are driven by
+`PAGES`. Keep a dynamic page out of `PAGES` so navigation, sitemap, and portal status stay
+concrete. Each route is canonical; Home owns `/`, Agents owns `/config`, and repository detail
+owns `/repositories/:urlKey`.
 
 ## Shared Browser API (`portal/shared/api.js`)
 
@@ -77,12 +88,12 @@ it:
 | --- | --- |
 | `portalConfig()` | Reads `window.PORTAL_MANIFEST`; throws `"portal manifest missing"` if absent. |
 | `portalGetJson(path)` | `fetch` + `.json()`; throws with the server's `error`/`message` on a non-OK response. |
-| `portalPostJson(path, body)` | Same, but POST with `Content-Type: application/json` and `X-Roborepo-Portal-Token` attached from `portalConfig().token`. Also throws if the response body has `ok: false`. |
+| `portalPostJson(path, body)` | Same, but POST with `Content-Type: application/json` and `X-Cli-Portal-Token` attached from `portalConfig().token`. Also throws if the response body has `ok: false`. |
 | `portalCopyText(text, onCopied?)` | Wraps `navigator.clipboard.writeText`; swallows clipboard-blocked errors; calls `onCopied()` on success. |
 | `portalSetUpdatedAt(date?)` | Updates the `#portal-updated` header chip. |
 | `portalHideLoading()` | Hides the shared full-page loading overlay (`#page-loading`, injected by `theme.js`). Call once after a page's first data fetch resolves — success or handled error — never again after that. |
 | `portalTpl(id)` | Clones a `<template>` element's first child by id. The shared render pattern for dynamically-injected markup, so pages keep an HTML anchor instead of building raw strings. |
-| `portalEl(tag, attrs, ...children)` | Small DOM builder: `attrs.class` sets `className`, other keys become attributes; children can be strings or nodes. |
+| `portalFillSlots(node, fills)` | Fills `data-slot` elements in a cloned template with text, a replacement node, or attributes. |
 
 ### Adding a Read API
 
@@ -164,7 +175,7 @@ hand-maintained. Each domain's table:
 | `portal-routes-config.mjs` | `configRoutes` | `/api/config`, `/api/config/source`, `/api/config/packages`, `/api/config/skills`, `/api/config/permissions` |
 | `portal-routes-plans.mjs` | `plansRoutes` | `/api/plans`, `/api/plans/document`, `/api/plans/prompt`, `/api/plans/settings`, `/api/plans/priority`, `/api/plans/lifecycle`, `/api/plans/refresh` |
 | `portal-routes-developer-runtime.mjs` | `developerRuntimeRoutes` | `/api/developer-runtime`, `/api/developer-runtime/refresh`, `/api/developer-runtime/history`, `/api/developer-runtime/metadata`, `/api/developer-runtime/links`, `/api/developer-runtime/association`, `/api/developer-runtime/project`, `/api/developer-runtime/alias`, `/api/developer-runtime/compose-project`, `/api/developer-runtime/repository-visibility`, `/api/developer-runtime/repository-pinned` |
-| `portal-routes-repositories.mjs` | `repositoriesRoutes` | `/api/repositories`, `/api/repositories/:id`, `/api/repositories/:id/associations`, `/api/repositories/:id/plans-enrollment` — path-param routes; a method with no matching route on a path that does match returns `405`, matching the old handler's explicit `methodNotAllowed` |
+| `portal-routes-repositories.mjs` | `repositoriesRoutes` | `/api/home`, `/api/repositories`, `/api/repositories/:id`, `/api/repositories/:id/associations`, `/api/repositories/:id/plans-enrollment`, `/api/repositories/:urlKey/overview` — Home/detail use the stable browser key; existing management routes continue to use encoded canonical ids |
 | `portal-routes-usage.mjs` | `usageRoutes` | `/api/usage`, `/api/usage/refresh` |
 | `portal-routes-telemetry.mjs` | `telemetryRoutes` | `/api/data`, `/api/session`, `/api/insights-llm`, `/api/telemetry/markers` (GET/POST), `/api/telemetry/experiments` (GET/POST), `/api/telemetry/experiments/:id/end` (POST), `/api/telemetry/analysis` (POST) — see `docs/user/reference/telemetry.md` for the marker/experiment/analysis domain |
 | `portal-routes-metadata.mjs` | `handleMetadataAsset` | `/manifest.json`, `/sitemap.xml`, `/robots.txt` — called separately from `API_ROUTE_TABLES` since these are unauthenticated static assets, not `/api/*` routes (see "Self-Describing Metadata" below) |
@@ -185,6 +196,36 @@ API surface stays in its own file instead of growing a shared one.
 shape (`:param` names are normalized away for this check, so `/api/x/:id` and `/api/x/:foo` count
 as the same route and collide). A copy-pasted or malformed entry fails loudly at startup instead of
 silently shadowing another route at request time.
+
+## Repository Overview Aggregation
+
+Home and repository detail share `scripts/cli/repository-overview.mjs`. The service anchors its
+result on visible canonical registry records and joins domain data by canonical `repositoryId`.
+Each source is projected independently into a small envelope:
+
+```json
+{ "status": "available|partial|stale|unavailable", "updatedAt": "ISO-8601|null", "data": {} }
+```
+
+The aggregate request path reads bounded in-memory projections only:
+
+- Runtime supplies its cached repository/worktree snapshot. The mapper keeps lifecycle, branch and
+  Git status, and one promoted `primaryEntrypoint` per checkout; it drops paths, opaque runtime
+  keys, secondary ports, PIDs, and container internals.
+- Plans supplies its last cached discovery result. Missing scan coverage is `unavailable`, not an
+  authoritative zero. Recently changed plans prefer Git last-change time and fall back to mtime.
+- Tokens supplies a compact repository/session warning projection retained beside the default
+  telemetry analysis cache. The Home request never parses or returns the full Tokens report.
+- Agents is explicitly `unavailable` until repository-scoped configuration has a data owner.
+
+A source failure changes only that source's envelope. The repository still renders, and a failed
+refresh can retain last-known data with `status: "stale"`. Runtime discovery, Plans scanning, and
+telemetry analysis remain background or manual work; a ten-second Home/detail poll does not start
+them synchronously.
+
+`urlKey` is the only repository identity placed in browser routes. It is allocated once in registry
+v2 and resolves to canonical `repositoryId` at the server boundary. The aggregate payload is an
+allowlist and never includes absolute checkout paths.
 
 ## Self-Describing Metadata
 
@@ -220,9 +261,10 @@ worker):
    byte-tail primitive (offset advance, partial-line hold, shrink/rotate detection) lives in
    `scripts/cli/jsonl-tail.mjs` (`readAppendedLines`), shared with the transcript reader.
 2. **Serialized-JSON memoization** (`cachedAnalysisEntry`, `_analysisCache`). The serialized report
-   JSON is cached per `spoolSignature | window | harness` (the report object is discarded once
-   stringified — only the route consumes it, as a string). The ~10MB default response is not
-   re-`JSON.stringify`'d per request — the route sends the cached string via `loadAnalysisJson`.
+   JSON is cached per `spoolSignature | window | harness`. The report object is discarded once
+   stringified; only the route consumes the string. The same entry retains the compact repository
+   warning projection used by Home/detail. The ~10MB default response is not re-`JSON.stringify`'d
+   per request — the route sends the cached string via `loadAnalysisJson`.
 3. **Debounced background refresh** (`startAnalysisRefresh` / `tickAnalysisRefresh`). A timer polls
    the cheap `spoolSignature`; when it changes it debounces (2s poll / 12s quiet / 60s max-wait) and
    recomputes the **default view** (`window=null, harness=null` — what page loads and the 5s poll
@@ -241,7 +283,7 @@ runs:
 
 1. **Origin check** — if an `Origin` header is present, it must match `127.0.0.1`/`localhost`
    (any port). Requests with no `Origin` header (e.g. `curl`) are allowed through.
-2. **Mutation-token check** — the `X-Roborepo-Portal-Token` header must match the token generated
+2. **Mutation-token check** — the `X-Cli-Portal-Token` header must match the token generated
    once per server process (`crypto.randomBytes(32)`) and embedded only in served page HTML via
    `window.PORTAL_MANIFEST.token`.
 
@@ -254,7 +296,8 @@ loaded a portal page fails the token check. `portalPostJson` always attaches the
 - `npm test` (`scripts/test/test-cli.sh`) — starts the portal server, asserts
   `/api/portal/status`, token exposure, mutating POST success/400/403 responses, and that each
   served `app.js` parses (`node --check`).
-- `roborepo web` — click through Home → Agents → Plans → Runtime → Tokens, confirm nav highlighting, and
+- `roborepo web` — click through Home → repository detail → Home → Agents → Plans → Runtime → Tokens,
+  confirm nav highlighting and browser history, and
   exercise each page's mutations (Config toggles, Plans refresh/discovery-root edits, Telemetry
   "turn on telemetry").
 - `node --input-type=module --check < portal/<page>/app.js` for a quick module-syntax check on a

@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+import assert from "node:assert/strict";
+import {
+  defaultRegistry,
+  hideRepository,
+  pinRepository,
+  recordDiscovery,
+  registerLocalRoot,
+  setAlias,
+  upsertRepository,
+  validateRegistry,
+} from "../../modules/repositories/index.mjs";
+import { createRepositoryOverviewService } from "../cli/repository-overview.mjs";
+
+const NOW = new Date("2026-09-30T12:00:00.000Z");
+const ACTIVE = "git:github.com/example/active";
+const PINNED = "git:github.com/example/pinned";
+const STALE = "local:aaaaaaaaaaaaaaaa";
+const HIDDEN = "local:bbbbbbbbbbbbbbbb";
+const IDLE_RECENT = "local:cccccccccccccccc";
+const IDLE_OLD = "local:dddddddddddddddd";
+
+const registry = defaultRegistry();
+addRepository(ACTIVE, "Active App", "2026-09-30T11:00:00.000Z");
+addRepository(PINNED, "Pinned App", "2026-09-29T11:00:00.000Z");
+addRepository(STALE, "Stale App", "2026-07-01T11:00:00.000Z");
+addRepository(HIDDEN, "Hidden App", "2026-09-30T10:00:00.000Z");
+addRepository(IDLE_RECENT, "Recent Idle", "2026-09-28T10:00:00.000Z");
+addRepository(IDLE_OLD, "Old Idle", "2026-09-20T10:00:00.000Z");
+pinRepository(registry, PINNED, { pinned: true, now: NOW.toISOString() });
+hideRepository(registry, HIDDEN, { hidden: true, now: NOW.toISOString() });
+validateRegistry(registry);
+
+const runtime = {
+  generatedAt: "2026-09-30T11:59:00.000Z",
+  refresh: { state: "idle", error: null },
+  repositories: [
+    {
+      repositoryId: ACTIVE,
+      name: "Active App",
+      lifecycle: { state: "active", reason: null },
+      roots: [{
+        isWorktree: true,
+        projectRoot: "/private/worktrees/active-feature",
+        members: [{ secondaryPorts: [9999] }],
+        git: { branch: "feature/home", dirty: true, ahead: 2, behind: 1, baseBranch: "origin/main", baseBehind: 3, fetchedAt: 123 },
+        primaryEntrypoint: { kind: "container", opaqueKey: "secret-runtime-key", origin: "http://127.0.0.1:4317", port: 4317 },
+      }],
+    },
+    { repositoryId: PINNED, name: "Pinned App", lifecycle: { state: "idle", reason: null }, lastSeenAt: "2026-09-29T11:00:00.000Z", roots: [] },
+    { repositoryId: STALE, name: "Stale App", lifecycle: { state: "stale", reason: "checkout missing" }, lastSeenAt: "2026-07-01T11:00:00.000Z", roots: [] },
+    { repositoryId: IDLE_RECENT, name: "Recent Idle", lifecycle: { state: "idle", reason: null }, lastSeenAt: "2026-09-28T10:00:00.000Z", roots: [] },
+    { repositoryId: IDLE_OLD, name: "Old Idle", lifecycle: { state: "idle", reason: null }, lastSeenAt: "2026-09-20T10:00:00.000Z", roots: [] },
+    { repositoryId: null, name: "Unresolved listener", lifecycle: { state: "active", reason: null }, roots: [{ projectRoot: "/private/unresolved" }] },
+  ],
+};
+
+const plans = {
+  truncated: false,
+  errors: [],
+  repositories: [{ repositoryId: ACTIVE }],
+  plans: [
+    { repository: { repositoryId: ACTIVE }, plan: { id: "active-plan", title: "Active plan", lifecycle: "active", gitLastChangedAt: "2026-09-29T12:00:00.000Z", modifiedAt: "2026-09-20T12:00:00.000Z" } },
+    { repository: { repositoryId: ACTIVE }, plan: { id: "backlog-plan", title: "Backlog plan", lifecycle: "backlog", gitLastChangedAt: null, modifiedAt: "2026-09-28T12:00:00.000Z" } },
+    { repository: { repositoryId: ACTIVE }, plan: { id: "old-plan", title: "Old plan", lifecycle: "completed", gitLastChangedAt: "2026-09-23T11:59:59.999Z", modifiedAt: null } },
+    { repository: { repositoryId: ACTIVE }, plan: { id: "future-plan", title: "Future plan", lifecycle: "completed", gitLastChangedAt: "2026-10-01T12:00:00.000Z", modifiedAt: null } },
+  ],
+};
+
+const telemetry = {
+  status: "available",
+  updatedAt: "2026-09-30T11:58:00.000Z",
+  repositories: {
+    [ACTIVE]: { sessionCount: 3, warningCount: 2, highestSeverity: "high", recent: [{ kind: "spike", severity: "high", sessionId: "s1", at: "2026-09-30T11:00:00.000Z" }] },
+  },
+};
+
+const service = createRepositoryOverviewService({
+  loadRegistry: () => structuredClone(registry),
+  loadRuntime: () => structuredClone(runtime),
+  loadPlans: () => structuredClone(plans),
+  loadTelemetry: () => structuredClone(telemetry),
+  now: () => NOW,
+});
+
+const home = service.loadHome();
+assert.deepEqual(home.repositories.map((repository) => repository.repositoryId), [PINNED, ACTIVE, IDLE_RECENT, IDLE_OLD, STALE], "pinning outranks lifecycle and idle repositories sort by recency");
+assert.equal(home.unresolvedActivity.length, 1);
+assert.equal(home.unresolvedActivity[0].name, "Unresolved listener");
+assert.equal(home.repositories.some((repository) => repository.repositoryId === HIDDEN), false, "hidden repositories stay out of Home");
+
+const active = home.repositories.find((repository) => repository.repositoryId === ACTIVE);
+assert.equal(active.urlKey, "active-app");
+assert.equal(active.domains.runtime.data.checkouts[0].primaryEntrypoint.kind, "container", "container and host entrypoints share the same projection");
+assert.equal(active.domains.runtime.data.checkouts[0].primaryEntrypoint.port, 4317);
+assert.equal("opaqueKey" in active.domains.runtime.data.checkouts[0].primaryEntrypoint, false, "runtime keys are not exposed on Home");
+assert.equal(JSON.stringify(active).includes("9999"), false, "secondary ports are absent from the overview payload");
+assert.equal(active.domains.git.data.warnings.length, 3);
+assert.deepEqual(active.domains.plans.data.counts, { active: 1, backlog: 1 });
+assert.equal(active.domains.plans.data.recent[0].changedAt, "2026-09-29T12:00:00.000Z", "Git last-change time wins over mtime");
+assert.deepEqual(active.domains.plans.data.recent.map((plan) => plan.id), ["active-plan", "backlog-plan"], "recent plans stay inside the trailing seven-day window");
+assert.equal(active.domains.tokens.data.warningCount, 2);
+assert.equal(active.domains.agents.status, "unavailable");
+assert.equal(home.repositories.find((repository) => repository.repositoryId === PINNED).domains.plans.status, "unavailable", "unscanned Plans coverage is not reported as zero");
+assert.ok(!JSON.stringify(home).includes("/private/"), "overview payload contains no absolute paths");
+
+const detail = service.loadDetail({ urlKey: "active-app" });
+assert.equal(detail.repository.repositoryId, ACTIVE);
+assert.equal(detail.repository.identity.localRoots.length, 1);
+assert.throws(() => service.loadDetail({ urlKey: "hidden-app" }), /unknown repository/, "hidden urlKeys return not found");
+assert.throws(() => service.loadDetail({ urlKey: "missing" }), /unknown repository/);
+
+const aliasRegistry = structuredClone(registry);
+const aliasId = "local:eeeeeeeeeeeeeeee";
+upsertRepository(aliasRegistry, { id: aliasId, kind: "local", displayName: "Active Alias", now: NOW.toISOString() });
+setAlias(aliasRegistry, aliasId, ACTIVE, { now: NOW.toISOString() });
+const aliasRuntime = structuredClone(runtime);
+aliasRuntime.repositories.find((repository) => repository.repositoryId === ACTIVE).repositoryId = aliasId;
+const aliasPlans = structuredClone(plans);
+aliasPlans.repositories[0].repositoryId = aliasId;
+for (const plan of aliasPlans.plans) plan.repository.repositoryId = aliasId;
+const aliasTelemetry = structuredClone(telemetry);
+aliasTelemetry.repositories[aliasId] = aliasTelemetry.repositories[ACTIVE];
+delete aliasTelemetry.repositories[ACTIVE];
+const aliasedHome = createRepositoryOverviewService({
+  loadRegistry: () => aliasRegistry,
+  loadRuntime: () => aliasRuntime,
+  loadPlans: () => aliasPlans,
+  loadTelemetry: () => aliasTelemetry,
+  now: () => NOW,
+}).loadHome();
+const aliasedActive = aliasedHome.repositories.find((repository) => repository.repositoryId === ACTIVE);
+assert.equal(aliasedHome.repositories.some((repository) => repository.repositoryId === aliasId), false, "aliases do not create duplicate cards");
+assert.equal(aliasedActive.domains.runtime.data.checkouts.length, 1, "Runtime data joins through canonical aliases");
+assert.equal(aliasedActive.domains.plans.data.counts.active, 1, "Plans data joins through canonical aliases");
+assert.equal(aliasedActive.domains.tokens.data.sessionCount, 3, "Tokens data joins through canonical aliases");
+
+const staleRuntime = structuredClone(runtime);
+staleRuntime.refresh = { state: "failed", error: "Docker timed out" };
+const staleHome = createRepositoryOverviewService({
+  loadRegistry: () => structuredClone(registry),
+  loadRuntime: () => staleRuntime,
+  loadPlans: () => structuredClone(plans),
+  loadTelemetry: () => structuredClone(telemetry),
+  now: () => NOW,
+}).loadHome();
+assert.equal(staleHome.repositories.find((repository) => repository.repositoryId === ACTIVE).domains.runtime.status, "stale");
+assert.equal(staleHome.repositories.find((repository) => repository.repositoryId === ACTIVE).domains.runtime.data.checkouts.length, 1, "stale envelopes preserve last-known data");
+
+let domainCalls = 0;
+const degraded = createRepositoryOverviewService({
+  loadRegistry: () => structuredClone(registry),
+  loadRuntime: () => { domainCalls += 1; throw new Error("runtime offline"); },
+  loadPlans: () => { domainCalls += 1; throw new Error("plans offline"); },
+  loadTelemetry: () => { domainCalls += 1; throw new Error("tokens offline"); },
+  now: () => NOW,
+}).loadHome();
+assert.equal(domainCalls, 3, "each bounded domain loader runs once");
+assert.equal(degraded.repositories.length, 5, "domain failures never remove repository anchors");
+assert.equal(degraded.repositories[0].domains.runtime.status, "unavailable");
+assert.equal(degraded.repositories[0].domains.plans.status, "unavailable");
+assert.equal(degraded.repositories[0].domains.tokens.status, "unavailable");
+
+console.log("repository-overview-check passed");
+
+function addRepository(id, name, seenAt) {
+  const kind = id.startsWith("git:") ? "git" : "local";
+  upsertRepository(registry, { id, kind, displayName: name, now: seenAt });
+  recordDiscovery(registry, id, { source: "developer-runtime", evidence: "git-remote", confidence: kind === "git" ? "high" : "medium", now: seenAt });
+  registerLocalRoot(registry, id, { rootId: id.slice(-8).replace(/[^a-z0-9]/g, "a"), now: seenAt });
+}

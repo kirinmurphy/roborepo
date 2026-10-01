@@ -17,6 +17,7 @@ import {
   providerUrlForRepositoryId,
   repositoryListPayload,
   repositoryDetailPayload,
+  repositoryIdForUrlKey,
 } from "../../modules/repositories/index.mjs";
 import { readPlanSettings } from "../../modules/plan-docs/index.mjs";
 import { updatePlanSettings as updatePlanSettingsDefault, refreshPlans as refreshPlansDefault } from "./plans.mjs";
@@ -141,6 +142,13 @@ export function loadRepositoryPayload({ repositoryId, stateRoot = defaultStateRo
   const record = registry.repositories[repositoryId];
   if (!record) throw notFound(repositoryId);
   return repositoryDetailPayload(record);
+}
+
+export function loadRepositoryPayloadByUrlKey({ urlKey, stateRoot = defaultStateRoot, fsApi = fs, includeHidden = false } = {}) {
+  const registry = loadRegistry({ stateRoot, fsApi });
+  const repositoryId = repositoryIdForUrlKey(registry, urlKey, { includeHidden });
+  if (!repositoryId) throw notFound(urlKey);
+  return repositoryDetailPayload(registry.repositories[repositoryId]);
 }
 
 // Associations = the same detail payload's discovery/local-root provenance. Separated as its own

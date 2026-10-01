@@ -5,48 +5,73 @@
     {{CHROME}}
     {{WIDGET_TEMPLATES}}
     <main id="main" class="inner home-main">
-      <!-- Home is intentionally static: it carries no loading-overlay marker (the overlay is only
-           injected where that marker appears) and no page-local script module, because nothing on
-           this page waits on an API response or harness state. It is the first-run landing page
-           even on a machine with no harnesses. -->
-      <section class="home-welcome">
-        <h1 class="home-title">Welcome to RoboRepo</h1>
-        <p class="home-lead">
-          A passive admin panel for your local dev environment.
-        </p>
+      {{LOADING}}
+      <section class="home-heading" aria-labelledby="home-title">
+        <div>
+          <p class="home-eyebrow">Workspace</p>
+          <h1 id="home-title">Repositories</h1>
+          <p>Open a running checkout, or see what needs attention across your current work.</p>
+        </div>
+        <div class="home-action-slot" aria-hidden="true"></div>
       </section>
-      <nav class="home-cards" aria-label="Portal sections">
-        <a class="home-card" href="/config">
-          <portal-icon name="agents" size="xxxl" class="home-card-icon"></portal-icon>
-          <span class="home-card-title">Agents</span>
-          <span class="home-card-desc">
-            Harness config and tooling via agent-agnostic packages (rules, skills, hooks, mcp & permissions).
-          </span>
-        </a>
-        <a class="home-card" href="/plans">
-          <portal-icon name="plans" size="xxxl" class="home-card-icon"></portal-icon>
-          <span class="home-card-title">Plans</span>
-          <span class="home-card-desc">
-            View and manage implementation plans and their lifecycle.
-          </span>
-        </a>
-        <a class="home-card" href="/tokens">
-          <portal-icon name="tokens" size="xxxl" class="home-card-icon"></portal-icon>
-          <span class="home-card-title">Tokens</span>
-          <span class="home-card-desc">
-            Inspect agent-session token usage.
-          </span>
-        </a>
-        <a class="home-card" href="/runtime">
-          <portal-icon name="runtime" size="xxxl" class="home-card-icon"></portal-icon>
-          <span class="home-card-title">Runtime</span>
-          <span class="home-card-desc">
-            Observe all http and docker activity on your local system.
-          </span>
-        </a>
-      </nav>
+      <section id="home-warning" class="notice warn" hidden></section>
+      <section id="home-content" aria-live="polite"></section>
     </main>
+
+    <template id="tpl-home-empty">
+      <section class="home-empty">
+        <h2 data-slot="title"></h2>
+        <p data-slot="body"></p>
+        <a href="/runtime">Open Runtime</a>
+      </section>
+    </template>
+    <template id="tpl-repository-directory">
+      <div class="repository-directory" data-slot="repositories"></div>
+    </template>
+    <template id="tpl-repository-card">
+      <article class="repository-card">
+        <header class="repository-card-head">
+          <div>
+            <div class="repository-title-line">
+              <h2 data-slot="name"></h2>
+              <span class="repository-lifecycle" data-slot="lifecycle"></span>
+            </div>
+            <p class="repository-meta" data-slot="meta"></p>
+          </div>
+          <a class="repository-detail-link" data-slot="detail-link">View repository <span aria-hidden="true">→</span></a>
+        </header>
+        <div class="checkout-list" data-slot="checkouts"></div>
+        <dl class="domain-grid" data-slot="domains"></dl>
+      </article>
+    </template>
+    <template id="tpl-checkout-row">
+      <div class="checkout-row">
+        <span class="checkout-name" data-slot="name"></span>
+        <span class="checkout-git" data-slot="git"></span>
+        <span class="checkout-entrypoint" data-slot="entrypoint"></span>
+      </div>
+    </template>
+    <template id="tpl-checkout-overflow">
+      <details class="checkout-overflow">
+        <summary data-slot="summary"></summary>
+        <div data-slot="rows"></div>
+      </details>
+    </template>
+    <template id="tpl-domain-row">
+      <div class="domain-row">
+        <dt data-slot="label"></dt>
+        <dd><span class="domain-status" data-slot="status"></span><span data-slot="summary"></span></dd>
+      </div>
+    </template>
+    <template id="tpl-unresolved-activity">
+      <aside class="unresolved-activity">
+        <div><strong>Unresolved Runtime activity</strong><p data-slot="summary"></p></div>
+        <a href="/runtime">Associate in Runtime</a>
+      </aside>
+    </template>
+
     <script src="/portal/shared/icon.js" type="module"></script>
     <script src="/portal/shared/theme.js" type="module"></script>
+    <script src="/portal/home/app.js" type="module"></script>
   </body>
 </html>

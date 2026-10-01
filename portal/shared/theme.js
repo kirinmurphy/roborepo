@@ -30,13 +30,13 @@ const PORTAL_PAGES = window.PORTAL_MANIFEST.pages;
   }
   const nav = document.getElementById("nav");
   if (!nav) return;
-  const here = location.pathname;
+  const currentPageId = window.PORTAL_MANIFEST.currentPageId;
   nav.prepend(
     ...PORTAL_PAGES.map((p) => {
       const link = tpl("tpl-nav-link");
       link.href = p.path;
       link.textContent = p.title;
-      if (p.path === here) link.classList.add("active");
+      if (p.id === currentPageId) link.classList.add("active");
       return link;
     }),
   );
