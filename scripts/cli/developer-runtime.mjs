@@ -257,20 +257,28 @@ export function forgetDeveloperRuntimeRepository({ repositoryId }) {
   if (!repositoryId || typeof repositoryId !== "string") {
     return { ok: false, status: 400, error: "repositoryId is required", developerRuntime: loadDeveloperRuntimeSnapshot() };
   }
-  const current = loadDeveloperRuntimeSnapshot();
-  const repository = current.repositories?.find((candidate) => candidate.repositoryId === repositoryId);
-  if (repository?.roots?.length) {
+  // Checked inside the mutation, against the registry about to be written, rather than the cached
+  // snapshot: that can be stale or — before the first refresh lands — empty, which would let a
+  // repository with recorded checkouts be forgotten.
+  let hasCheckouts = false;
+  try {
+    updateRegistry({
+      stateRoot,
+      mutate: (reg) => {
+        hasCheckouts = checkoutRootsFor(reg, repositoryId).length > 0;
+        return hasCheckouts ? false : forgetRepository(reg, repositoryId);
+      },
+    });
+  } catch (err) {
+    return { ok: false, status: 400, error: String(err?.message || err), developerRuntime: loadDeveloperRuntimeSnapshot() };
+  }
+  if (hasCheckouts) {
     return {
       ok: false,
       status: 400,
       error: "cannot forget a repository with known checkouts; hide it instead",
-      developerRuntime: current,
+      developerRuntime: loadDeveloperRuntimeSnapshot(),
     };
-  }
-  try {
-    updateRegistry({ stateRoot, mutate: (reg) => forgetRepository(reg, repositoryId) });
-  } catch (err) {
-    return { ok: false, status: 400, error: String(err?.message || err), developerRuntime: loadDeveloperRuntimeSnapshot() };
   }
   scheduleRefresh();
   return { ok: true, developerRuntime: loadDeveloperRuntimeSnapshot() };

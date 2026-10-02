@@ -23,12 +23,15 @@ export function createPlanDrawer(deps) {
   const skillModal = createSkillDetailModal(document.getElementById("skill-modal"));
   const toast = createOutcomeToast(document.getElementById("toast"));
   let openKey = null;
+  // Bumped by every open() and every close, so a fetch that resolves after the user closed the
+  // drawer or picked another plan is dropped instead of reopening it or replacing the newer plan.
+  let openRequest = 0;
 
   document.getElementById("drawer-close").addEventListener("click", () => dialog.close());
   portalWireBackdropClose(dialog, () => dialog.close());
   // Fires however the dialog closes (button, backdrop, Escape, or a programmatic close()) — one
   // place to clear which plan the drawer was showing.
-  dialog.addEventListener("close", () => { openKey = null; });
+  dialog.addEventListener("close", () => { openKey = null; openRequest += 1; });
 
   async function copyText(text) {
     await portalCopyText(text, () => toast.show({ message: "copied" }));
@@ -39,10 +42,12 @@ export function createPlanDrawer(deps) {
   }
 
   async function open(key) {
+    const request = ++openRequest;
     try {
-      render(await api.fetchPlanDocument(key));
+      const doc = await api.fetchPlanDocument(key);
+      if (request === openRequest) render(doc);
     } catch (err) {
-      deps.onError(err);
+      if (request === openRequest) deps.onError(err);
     }
   }
 

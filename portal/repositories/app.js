@@ -24,8 +24,15 @@ async function refresh() {
     portalSetUpdatedAt(new Date(), { cadenceMs: POLL_MS });
     document.title = `${overview.repository.displayName} · roborepo`;
   } catch (error) {
-    content.replaceChildren(unavailableView(`This repository is unavailable. It may be hidden, removed, or unknown. ${error.message}`));
-    warning.textContent = "Repository detail could not be loaded.";
+    // A 404 means the repository is genuinely gone (hidden, forgotten, unknown). Any other failure
+    // after a good load is a transient poll error: keep the last detail on screen and only warn.
+    if (error.status === 404 || renderedVersion === null) {
+      content.replaceChildren(unavailableView(`This repository is unavailable. It may be hidden, removed, or unknown. ${error.message}`));
+      renderedVersion = null;
+      warning.textContent = "Repository detail could not be loaded.";
+    } else {
+      warning.textContent = `Repository detail could not be refreshed: ${error.message}`;
+    }
     warning.hidden = false;
   } finally {
     pending = false;

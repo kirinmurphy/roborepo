@@ -45,6 +45,22 @@ Not a real project. Safe to delete — the \`start\` command rebuilds it.
 const run = (cmd, args, cwd) => spawnSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 const git = (args, cwd = FIXTURE_ROOT) => run("git", args, cwd);
 
+// Start writes files, resets git state, and deletes a directory at fixed paths under the user's
+// home, so each existing path must be provably the fixture's own first. FIXTURE_ROOT is ours when it
+// is absent, an empty directory, or a repository whose origin is the fixture remote; MISSING_WORKTREE
+// is ours when it is absent or a worktree sharing FIXTURE_ROOT's git directory.
+function ownsFixtureRoot() {
+  if (!fs.existsSync(FIXTURE_ROOT)) return true;
+  if (!fs.existsSync(path.join(FIXTURE_ROOT, ".git"))) return fs.readdirSync(FIXTURE_ROOT).length === 0;
+  return git(["remote", "get-url", "origin"]).stdout.trim() === REMOTE;
+}
+
+function ownsMissingWorktree() {
+  if (!fs.existsSync(MISSING_WORKTREE)) return true;
+  const common = run("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], MISSING_WORKTREE).stdout.trim();
+  return Boolean(common) && realpathOf(common) === realpathOf(path.join(FIXTURE_ROOT, ".git"));
+}
+
 function provision() {
   if (!fs.existsSync(path.join(FIXTURE_ROOT, ".git"))) {
     fs.mkdirSync(FIXTURE_ROOT, { recursive: true });
@@ -93,9 +109,13 @@ function recordCheckouts() {
 
 export function startIdleCheckoutFixture() {
   if (run("git", ["--version"]).status !== 0) return { ok: false, message: "git is unavailable" };
+  if (!ownsFixtureRoot()) return { ok: false, message: `idle-checkout fixture: ${FIXTURE_ROOT} exists and is not the fixture's repository; refusing to touch it` };
+  if (!ownsMissingWorktree()) return { ok: false, message: `idle-checkout fixture: ${MISSING_WORKTREE} exists and is not the fixture's worktree; refusing to touch it` };
   provision();
+  // Re-checked after provisioning: the delete below must only ever remove the worktree git just
+  // created for this fixture.
+  if (!ownsMissingWorktree()) return { ok: false, message: `idle-checkout fixture: ${MISSING_WORKTREE} is not the fixture's worktree; not deleting it` };
   recordCheckouts();
-  // The fixture's own generated worktree, created by provision() above — never a user directory.
   fs.rmSync(MISSING_WORKTREE, { recursive: true, force: true });
   return `idle-checkout fixture provisioned (${FIXTURE_ROOT}; ${path.basename(MISSING_WORKTREE)} recorded, then deleted)`;
 }

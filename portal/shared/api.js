@@ -10,7 +10,11 @@ export function portalConfig() {
 export async function portalGetJson(path) {
   const res = await fetch(path);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.message || "request failed");
+  if (!res.ok) {
+    const err = new Error(data.error || data.message || "request failed");
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 

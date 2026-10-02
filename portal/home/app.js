@@ -12,6 +12,7 @@ const warning = document.getElementById("home-warning");
 const harnessBanner = document.getElementById("home-harness-banner");
 let renderedVersion = null;
 let pending = false;
+let forceQueued = false;
 let plansSnapshot = null;
 
 // The same plan detail drawer the Plans page opens. Read-only here: lifecycle and priority edits
@@ -48,13 +49,20 @@ function showWarning(error) {
   warning.hidden = false;
 }
 
-async function refresh() {
-  if (pending) return;
+// `force` skips the active-control guard. After a menu action the clicked item keeps focus inside
+// `content`, so without it the guard would hold back the very change the user just made. A forced
+// call that lands mid-poll is queued rather than dropped, since that poll may have read pre-action
+// state.
+async function refresh({ force = false } = {}) {
+  if (pending) {
+    if (force) forceQueued = true;
+    return;
+  }
   pending = true;
   try {
     const overview = await api.loadHomeOverview();
     const version = JSON.stringify(overview);
-    const hasActiveControl = content.contains(document.activeElement) || content.querySelector("details[open], .menu-button-panel, [data-menu]:not([hidden])") || document.querySelector("dialog[open]");
+    const hasActiveControl = !force && (content.contains(document.activeElement) || content.querySelector("details[open], .menu-button-panel, [data-menu]:not([hidden])") || document.querySelector("dialog[open]"));
     if (version !== renderedVersion && !hasActiveControl) {
       const body = overview.repositories.length ? repositoryDirectory(overview.repositories, menuActions) : emptyState();
       content.replaceChildren(body);
@@ -70,6 +78,10 @@ async function refresh() {
   } finally {
     pending = false;
     portalHideLoading();
+  }
+  if (forceQueued) {
+    forceQueued = false;
+    await refresh({ force: true });
   }
 }
 
@@ -119,7 +131,7 @@ async function selectRepositoryAction(key, repository, item, event) {
     else if (key === "hide") await api.setRepositoryVisibility({ repositoryId: repository.repositoryId, hidden: true });
     else if (key === "forget") await api.forgetRepository({ repositoryId: repository.repositoryId });
     renderedVersion = null;
-    await refresh();
+    await refresh({ force: true });
   } catch (error) {
     warning.textContent = `Repository action unavailable: ${error.message}`;
     warning.hidden = false;
