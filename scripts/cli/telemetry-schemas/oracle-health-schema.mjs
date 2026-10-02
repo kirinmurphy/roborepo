@@ -20,6 +20,8 @@ const SUMMARIES = {
   failed: "Production and oracle calculations disagree on covered fields.",
 };
 
+const STATUSES = Object.keys(SUMMARIES);
+
 // Construct an explicit wire projection: never spread comparison data or exception text into it.
 // A worker result describes checked evidence; only the observer can establish current freshness.
 export function createOracleHealthResult(comparison, metadata) {
@@ -54,6 +56,23 @@ export function staleOracleHealth(result) {
   return { ...result, status: "stale", summary: SUMMARIES.stale };
 }
 
+// Re-project cached state at the HTTP boundary. The observer already stores this schema, but an
+// explicit allowlist here prevents a future cache/debug field from becoming a public response.
+export function projectOracleHealthResult(value) {
+  if (!validHealthResult(value)) return emptyOracleHealth("unavailable", "invalid_worker_result");
+  return {
+    schema: ORACLE_HEALTH_SCHEMA_VERSION, status: value.status,
+    checked_at: value.checked_at, duration_ms: value.duration_ms, evidence_signature: value.evidence_signature,
+    event_count: value.event_count, session_count: value.session_count, operation_count: value.operation_count,
+    coverage: { supported_events: value.coverage.supported_events, unsupported_events: value.coverage.unsupported_events,
+      comparable: value.coverage.comparable, complete: value.coverage.complete,
+      issues: value.coverage.issues.map(({ category, count }) => ({ category, count })),
+      checks: [...value.coverage.checks] },
+    differences: [...value.differences], summary: SUMMARIES[value.status],
+    ...(value.error_category ? { error_category: value.error_category } : {}),
+  };
+}
+
 export function isOracleEvidenceSignature(value) {
   return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
 }
@@ -62,6 +81,25 @@ function validMetadata(value) {
   return value && isOracleEvidenceSignature(value.evidence_signature) && count(value.duration_ms)
     && typeof value.checked_at === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(value.checked_at)
     && Number.isFinite(Date.parse(value.checked_at)) && new Date(value.checked_at).toISOString() === value.checked_at;
+}
+
+function validHealthResult(value) {
+  if (!value || value.schema !== ORACLE_HEALTH_SCHEMA_VERSION || !STATUSES.includes(value.status)) return false;
+  if (![value.event_count, value.session_count, value.operation_count].every(count)) return false;
+  if (value.session_count > value.event_count || value.operation_count > value.event_count) return false;
+  if (value.checked_at !== null && !validMetadata(value)) return false;
+  if (value.checked_at === null && (value.duration_ms !== null || value.evidence_signature !== null)) return false;
+  const coverage = value.coverage;
+  if (!coverage || ![coverage.supported_events, coverage.unsupported_events].every(count)
+    || coverage.supported_events + coverage.unsupported_events !== value.event_count
+    || typeof coverage.comparable !== "boolean" || typeof coverage.complete !== "boolean") return false;
+  if (!Array.isArray(coverage.issues) || coverage.issues.length > ISSUES.length
+    || coverage.issues.some((issue) => !issue || !ISSUES.includes(issue.category) || !count(issue.count) || issue.count === 0)) return false;
+  if (!allowedList(coverage.checks, CHECKS) || !allowedList(value.differences, FIELDS)) return false;
+  if (value.error_category != null && (value.status !== "unavailable" || !ERRORS.includes(value.error_category))) return false;
+  if (["passed", "partial", "failed"].includes(value.status) && value.checked_at === null) return false;
+  if (value.status === "checking" && value.checked_at !== null) return false;
+  return value.summary === SUMMARIES[value.status];
 }
 
 function validComparison(value) {

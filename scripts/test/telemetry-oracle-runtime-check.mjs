@@ -7,6 +7,12 @@ import { startPortalServer } from "../cli/portal-server.mjs";
 import { telemetryOracleEvidenceSignature } from "../cli/telemetry.mjs";
 import { createTelemetryOracleObserver } from "../cli/telemetry-oracle-observer.mjs";
 
+const sizeArgument = process.argv.indexOf("--size-mib");
+const sizeMiB = sizeArgument === -1 ? 24 : Number(process.argv[sizeArgument + 1]);
+if (!Number.isFinite(sizeMiB) || sizeMiB <= 0 || sizeMiB > 24) {
+  throw new Error("usage: telemetry-oracle-runtime-check.mjs [--size-mib <number from 0 to 24>]");
+}
+const targetBytes = sizeMiB * 1024 * 1024;
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "oracle-runtime-"));
 const paths = { spoolDir: path.join(root, "spool"), snapshotsDir: path.join(root, "snapshots"),
   markersPath: path.join(root, "markers.jsonl"), registryPath: path.join(root, "registry.json") };
@@ -24,7 +30,7 @@ try {
   fs.writeFileSync(path.join(paths.snapshotsDir, "cfg.json"), JSON.stringify({ schema: 2, snapshot_id: "cfg",
     packages: [], skills: [], evaluability: { packages: true, skills: true } }));
   const rows = []; let bytes = 0;
-  while (bytes < 24 * 1024 * 1024) {
+  while (bytes < targetBytes) {
     const index = rows.length;
     const line = JSON.stringify({ schema: 3, capture_id: `capture-${index}`, call_id: `call-${index}`, harness: "claude",
       session_id: `session-${Math.floor(index / 50)}`, event: "PostToolUse", ts: new Date(1_760_000_000_000 + index * 1000).toISOString(),
@@ -51,7 +57,7 @@ try {
   const health = observer.getHealth();
   assert.equal(health.status, "passed", JSON.stringify(health));
   assert.equal(health.event_count, eventCount); assert.equal(workers.length, 1); assert.equal(workers[0].threadId, -1);
-  console.log(`telemetry oracle runtime: ${bytes} bytes, ${eventCount} events, ${health.duration_ms} ms, ${responsesWhileRunning} concurrent portal responses`);
+  console.log(`telemetry oracle runtime: ${sizeMiB} MiB target, ${bytes} bytes, ${eventCount} events, ${health.duration_ms} ms, ${responsesWhileRunning} concurrent portal responses`);
 } finally {
   await observer.stop();
   if (server) await new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); });

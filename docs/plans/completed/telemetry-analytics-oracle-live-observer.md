@@ -1,7 +1,7 @@
 ---
 id: koww80zh
 priority: high
-next_action: Begin Phase 6 with the cached oracle-health route and privacy/schema tests, then add the accessible Tokens badge and singleton details dialog
+next_action:
 blocked_by: []
 depends_on: []
 related:
@@ -9,7 +9,7 @@ related:
   - telemetry-analysis-io-performance
   - telemetry-analyze-single-pass-perf
   - nl40n9vr
-reviewed_commit: 53961b3abb39634660646f2c31696c63a9db70de
+reviewed_commit: aceed1843117d6461b67017c0269cbccedcd0e5f
 ---
 
 # Live confidence for telemetry analytics
@@ -30,9 +30,9 @@ data the user is looking at now. A green badge means both implementations agreed
 supported input snapshot; it does not claim that capture is complete, that every dashboard metric
 is independently verified, or that any observed condition caused an outcome.
 
-This plan includes the work already completed for the oracle and marks it complete. Remaining work
-starts at the cached health endpoint and Tokens badge and ends when the live status, documentation, privacy
-boundaries, CI visibility, and browser behavior are verified.
+The deterministic gate, visible GitHub Actions summary, isolated observer, cached health endpoint,
+accessible Tokens badge, privacy boundary, browser behavior, runtime measurements, and durable
+documentation are implemented and verified.
 
 ## Context
 
@@ -117,12 +117,13 @@ The oracle now recomputes these values without importing production analysis hel
 ### Current limitations
 
 - The independent core, privacy-safe comparison boundary, health schema, complete evidence
-  signature, isolated worker, observer controller, and portal startup/shutdown wiring are
-  implemented. The health endpoint and Tokens badge remain unimplemented.
-- The CI result exits nonzero on disagreement and therefore breaks the build, but a successful
-  summary is still nested inside the full CI log.
-- The live portal runs the observer and retains its latest sanitized result in memory. The result
-  is not yet exposed through HTTP or the Tokens page.
+  signature, isolated worker, observer controller, portal startup/shutdown wiring, cached health
+  endpoint, and Tokens badge are implemented.
+- The CI result exits nonzero on disagreement and therefore breaks the build. GitHub Actions also
+  receives a concise job summary with pass/fail state and deterministic evidence totals.
+- The live portal retains its latest sanitized result in memory. The cache-only HTTP route
+  re-projects the result through the health schema, and the Tokens page polls it independently of
+  the report.
 - Coverage accounting distinguishes supported evidence, unresolved conditions, and unsafe shapes.
   The worker supplies raw registry evidence and counts of records skipped by its reader. The
   controller supplies a fresh complete signature to the tested status transitions before accepting
@@ -131,7 +132,7 @@ The oracle now recomputes these values without importing production analysis hel
   full analysis to a large personal spool would be expensive and could produce sensitive output,
   so it must remain test-only.
 
-### Preliminary performance evidence
+### Performance evidence
 
 These are feasibility measurements, not permanent performance budgets:
 
@@ -142,10 +143,14 @@ These are feasibility measurements, not permanent performance budgets:
 | Synthetic 12 MB spool, 5,535 events | not measured | about 0.99 seconds | Full recomputation scales with raw evidence size. |
 | Synthetic 24 MB spool, 11,070 events | not measured | about 2.2 seconds and about 28 MB temporary heap growth | Requires one-run-at-a-time isolation and cache-only HTTP responses. |
 | Phase 5 synthetic 24 MiB spool, 11,405 events | included in worker duration | 1,012 ms for reading and both calculations | 46 lightweight portal responses completed while the real worker ran; this fixture does not measure the report's separate startup warm-up. |
+| Final synthetic 4 MiB spool, 1,905 events | included in worker duration | 189 ms for reading and both calculations | 9 lightweight portal responses completed while the real worker ran. |
+| Final synthetic 24 MiB spool, 11,405 events | included in worker duration | 1,016 ms for reading and both calculations | 46 lightweight portal responses completed while the real worker ran. |
 
-Reproduce the Phase 5 measurement with `node scripts/test/telemetry-oracle-runtime-check.mjs`.
-It writes synthetic evidence near the 25 MiB per-harness cap and requests `/api/portal/status`
-while the observer runs. Timings and concurrent response counts vary by machine and load.
+Reproduce the final measurements with
+`node scripts/test/telemetry-oracle-runtime-check.mjs --size-mib 4` and
+`node scripts/test/telemetry-oracle-runtime-check.mjs --size-mib 24`. The default remains 24 MiB
+for the normal check. The script requests `/api/portal/status` while the observer runs. Timings and
+concurrent response counts vary by machine and load.
 
 The naive implementation sorts serialized evidence and evaluates sessions across discovered
 conditions. Its practical cost is approximately `N log N` in event volume, with additional work
@@ -416,35 +421,35 @@ a computation itself. The existing report stays usable when the health endpoint 
       `checking`, `passed`, `stale`, `partial`, `unavailable`, `failed`, timeout, crash, coalescing,
       and shutdown behavior.
 
-### Phase 6: Health endpoint and Tokens badge
+### Phase 6: Health endpoint and Tokens badge — completed
 
-- [ ] Add `GET /api/telemetry/oracle-health` to the telemetry route table and wire it to the cached
+- [x] Add `GET /api/telemetry/oracle-health` to the telemetry route table and wire it to the cached
       observer result. The handler must perform no analysis or spool read.
-- [ ] Add `scripts/test/telemetry-oracle-route-check.mjs` to prove the route returns cached state,
+- [x] Add `scripts/test/telemetry-oracle-route-check.mjs` to prove the route returns cached state,
       performs no computation, and preserves the versioned privacy-safe schema.
-- [ ] Add static badge and dialog/template markup to `portal/tokens/index.html` with accessible
+- [x] Add static badge and dialog/template markup to `portal/tokens/index.html` with accessible
       names and live-status semantics.
-- [ ] Add `portal/tokens/oracle-health.js` to poll, render, and control the singleton dialog without
+- [x] Add `portal/tokens/oracle-health.js` to poll, render, and control the singleton dialog without
       expanding the already-large page orchestrator or assembling nested markup in JavaScript.
-- [ ] Style text-plus-color states for light, dark, high-contrast, desktop, and mobile layouts.
-- [ ] Show status, freshness, duration, counts, coverage, checked invariants, latest privacy-safe
+- [x] Style text-plus-color states for light, dark, high-contrast, desktop, and mobile layouts.
+- [x] Show status, freshness, duration, counts, coverage, checked invariants, latest privacy-safe
       output, limitations, and user-guide link in the info dialog.
-- [ ] Keep the Tokens report functional when the endpoint is unavailable and ensure the badge never
+- [x] Keep the Tokens report functional when the endpoint is unavailable and ensure the badge never
       converts missing data into `Passed` or `Failed`.
-- [ ] Add browser tests that mock each status, use role/name selectors, verify dialog content and
+- [x] Add browser tests that mock each status, use role/name selectors, verify dialog content and
       accessibility, and prove the badge updates without re-rendering the report.
 
-### Phase 7: Visible CI result and durable documentation
+### Phase 7: Visible CI result and durable documentation — completed
 
-- [ ] Surface the concise oracle result in the GitHub Actions job summary while retaining nonzero
+- [x] Surface the concise oracle result in the GitHub Actions job summary while retaining nonzero
       exit behavior and the detailed log/minimal reproduction on failure.
-- [ ] Add a user-guide section defining the oracle, live observer, status meanings, freshness,
+- [x] Add a user-guide section defining the oracle, live observer, status meanings, freshness,
       scope, privacy behavior, and limits.
-- [ ] Expand the internal Mermaid documentation to include the isolated runtime observer, cached
+- [x] Expand the internal Mermaid documentation to include the isolated runtime observer, cached
       endpoint, and stale-signature path without removing the existing CI confidence diagram.
-- [ ] Link the badge dialog to the user-facing explanation rather than exposing internal-only docs.
-- [ ] Record the final measured runtime at representative small and near-cap spool sizes and update
-      this plan's preliminary table or the telemetry performance reference with reproducible
+- [x] Link the badge dialog to the user-facing explanation rather than exposing internal-only docs.
+- [x] Record the final measured runtime at representative small and near-cap spool sizes and update
+      this plan's performance table or the telemetry performance reference with reproducible
       commands.
 
 ## Validation
@@ -471,8 +476,7 @@ Expected results:
 - observer state tests prove stale results cannot become green and obsolete signatures coalesce;
 - unsupported live rows produce `partial` or `unavailable`, never `passed`.
 
-All oracle and observer checks above are runnable and registered in the CI group. The route check
-becomes runnable when Phase 6 adds its file.
+All oracle, observer, and route checks above are runnable and registered in the CI group.
 
 ### API and browser checks
 
@@ -513,6 +517,48 @@ parity gate is required before handoff. Report any command that cannot run rathe
 a narrower check and claiming completion.
 
 ## Verification
+
+Final Phase 7 and completion evidence:
+
+- `node scripts/test/run-checks.mjs --filter telemetry-oracle` passes all 10 oracle suites. The
+  deterministic result remains nine cases, 879 events, 204 condition rows, 21 marker comparisons,
+  and 32 regression groups. The job-summary check verifies those totals are appended through
+  `GITHUB_STEP_SUMMARY`.
+- `node scripts/test/run-checks.mjs --filter telemetry` passes all 34 telemetry suites, including
+  the cached HTTP route, privacy projections, observer lifecycle, signature freshness, isolated
+  worker, and runtime responsiveness.
+- `node scripts/test/portal-ui/run.mjs` passes 34 browser tests. The two opt-in documentation
+  screenshot tests were skipped. Oracle coverage includes all six text statuses, accessible
+  details, independent polling, endpoint failure, report-node preservation, themes, forced colors,
+  and a 390-pixel viewport.
+- Final runtime measurements pass with a real isolated worker: 4,196,474 bytes and 1,905 events in
+  189 ms with 9 concurrent portal responses; 25,167,813 bytes and 11,405 events in 1,016 ms with
+  46 concurrent portal responses. The commands and variability note are recorded above and in
+  `docs/internal/telemetry-internals.md`.
+- `npm run check` passes the required full local parity gate: repository health (101 checks), 420
+  CLI checks, installer collisions, 19 CI suites, packed-package installation, all four Linux
+  clean-machine scenario families, and 34 browser tests. Windows parity was skipped because
+  PowerShell was unavailable; the two opt-in documentation screenshot tests were skipped.
+- `bash scripts/doctor.sh --quiet` passes 101 checks, and `git diff --check` passes.
+
+Every success criterion is satisfied. The CI and runtime signals remain distinct, the independent
+oracle module boundary is enforced, unsupported or stale evidence cannot pass, the cached UI
+degrades safely, and live output remains privacy-safe.
+
+Phase 6 endpoint and browser evidence:
+
+- `telemetry-oracle-route-check.mjs` verifies GET-only routing, one cached-state read, `no-store`
+  response headers, exact versioned schema projection, removal of unexpected private fields, and a
+  safe `unavailable` fallback for malformed cached state.
+- The portal browser suite covers all six text statuses, the accessible singleton dialog, current
+  and stale wording, aggregate counts, checked invariants, privacy-safe failure output, user-guide
+  linking, five-second independent polling, endpoint failure, report-node preservation, light and
+  dark themes, forced colors, and a 390-pixel mobile viewport.
+- `node scripts/test/run-checks.mjs --filter telemetry` passes all 33 telemetry suites. The final
+  `npm run check` passes repository health (101 checks), 420 CLI checks, installer collisions,
+  18 CI suites, packed-package installation, all Linux clean-machine scenario families, and 34
+  browser tests. Windows parity was skipped because PowerShell was unavailable; the two opt-in
+  documentation screenshot tests were skipped. `git diff --check` passes.
 
 Phase 5 observer evidence:
 
@@ -589,8 +635,8 @@ Phase 4 evidence:
 - The documentation capture run, `TELEMETRY_DOC_SCREENSHOTS="$PWD/docs/images/tokens" npm run
   test:portal-ui`, passes all 33 browser tests, including both opt-in screenshot tests. All ten
   light/dark captures were visually reviewed and match the tracked assets byte for byte. They show
-  the current conditions UI; the oracle badge remains future work. The internal reference now
-  documents the extracted modules, coverage rules, and comparison statuses.
+  the conditions UI as it existed at the end of Phase 4; later phases added the oracle badge. The
+  internal reference now documents the extracted modules, coverage rules, and comparison statuses.
 - The schema guard still requires all production consumers to share `privacyHash`. Its one explicit
   exception is the independent oracle observation module, covered by import-boundary tests and a
   regression that breaks production repository resolution while leaving the oracle's expectation

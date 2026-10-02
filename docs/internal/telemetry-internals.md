@@ -73,7 +73,9 @@ The CI runner, `scripts/test/telemetry-oracle-check.mjs`, owns the bundled demo,
 seeded spools, and failure shrinking. It uses the independent core and the same comparison
 projections as the runtime boundary. Synthetic failures retain detailed values and replayable
 JSONL; live comparisons return only aggregate counts, fixed coverage categories, and disagreeing
-field names. Exceptions yield a fixed error category rather than the original message.
+field names. Exceptions yield a fixed error category rather than the original message. In GitHub
+Actions, the runner also appends a concise pass/fail result and evidence totals to the job summary;
+the exit code and detailed failure log remain the build gate and replay source.
 
 ```mermaid
 flowchart LR
@@ -114,8 +116,10 @@ a result. A mismatch yields `stale`; a missing signature yields `unavailable`. S
 their checked metadata and cannot become current again without a new accepted comparison.
 
 The portal starts the observer after listening and caches only its latest sanitized result in
-memory. Restarting the process starts with `checking`. The health endpoint and Tokens badge remain
-in [Phase 6 of the live observer plan](../plans/active/telemetry-analytics-oracle-live-observer.md#phase-6-health-endpoint-and-tokens-badge).
+memory. Restarting the process starts with `checking`. `GET /api/telemetry/oracle-health`
+re-projects that cache through the versioned schema and performs no analysis or evidence read. The
+Tokens page polls the endpoint every five seconds while visible; endpoint failures change only the
+badge to `Unavailable` and do not block or re-render the report.
 
 ### Observer scheduling and freshness
 
@@ -128,6 +132,8 @@ flowchart TD
     signature -->|re-read after worker exit| fresh
     fresh -->|accept current result| cache[In-memory health cache]
     fresh -->|mark stale and schedule latest evidence| observer
+    cache -->|project cached schema| endpoint[Oracle health endpoint]
+    endpoint -->|poll every five seconds| badge[Tokens badge and details dialog]
 ```
 
 | Control | Behavior |
@@ -146,6 +152,26 @@ flowchart TD
 dependencies and clock/timer functions; `getHealth()` copies cached state without reading files or
 starting work. The independent calculation modules remain separate from both.
 
+### Runtime measurements
+
+The runtime check generates supported synthetic evidence, runs the real isolated worker, and polls
+a lightweight portal route while calculation is in progress. A representative final run produced:
+
+| Target | Written evidence | Events | Worker duration | Portal responses during calculation |
+| --- | ---: | ---: | ---: | ---: |
+| 4 MiB | 4,196,474 bytes | 1,905 | 189 ms | 9 |
+| 24 MiB | 25,167,813 bytes | 11,405 | 1,016 ms | 46 |
+
+Reproduce the two sizes with:
+
+```bash
+node scripts/test/telemetry-oracle-runtime-check.mjs --size-mib 4
+node scripts/test/telemetry-oracle-runtime-check.mjs --size-mib 24
+```
+
+Durations and response counts vary with machine load. The assertions require successful agreement,
+one worker that exits, and multiple portal responses while that worker is active.
+
 ### Verification layers
 
 | Layer | Primary check | What a pass establishes |
@@ -159,15 +185,18 @@ starting work. The independent calculation modules remain separate from both.
 | Scheduling and lifecycle | `telemetry-oracle-observer-check` | Fake-clock checks enforce debounce, maximum wait, coalescing, freshness, retries, timeout, and exit-before-restart behavior. |
 | Evidence freshness | `telemetry-oracle-signature-check` | All consumed stores participate in a metadata-only signature, including replacements and same-size edits. |
 | Runtime responsiveness | `telemetry-oracle-runtime-check` | Portal status requests complete during a real worker comparison over a near-cap synthetic spool. |
+| Cached HTTP boundary | `telemetry-oracle-route-check` | The GET route returns only the versioned allowlist, never starts analysis or reads evidence, and rejects malformed cache state. |
+| Browser status | portal UI oracle-health checks | All six text statuses, accessible singleton details, visibility-aware polling, guide linking, responsive layout, and report independence work in a real browser. |
 | Presentation rules | conditions presentation checks | Thin evidence, neutral bands, and correlation-only language are presented honestly. |
 | Browser integration | portal UI suite | The report reaches the Tokens page and its interactions render correctly. |
 
 Run `npm run test:telemetry-oracle` for the deterministic comparison summary. Run
 `node scripts/test/telemetry-oracle-core-check.mjs` and
 `node scripts/test/telemetry-oracle-live-check.mjs` for the comparison boundary checks. Run
-`node scripts/test/run-checks.mjs --filter telemetry-oracle` to include the health and worker checks.
-All eight belong to the `ci` check group run by `npm run check`. The synthetic CI summary lists case and evidence
-counts; a failure includes the seed, disagreement, metadata, and minimized replayable JSONL.
+`node scripts/test/run-checks.mjs --filter telemetry-oracle` to include the health, worker, observer,
+signature, runtime, route, and job-summary checks. All ten belong to the `ci` check group run by
+`npm run check`. The synthetic CI summary lists case and evidence counts; a failure includes the
+seed, disagreement, metadata, and minimized replayable JSONL.
 
 ### Live evidence support
 

@@ -15,7 +15,9 @@
     "telemetry-oracle-health-check.mjs",
     "telemetry-oracle-worker-check.mjs",
     "telemetry-oracle-observer-check.mjs",
+    "telemetry-oracle-route-check.mjs",
     "telemetry-oracle-signature-check.mjs",
+    "telemetry-oracle-summary-check.mjs",
     "telemetry-oracle-runtime-check.mjs"
   ]
 }

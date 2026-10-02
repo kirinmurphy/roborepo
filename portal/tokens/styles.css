@@ -25,6 +25,56 @@ main.inner { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; display
 .hint-toggle:hover { text-decoration: underline; }
 .t2-sec-body { display: grid; gap: 16px; }
 
+/* ── Cached oracle health ── */
+.t2-report-meta { display: flex; align-items: start; justify-content: space-between; gap: 16px;
+  margin-bottom: 20px; }
+.t2-report-meta .t2-meta { margin-bottom: 0; }
+.oracle-health-control { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.oracle-health-badge { display: inline-flex; align-items: center; gap: 7px; border: 1px solid currentColor;
+  border-radius: 999px; padding: 4px 9px; font-size: var(--text-2xs); font-weight: 600;
+  background: color-mix(in srgb, currentColor 8%, var(--panel)); }
+.oracle-health-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.oracle-health-badge[data-status="passed"] { color: var(--ok); }
+.oracle-health-badge[data-status="checking"] { color: var(--accent); }
+.oracle-health-badge[data-status="stale"], .oracle-health-badge[data-status="partial"] { color: var(--warn); }
+.oracle-health-badge[data-status="unavailable"] { color: var(--dim); }
+.oracle-health-badge[data-status="failed"] { color: var(--danger); }
+.oracle-health-open { width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 50%;
+  background: var(--panel); color: var(--dim); font: inherit; font-size: var(--text-2xs); cursor: pointer; }
+.oracle-health-open:hover { color: var(--ink); border-color: var(--accent); }
+.oracle-health-open:focus-visible, .oracle-health-guide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.oracle-health-dialog { width: min(680px, calc(100vw - 32px)); max-height: 85vh; overflow-y: auto;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px; box-shadow: 0 12px 48px var(--modal-shadow); }
+.oracle-health-dialog::backdrop { background: var(--backdrop); }
+.oracle-health-dialog > header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.oracle-health-dialog h2, .oracle-health-dialog h3 { margin: 0; }
+.oracle-health-dialog h2 { font-size: var(--text-lg); }
+.oracle-health-dialog h3 { font-size: var(--text-sm); }
+.oracle-health-dialog p, .oracle-health-dialog li, .oracle-health-dialog dd { font-size: var(--text-xs); line-height: 1.5; }
+.oracle-health-dialog header p { color: var(--dim); margin: 5px 0 0; }
+.oracle-health-dialog > header button { border: 0; background: transparent; color: var(--dim);
+  font: inherit; font-size: 22px; cursor: pointer; }
+.oracle-health-dialog > section { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+.oracle-health-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px;
+  margin: 18px 0 0; }
+.oracle-health-facts div { min-width: 0; }
+.oracle-health-facts dt { color: var(--dim); font-size: var(--text-2xs); }
+.oracle-health-facts dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.oracle-health-checks { columns: 2; padding-left: 20px; margin-bottom: 0; }
+.oracle-health-guide { border: 0; background: none; color: var(--accent); font: inherit;
+  font-size: var(--text-xs); padding: 0; text-decoration: underline; cursor: pointer; }
+@media (max-width: 620px) {
+  .t2-report-meta { align-items: stretch; flex-direction: column; }
+  .oracle-health-control { align-self: flex-start; }
+  .oracle-health-facts { grid-template-columns: 1fr; }
+  .oracle-health-checks { columns: 1; }
+}
+@media (forced-colors: active) {
+  .oracle-health-badge, .oracle-health-open, .oracle-health-dialog { border-color: CanvasText; }
+  .oracle-health-badge::before { background: CanvasText; }
+}
+
 /* ── Banner stack: multiple banners sit closer together than page sections ── */
 .banner-stack { display: grid; gap: 12px; }
 .banner-stack:empty { display: none; }
