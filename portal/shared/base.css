@@ -316,6 +316,7 @@ samp {
  * onto its own line below "roborepo" once the header gets too narrow to fit both — no breakpoint
  * to measure or maintain. */
 .portal-header .logo-wrapper {
+  display: flex; 
   min-width: 0;
   padding: 0.5rem 1.25rem;
   padding-left: 0;
