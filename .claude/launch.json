@@ -12,6 +12,12 @@
         "4337"
       ],
       "port": 4337
+    },
+    {
+      "name": "portal-main",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/cli/main.mjs", "web", "--no-open", "--port", "4338"],
+      "port": 4338
     }
   ]
 }

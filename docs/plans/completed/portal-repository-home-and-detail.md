@@ -1,7 +1,7 @@
 ---
 id: jqi1dof
 priority: high
-next_action: Review the Home and Runtime visual refinements on the persistent preview before integration closeout
+next_action:
 blocked_by: []
 depends_on: []
 related:
@@ -9,7 +9,7 @@ related:
   - canonical-repository-identity-plan-v2
   - h4tqm2wz
   - nl40n9vr
-reviewed_commit: 4ad4eeb
+reviewed_commit: 701061f
 ---
 
 # Evolve Portal Home into a Repository-First Workspace
@@ -209,7 +209,7 @@ Git fields a Home row needs (the likely contract surface): branch/worktree name,
 ### 6. Plans summary
 
 Home hides Plans when there are no known active or backlog plans. A populated section has one
-header: **Plans** `2 Active · 22 Backlog`, followed by the small lowercase `view all plans` link.
+header: **Plans** `2 Active · 22 Backlog`, followed by the small lowercase `all plans` link.
 Active plans link to their plan and show a subtle progress bar and percentage derived from checklist
 counts. A plan without checklist tasks shows an em dash with a “No checklist tasks” tooltip.
 
@@ -220,7 +220,7 @@ recently changed plans using Git last-commit time, falling back to filesystem mt
 ### 7. Token warnings
 
 Home hides Tokens when there are no warnings. A populated section has one header: warning icon,
-**Token Warnings**, warning count, and the small lowercase `view all activity` link to `/tokens`.
+**Token Warnings**, warning count, and the small lowercase `all activity` link to `/tokens`.
 Every repository-associated warning is listed with its kind and session context. The projection
 retains the five-item recent summary for detail alongside the full warning list for Home.
 
@@ -479,12 +479,12 @@ Adjust ordering if implementation inspection suggests a stronger sequence; Phase
 - [x] Hide empty Plans and Tokens sections and remove their colored status dots.
 - [x] Move Plans counts into its header and show active-plan checklist progress.
 - [x] List token warnings under the requested header and link to `/tokens`.
-- [ ] Review the persistent preview visually; automated browser access is blocked by host policy.
+- [x] Review Home and Runtime visually on a live portal preview.
 
 ## Implementation Status
 
-The original ten phases and the Phase 11 code changes are implemented on `codex/portal-repository-home-and-detail`. No implementation task
-is blocked. The implementation kept these material decisions from the plan and review pass:
+All eleven phases are implemented and merged to `main` in `701061f` (kirinmurphy/roborepo#22). No
+implementation task remains. The implementation kept these material decisions from the plan and review pass:
 
 - registry v1 resets directly to a fresh v2 file with no migration or backup;
 - `urlKey` is stable browser identity, while every domain join resolves to canonical
@@ -505,7 +505,9 @@ Original implementation verification (before the visual refinements):
   PowerShell is unavailable on the validation host;
 - `git diff --check` and syntax checks for the changed server/browser modules passed.
 
-## Visual Refinement Verification
+## Verification
+
+### Visual refinements
 
 - `npm run check` passed, including 420 main checks, installer/package and available Docker
   clean-machine checks, and 28 browser tests; two optional screenshot cases were skipped.
@@ -516,6 +518,25 @@ Original implementation verification (before the visual refinements):
 - `git diff --check` passed.
 - The persistent preview server was restarted on port 59468 from this worktree. Automated visual
   review of that preview remains blocked by browser policy; isolated fixture tests passed.
+
+### Completion review
+
+Reviewed on `main` at `701061f`, after the merge:
+
+- A live portal built from `main` was reviewed in a browser. Home showed repository cards,
+  checkout rows with promoted ports, Git drift warnings, the Links glyph and discovered-route
+  panel, IDLE badges, a Plans header with counts and checklist progress, and a Token Warnings
+  section linking to `/tokens`. Home checkout rows had no action menu or leftover spacing;
+  Runtime rows kept theirs. Neither page logged console errors.
+- `/repositories/<urlKey>` returned `302` to `/`, and
+  `GET /api/repositories/<urlKey>/overview` returned `200`, which confirms the parked state.
+- `npm run check` passed (exit 0): doctor (101 checks), CLI, telemetry, developer-runtime, harness,
+  installer, and 31 portal browser tests. Two opt-in documentation screenshot cases were skipped.
+- Observation, not a defect: a `urlKey` keeps the display name it was allocated under, as the
+  stable-key rule requires. On the review machine, `roborepo` had kept `runtime-page` from an
+  earlier name until it was renamed by hand in the local registry. Before that rename, Home's first
+  render after a cold portal start titled the card `runtime-page`, and the next poll corrected it.
+  The cause was not traced.
 
 ## Risks
 
@@ -578,7 +599,7 @@ Add focused coverage for:
 - Plans state is repository-associated and coverage-aware (no misleading authoritative zero before [[pljvmyh]]).
 - Tokens warnings can be repository-associated.
 - Home has no Agents subsection; repository detail retains the future configuration placeholder.
-- `/repositories/<urlKey>` works, is bookmarkable, and supports back/forward.
+- `/repositories/<urlKey>` is implemented and tested as a persistent route; while detail is parked it redirects Home (see [Detail page parked](#detail-page-parked)).
 - Dynamic repository-detail page routing is supported without breaking the static nav manifest.
 - `urlKey` is allocated at record creation, collision-safe, and consumable by [[pljvmyh]]; an older registry resets to fresh without migration or backup.
 - One failed domain does not break the full repository card or detail page.
