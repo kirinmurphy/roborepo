@@ -8,7 +8,7 @@ depends_on: []
 related:
   - qk4mz7t2
   - plan-lifecycle-suite-workflow-navigation
-reviewed_commit: 9223274
+reviewed_commit: a19032d
 ---
 
 # Associate Active Plans with Their Worktrees
@@ -53,7 +53,7 @@ from that updated `main`, not from the existing in-flight worktree.
 
 ## Current State
 
-Repository claims were checked against `main` at `9223274` and against the committed
+Repository claims were checked against `main` at `a19032d` and against the committed
 repository-first Home branch at `0ada45e`.
 
 ### Plan documents and start workflow

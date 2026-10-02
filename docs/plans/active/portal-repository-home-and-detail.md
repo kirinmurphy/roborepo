@@ -16,7 +16,7 @@ reviewed_commit: 4ad4eeb
 
 ## Summary
 
-The implemented Home is a repository directory at `/`, with persistent repository detail routes and shared Runtime checkout rows. This plan records the original implementation and the subsequent visual refinements. Agents remains at `/config`.
+The implemented Home is a repository directory at `/`, with shared Runtime checkout rows. The persistent repository detail route is implemented but currently parked (see [Detail page parked](#detail-page-parked)). This plan records the original implementation and the subsequent visual refinements. Agents remains at `/config`.
 
 This story evolves that existing shell into a repository-first workspace and adds a persistent repository detail route. Home should answer one operational question: **what repositories am I working in, what is happening in each one, and how do I immediately get back into a running project?** It is a jumping-off point, not a passive metrics dashboard. Quick access to active worktrees/checkouts and the user-facing application running in each is the primary use case.
 
@@ -231,8 +231,9 @@ Repository detail retains the unavailable placeholder until repository-scoped co
 
 ### 9. Shared repository and checkout rows
 
-Runtime supplies the canonical row layout for both pages. Repository titles link to detail, with
-shared provider links, inactive badges, and dimmed text. Home retains Agents, Pin/Unpin, Hide, and
+Runtime supplies the canonical row layout for both pages. Repository titles link to detail (on
+Home, not while detail is parked — see [Detail page parked](#detail-page-parked)), with shared
+provider links, inactive badges, and dimmed text. Home retains Agents, Pin/Unpin, Hide, and
 Forget This Repo where applicable; forgetting is limited to repositories without known checkouts.
 
 Checkout rows share glyphs, identity tooltips, copy controls, Git warnings, promoted ports, and a
@@ -250,6 +251,17 @@ Add:
 ```
 
 A persistent route (not a modal) so detail is bookmarkable, supports back/forward, and has room to grow. Resolve `urlKey` at the server boundary; keep internal data keyed by canonical `repositoryId`.
+
+#### Detail page parked
+
+**Decision — park the detail page; keep its code in the tree.** Commit `0ada45e` parked repository detail after the original ten phases landed. Until it is un-parked:
+
+- every `/repositories/<urlKey>` request redirects to Home (`redirect: "/"` on the `PAGE_ROUTES` entry in `scripts/cli/portal-server.mjs`), so the unknown/hidden-key unavailable state in section 11 is not reachable from a browser;
+- Home repository titles do not link to detail;
+- `portal/repositories/`, the `GET /api/repositories/:urlKey/overview` API, and route matching/decoding stay implemented and tested;
+- `scripts/test/portal-pages-check.mjs` and the portal UI suite assert the redirect and the unlinked titles, so un-parking is a deliberate change to those tests.
+
+The rest of this section, section 11, and Routing and Navigation describe detail as it behaves once un-parked.
 
 Detail is the repository-centric cross-domain view. The distinction from domain pages:
 
@@ -282,7 +294,7 @@ Implementation and tests must cover:
 - recognizing the `/repositories/:urlKey` page pattern while leaving `PAGES` and its five-item browser manifest unchanged;
 - extracting and decoding `urlKey`;
 - serving the repository detail shell;
-- malformed path encoding → server 404; unknown or hidden `urlKey` → overview API 404 rendered by the detail shell as an explicit unavailable state, never a redirect to Home or "all";
+- malformed path encoding → server 404; unknown or hidden `urlKey` → overview API 404 rendered by the detail shell as an explicit unavailable state, never a redirect to Home or "all" (while detail is parked, every detail URL redirects Home instead — see [Detail page parked](#detail-page-parked));
 - marking Home active in global navigation while repository detail is open;
 - preserving the existing static global-nav and metadata behavior (all continue to read `PAGES`).
 
@@ -345,7 +357,7 @@ The canonical page layout (already true except the last row) is:
 Navigation behavior:
 
 - Home always opens unscoped `/` (it is the directory; it does not use `/?repository=…`);
-- repository cards open `/repositories/<urlKey>`;
+- repository cards open `/repositories/<urlKey>` (not while detail is parked);
 - repository detail links into Plans/Tokens/Agents using the shared scope [[pljvmyh]] defines;
 - Runtime links remain unscoped;
 - browser back/forward works across Home → detail → domain pages.
@@ -480,7 +492,9 @@ is blocked. The implementation kept these material decisions from the plan and r
 - Home/detail polls read cached Runtime, Plans, and Tokens projections and never start their
   expensive refresh paths synchronously;
 - dynamic route parameters are escaped before they enter the inline browser manifest;
-- detail links remain unscoped until [[pljvmyh]] supplies shared repository scope.
+- detail links remain unscoped until [[pljvmyh]] supplies shared repository scope;
+- the detail page is parked: its route redirects Home and Home titles do not link to it (see
+  [Detail page parked](#detail-page-parked)).
 
 Original implementation verification (before the visual refinements):
 
