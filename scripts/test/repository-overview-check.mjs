@@ -101,7 +101,8 @@ assert.equal(active.domains.plans.data.recent[0].changedAt, "2026-09-29T12:00:00
 assert.deepEqual(active.domains.plans.data.recent.map((plan) => plan.id), ["active-plan", "backlog-plan"], "recent plans stay inside the trailing seven-day window");
 assert.equal(active.domains.tokens.data.warningCount, 2);
 assert.equal(active.domains.tokens.data.warnings[0].kind, "spike");
-assert.deepEqual(active.domains.plans.data.active[0].taskCounts, { total: 8, complete: 3 });
+assert.deepEqual(active.domains.plans.data.additionalActive[0].taskCounts, { total: 8, complete: 3 });
+assert.equal("active" in active.domains.plans.data, false, "the full active list stays server-side; each plan is sent once");
 assert.equal(active.domains.agents.status, "unavailable");
 assert.equal(home.repositories.find((repository) => repository.repositoryId === PINNED).domains.plans.status, "unavailable", "unscanned Plans coverage is not reported as zero");
 assert.equal(active.domains.runtime.data.checkouts[0].projectRoot, "/private/worktrees/active-feature", "shared checkout tooltips and copy controls receive the checkout path");
@@ -199,6 +200,91 @@ assert.deepEqual(
 );
 assert.equal(grouped.repositories.find((repository) => repository.repositoryId === FIXTURE_IDLE).fixture, true);
 assert.equal(grouped.repositories.find((repository) => repository.repositoryId === REAL_IDLE).fixture, false);
+
+// Plan/worktree association: exact `worktree` name against Runtime's administrative worktree name,
+// lossless, and never arbitrary when a name is ambiguous on either side.
+const ASSOC = "git:github.com/acme/associated";
+const associationRegistry = defaultRegistry();
+addRepository(ASSOC, "Associated", "2026-09-30T11:00:00.000Z", associationRegistry);
+const worktreeRoot = (rootId, name, branch) => ({ rootId, isWorktree: true, projectRoot: `/private/${rootId}`, git: { branch, worktreeName: name } });
+const associationRuntime = {
+  generatedAt: NOW.toISOString(),
+  refresh: { state: "idle", error: null },
+  repositories: [{
+    repositoryId: ASSOC,
+    name: "Associated",
+    lifecycle: { state: "active", reason: null },
+    roots: [
+      // A main checkout never matches, even if something upstream handed it a name.
+      { rootId: "main", isWorktree: false, projectRoot: "/private/main", git: { branch: "main", worktreeName: "main-claim" } },
+      worktreeRoot("matched", "feature-a", "feature/a"),
+      worktreeRoot("contested", "contested", "feature/contested"),
+      worktreeRoot("dup-1", "dup", "feature/dup-1"),
+      worktreeRoot("dup-2", "dup", "feature/dup-2"),
+      worktreeRoot("planless", "planless", "feature/planless"),
+    ],
+  }],
+};
+const assocPlan = (id, worktree, lifecycle = "active") => ({
+  repository: { repositoryId: ASSOC },
+  key: `key-${id}`,
+  plan: { id, title: `Plan ${id}`, lifecycle, worktree, taskCounts: { total: 2, complete: 1 }, gitLastChangedAt: "2026-09-29T12:00:00.000Z" },
+});
+const associationPlans = {
+  truncated: false,
+  errors: [],
+  repositories: [{ repositoryId: ASSOC }],
+  plans: [
+    assocPlan("matched", "feature-a"),
+    assocPlan("unassociated", ""),
+    assocPlan("missing-worktree", "removed-worktree"),
+    assocPlan("main-claim", "main-claim"),
+    assocPlan("contested-1", "contested"),
+    assocPlan("contested-2", "contested"),
+    assocPlan("dup-claim", "dup"),
+    assocPlan("backlog-claim", "planless", "backlog"),
+  ],
+};
+const loadAssociation = ({ runtime: runtimeData = associationRuntime, plans: plansData = associationPlans } = {}) => createRepositoryOverviewService({
+  loadRegistry: () => structuredClone(associationRegistry),
+  loadRuntime: () => { if (!runtimeData) throw new Error("runtime offline"); return structuredClone(runtimeData); },
+  loadPlans: () => { if (!plansData) throw new Error("plans offline"); return structuredClone(plansData); },
+  loadTelemetry: () => ({ status: "available", repositories: {} }),
+  now: () => NOW,
+}).loadHome().repositories.find((repository) => repository.repositoryId === ASSOC);
+
+const associated = loadAssociation();
+const checkoutPlans = Object.fromEntries(associated.domains.runtime.data.checkouts.map((checkout) => [checkout.rootId, checkout.plan?.id || null]));
+assert.deepEqual(checkoutPlans, { main: null, matched: "matched", contested: null, "dup-1": null, "dup-2": null, planless: null },
+  "only a unique plan claim on a unique linked worktree attaches; main checkouts, contested names, duplicate worktrees, and backlog plans never do");
+assert.equal(associated.domains.runtime.data.checkouts.find((checkout) => checkout.rootId === "main").worktreeName, null, "main checkouts expose no worktree name");
+assert.equal(associated.domains.runtime.data.checkouts.find((checkout) => checkout.rootId === "matched").worktreeName, "feature-a");
+assert.deepEqual(
+  associated.domains.plans.data.additionalActive.map((plan) => plan.id).sort(),
+  ["contested-1", "contested-2", "dup-claim", "main-claim", "missing-worktree", "unassociated"],
+  "every active plan that did not attach stays in Additional Plans, and the attached one is not duplicated",
+);
+assert.deepEqual(associated.domains.plans.data.counts, { active: 7, backlog: 1 }, "repository-wide counts include attached plans");
+assert.equal(associated.domains.plans.data.additionalActive.length
+  + associated.domains.runtime.data.checkouts.filter((checkout) => checkout.plan).length, 7,
+  "every active plan is sent exactly once, beneath its worktree or in Additional Plans");
+assert.deepEqual(associated.domains.runtime.data.checkouts.find((checkout) => checkout.rootId === "matched").plan,
+  { id: "matched", key: "key-matched", title: "Plan matched", lifecycle: "active", changedAt: "2026-09-29T12:00:00.000Z", worktree: "feature-a", taskCounts: { total: 2, complete: 1 } },
+  "the attached plan carries the same compact record Additional Plans rows use, and no path");
+assert.equal(associated.domains.git.data.checkouts.some((checkout) => "plan" in checkout), false, "association lives on the Runtime checkout projection only");
+
+const partialAssociation = loadAssociation({ plans: { ...associationPlans, truncated: true } });
+assert.equal(partialAssociation.domains.plans.status, "partial");
+assert.equal(partialAssociation.domains.plans.message, "Plans coverage is incomplete");
+assert.equal(partialAssociation.domains.runtime.data.checkouts.find((checkout) => checkout.rootId === "matched").plan.id, "matched", "partial coverage still associates what it has");
+
+const plansOffline = loadAssociation({ plans: null });
+assert.equal(plansOffline.domains.plans.status, "unavailable");
+assert.equal(plansOffline.domains.runtime.data.checkouts.some((checkout) => "plan" in checkout), false, "unavailable Plans data leaves every checkout unchanged");
+
+const runtimeOffline = loadAssociation({ runtime: null });
+assert.equal(runtimeOffline.domains.runtime.status, "unavailable");
+assert.equal(runtimeOffline.domains.plans.data.additionalActive.length, 7, "without Runtime every active plan is an Additional Plan");
 
 console.log("repository-overview-check passed");
 

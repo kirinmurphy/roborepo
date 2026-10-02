@@ -1,6 +1,6 @@
 import { portalFillSlots as fill, portalTpl as tpl } from "/portal/shared/api.js";
 import { mountRepositoryRow, repositoryPageUrl } from "/portal/shared/repository-components.js";
-import { appendRepositoryDomains } from "./domains.js";
+import { appendRepositoryDomains, planItem } from "./domains.js";
 import { buildRootSection } from "/portal/developer-runtime/repository-root-row.js";
 
 export function emptyState() {
@@ -65,7 +65,16 @@ function checkoutRow(checkout, actions) {
     repository: { name: "Repository" },
     mode: "home",
     onMountLinks: actions.onMountLinks,
+    footer: checkout.plan ? checkoutPlan(checkout.plan, actions.onOpenPlan) : null,
   });
+}
+
+// The plan this worktree implements, matched server-side by exact worktree name. Home builds it and
+// hands it to the shared row's generic footer, so the Runtime component stays free of Plans knowledge.
+function checkoutPlan(plan, onOpenPlan) {
+  const row = tpl("tpl-checkout-plan");
+  row.querySelector("[data-slot=plan]").append(planItem(plan, onOpenPlan));
+  return row;
 }
 
 function noCheckoutRow() {

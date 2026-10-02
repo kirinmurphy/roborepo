@@ -96,6 +96,9 @@ try {
 
   const resolvedDir = resolveGitDir(worktree);
   assert.equal(resolvedDir.isWorktree, true);
+  // The administrative name ("feature"), not the checkout directory's basename ("wt-feature").
+  assert.equal(resolvedDir.worktreeName, "feature");
+  assert.equal(resolveGitDir(primary).worktreeName, null);
   assert.equal(fs.realpathSync(resolvedDir.commonDir), fs.realpathSync(commonGitDir));
 
   // ---- Multiple clones of one remote: distinct roots, same canonical repo ----

@@ -40,8 +40,17 @@ Each card combines a compact view of several domains:
 - **Running application** — a checkout's promoted primary application is a clickable port. A host
   development server and a Compose-backed application behave the same here. Secondary ports and
   hosting diagnostics remain on Runtime.
-- **Plans** — active and backlog counts appear only when Plans has scanned the repository. Otherwise
-  the card says coverage is unavailable instead of showing a misleading zero.
+- **Worktree plan** — an active plan whose `worktree` field names a linked worktree appears beneath
+  that worktree's row. The match is exact: the plan's value must equal the worktree's Git
+  administrative name, exactly one active plan must claim it, and exactly one known worktree must
+  carry it. Branch names and checkout paths are never used to guess.
+- **Additional Plans** — shown while the repository has at least one active plan. It lists every
+  active plan that is not beneath a worktree: plans with no `worktree`, plans naming a worktree Home
+  does not currently show, and plans whose match is ambiguous. Its Active and Backlog counts cover
+  the whole repository, including plans shown beneath worktrees. When every active plan sits beneath
+  a worktree, the heading, counts, and **all plans** link remain. When Plans coverage is partial,
+  the section says so. A repository with no active plans, or one Plans has not scanned, shows no
+  Plans section. Completed plans never fill the section.
 - **Tokens** — recent repository-associated session warnings appear when a cached Tokens analysis is
   available.
 - **Agents** — repository-scoped agent configuration is currently unavailable and is labeled that
@@ -86,13 +95,26 @@ or Tokens analysis.
 
 ## Privacy boundary
 
-Repository pages receive an allowlisted browser payload. It includes the display name, stable
-browser key, lifecycle, branch/worktree identity, selected Git facts, and the promoted application
-origin. It does not include:
+Repository identity is path-free. Repository ids, summaries, browser keys, and URLs never contain an
+absolute path, so they mean the same thing on every machine and are safe to paste into a chat or an
+issue. A repository with no Git remote gets an opaque `local:` id derived from its path rather than
+the path itself.
 
-- absolute checkout paths;
+Checkout paths are machine-local facts, and the browser receives them only as checkout details. The
+Home payload includes each known checkout's path for its tooltip and copy button. It is never used
+as identity and never appears in a URL. The portal listens on `127.0.0.1` only and answers only
+requests addressed to a loopback host name, so the payload is served to this machine's browser and
+not to other websites open in it.
+
+Repository pages receive an allowlisted payload: the display name, stable browser key, lifecycle,
+branch and worktree identity, selected Git facts, checkout paths as above, and the promoted
+application's origin and Runtime key, which Home uses to discover that application's routes. A
+linked worktree's identity is its Git administrative name, which contains no path. The payload does
+not include:
+
+- absolute paths in repository ids, browser keys, or URLs;
 - the canonical internal repository id in the URL;
-- opaque Runtime keys;
+- Runtime keys for anything other than a checkout's promoted application;
 - secondary ports, PIDs, container ids, or Compose internals;
 - telemetry prompts or transcript content.
 

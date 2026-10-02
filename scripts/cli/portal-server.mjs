@@ -189,7 +189,8 @@ export function startPortalServer(handlers) {
   return server;
 }
 
-// Loopback bind keeps the portal local, but browser pages can still attempt cross-origin POSTs.
+// Loopback bind keeps the portal local, but browser pages can still attempt cross-origin POSTs, and
+// a DNS-rebound page can attempt reads (see hostAllowed).
 // Mutating routes require both a loopback Origin (when present) and the per-server token embedded
 // only in served portal HTML. Read-only routes stay tokenless for curl/debugging.
 const LOOPBACK_ORIGIN = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
@@ -197,6 +198,18 @@ function originAllowed(req) {
   const origin = req.headers.origin;
   if (!origin) return true;
   return LOOPBACK_ORIGIN.test(origin);
+}
+
+// Reads are tokenless, so the Host header is what stops DNS rebinding: a hostile page whose own
+// hostname has been re-pointed at 127.0.0.1 reaches this server, but its requests still name that
+// hostname. Only loopback names are served. A request with no Host header (HTTP/1.0) cannot have come
+// from a browser page and is let through.
+const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
+function hostAllowed(req) {
+  const host = req.headers.host;
+  if (!host) return true;
+  const hostname = host.startsWith("[") ? host.slice(0, host.indexOf("]") + 1) : host.split(":")[0];
+  return LOOPBACK_HOSTNAMES.has(hostname.toLowerCase());
 }
 
 function mutationTokenAllowed(req, token) {
@@ -216,6 +229,14 @@ function isMutation(req) {
 function route(req, res, handlers, mutationToken) {
   const [urlPath, qs = ""] = (req.url || "/").split("?");
 
+  if (!hostAllowed(req)) {
+    return send(
+      res,
+      403,
+      "application/json",
+      JSON.stringify({ error: "portal only answers loopback host names" }),
+    );
+  }
   if (isMutation(req) && !originAllowed(req)) {
     return send(
       res,

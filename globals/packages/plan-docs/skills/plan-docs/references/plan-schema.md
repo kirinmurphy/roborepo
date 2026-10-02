@@ -22,6 +22,7 @@ blocked_by: []
 depends_on: []
 related: []
 reviewed_commit:
+worktree:
 ---
 ```
 
@@ -33,6 +34,28 @@ Rules:
 - `next_action`: required for ready backlog plans and active plans; empty for completed and archived plans.
 - `blocked_by`, `depends_on`, and `related`: arrays.
 - `reviewed_commit`: commit intentionally reviewed against repository state; empty means never reviewed.
+- `worktree`: optional. Git's administrative name for the one linked worktree implementing this plan
+  — the final segment of that worktree's per-worktree gitdir (`.git/worktrees/<name>`), which
+  `git worktree list --porcelain` does not print directly; read it from the worktree's `.git` file
+  or `git rev-parse --git-dir`. Never an absolute path and never a branch name: the value is
+  repository-local and survives branch switches. Empty or absent means unassociated, which is valid
+  in every lifecycle — planning, blocked, and manually managed work need no worktree. Main
+  checkouts have no administrative name and cannot be named here. `plan-start` records it when
+  implementation begins in a linked worktree; see "Worktree association" below.
+
+## Worktree association
+
+New plans and repaired frontmatter carry an empty `worktree:` line. Historical plans without the
+line remain valid and are not bulk-migrated.
+
+The field is an exact join key, not a hint. Home attaches an active plan beneath a Runtime checkout
+only when exactly one active plan and exactly one linked worktree in the same repository share the
+name. A stale name (the worktree was removed), a duplicate claim, or an empty value leaves the plan
+listed under **Additional Plans**; nothing is inferred from branch names or plan prose.
+
+Write a value only when live Git state proves the relationship — the worktree exists now and this
+plan's implementation runs there. A value left behind after the worktree is removed is harmless: it
+matches nothing, and only active plans are joined at all.
 
 Do not add `status`, `validated`, `updated_at`, `created_at`, `owner`, `percent_complete`, `estimated_hours`, or `tags` unless a later plan explicitly adds them.
 

@@ -1,6 +1,6 @@
 ---
 name: plan-start
-description: Use when beginning implementation from an existing prepared repository plan. Inspect the current plan and repository, create or safely reuse an isolated worktree, implement every in-scope unblocked objective, make clear or reversible decisions autonomously, continue around blockers, verify the work, synchronize the plan, and report the result. Do not use for initial plan preparation, lifecycle orchestration, portal actions, integration-branch closeout, or implementation without an existing plan.
+description: Use when beginning implementation from an existing prepared repository plan. Inspect the current plan and repository, create or safely reuse an isolated worktree, record it in the canonical plan through a validated plan-only start commit, implement every in-scope unblocked objective, make clear or reversible decisions autonomously, continue around blockers, verify the work, synchronize the plan, and report the result. Do not use for initial plan preparation, lifecycle orchestration, portal actions, integration-branch closeout, or implementation without an existing plan.
 ---
 
 # Plan Start
@@ -48,6 +48,7 @@ The existing plan is the implementation contract. Verify it against the current 
 11. Keep absolute worktree paths out of repository plan documents.
 12. Record:
     - worktree path;
+    - Git administrative worktree name;
     - branch;
     - base branch;
     - starting commit.
@@ -60,6 +61,32 @@ The existing plan is the implementation contract. Verify it against the current 
     second source of truth.
 
 When deterministic RoboRepo commands exist for an operation, use them instead of reconstructing the mutation manually.
+
+## Start Transition
+
+Read `references/start-validation.md` before any step below. It holds the exact commands, the
+validator checks, and the failure behavior.
+
+Run the transition from the primary checkout, after the target worktree is resolved and before any
+implementation:
+
+1. Require the primary checkout to be on the base branch with no uncommitted changes. Otherwise stop
+   and ask the user. The one exception is the `worktreeRoot` that Preflight just wrote to
+   `docs/plans/plans-config.json` on a repository's first run: commit that file alone first, as a
+   configuration-only commit, then re-check that the checkout is clean.
+2. Resolve the target's Git administrative worktree name — not the checkout directory's basename,
+   and never a branch name or absolute path.
+3. Write `worktree: <name>` into the canonical plan, and move the plan from `backlog/` to `active/`
+   through the Plan Docs start workflow when it is not already active.
+4. Re-read Git status, stage only the old and new canonical plan paths by name, and commit the
+   plan-only start transition on the base branch. Do not push.
+5. Run the start validator against fresh disk and Git state.
+6. Enter the implementation worktree only after the validator returns `APPROVED`. The validator
+   gets at most three correction passes; a final refusal blocks this plan and is reported, never
+   worked around.
+
+This is the one lifecycle change `plan-start` makes. Plan Docs owns the move itself; `plan-start`
+owns the order, the plan-only commit, and the validator gate.
 
 ## Implementation Workflow
 
@@ -157,7 +184,8 @@ Completion does not authorize:
 - unrelated refactoring;
 - infinite retries around external blockers;
 - guessing through consequential product decisions;
-- pushing, merging, publishing, or deleting worktrees without explicit permission or repository policy.
+- pushing, merging, publishing, or deleting worktrees without explicit permission or repository policy;
+- any commit on the base branch other than the plan-only start transition.
 
 ## Final Report
 
@@ -167,6 +195,9 @@ Report:
 Implementation result
 - Plan: <id and repository-relative path>
 - Worktree: <runtime path>
+- Worktree name: <Git administrative name recorded in the plan>
+- Start transition: <commit on the base branch, or "already recorded">
+- Start validator: APPROVED after <n> correction passes, or refused with <checks>
 - Branch: <branch>
 - Base branch: <branch>
 - Starting commit: <commit>
@@ -194,7 +225,8 @@ Do not:
 
 - create a second implementation plan;
 - repeat a full planning interview unless the plan is materially stale or incomplete;
-- change lifecycle state;
+- change lifecycle state, except the backlog-to-active start transition in
+  `references/start-validation.md`;
 - own portal behavior;
 - create integration branches;
 - perform closeout or merge orchestration;

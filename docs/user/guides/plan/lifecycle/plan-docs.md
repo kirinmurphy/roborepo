@@ -101,8 +101,13 @@ blocked_by: []
 depends_on: []
 related: []
 reviewed_commit:
+worktree:
 ---
 ```
+
+Leave `worktree:` empty. `plan-start` fills it with the linked worktree's Git administrative name
+when implementation begins, which lets Home show the plan beneath that worktree. See
+[Worktree association](../../../reference/plans-portal.md#worktree-association).
 
 Use Markdown checkboxes for executable work:
 

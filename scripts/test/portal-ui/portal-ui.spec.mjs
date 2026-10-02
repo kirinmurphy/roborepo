@@ -25,20 +25,91 @@ test.describe("repository-first portal Home", () => {
     await expect(page.locator("body")).not.toContainText("/private/");
   });
 
-  test("empty Plans and Tokens sections are hidden", async ({ page }) => {
+  test("Additional Plans stays visible with no rows while empty Tokens stays hidden", async ({ page }) => {
+    await patchRoboRepo(page, (repository) => {
+      repository.domains.plans = { status: "available", data: { counts: { active: 1, backlog: 3 }, additionalActive: [], recent: [{ id: "done", title: "Recently completed plan", lifecycle: "completed" }] } };
+    });
     await page.goto("/");
     const card = roboRepoCard(page);
-    await expect(card.locator(".home-domain-row")).toHaveCount(0);
-    await expect(card.getByRole("link", { name: "all plans" })).toHaveCount(0);
+    const plans = additionalPlans(card);
+    await expect(plans.getByRole("heading", { name: "Additional Plans", exact: true })).toBeVisible();
+    await expect(plans).toContainText("1 Active · 3 Backlog");
+    await expect(plans.getByRole("link", { name: "all plans", exact: true })).toHaveAttribute("href", "/plans");
+    await expect(plans.locator(".plan-item")).toHaveCount(0);
     await expect(card).not.toContainText("No active plans");
+    await expect(card).not.toContainText("Recently completed plan");
     await expect(card).not.toContainText("Token Warnings");
+  });
+
+  test("Additional Plans states partial coverage and is omitted without active plans", async ({ page }) => {
+    let plansEnvelope;
+    await patchRoboRepo(page, (repository) => { repository.domains.plans = plansEnvelope; });
+    plansEnvelope = { status: "partial", message: "Plans coverage is incomplete", data: {
+      counts: { active: 1, backlog: 2 },
+      additionalActive: [{ id: "partial", title: "Partially scanned plan", taskCounts: { total: 2, complete: 1 } }],
+    } };
+    await page.goto("/");
+    let plans = additionalPlans(roboRepoCard(page));
+    await expect(plans).toContainText("1 Active · 2 Backlog");
+    await expect(plans).toContainText("Plans coverage is incomplete");
+    await expect(plans.getByRole("button", { name: "Partially scanned plan", exact: true })).toBeVisible();
+
+    for (const envelope of [
+      { status: "unavailable", updatedAt: null, data: null, message: "Plans has not scanned this repository" },
+      { status: "available", data: { counts: { active: 0, backlog: 0 }, additionalActive: [] } },
+      { status: "available", data: { counts: { active: 0, backlog: 5 }, additionalActive: [] } },
+    ]) {
+      plansEnvelope = envelope;
+      await page.reload();
+      const card = roboRepoCard(page);
+      await expect(card.locator(".repository-root").first()).toBeVisible();
+      await expect(additionalPlans(card)).toHaveCount(0);
+      await expect(card).not.toContainText("Plans has not scanned this repository");
+    }
+  });
+
+  test("an associated plan renders beneath its worktree and nowhere else", async ({ page }) => {
+    await patchRoboRepo(page, (repository) => {
+      const associated = { id: "assoc", key: "assoc-key", title: "Worktree plan", worktree: "home-association", taskCounts: { total: 4, complete: 2 } };
+      const contested = [
+        { id: "contested-a", title: "Contested plan A", worktree: "contested", taskCounts: { total: 0, complete: 0 } },
+        { id: "contested-b", title: "Contested plan B", worktree: "contested", taskCounts: { total: 0, complete: 0 } },
+      ];
+      const unassociated = { id: "loose", title: "Unassociated plan", worktree: "", taskCounts: { total: 1, complete: 0 } };
+      repository.domains.plans = { status: "available", data: {
+        counts: { active: 4, backlog: 0 },
+        additionalActive: [...contested, unassociated],
+      } };
+      repository.domains.runtime = { status: "available", data: { checkouts: [
+        { rootId: "main", name: "main", isWorktree: false, worktreeName: null, git: { branch: "main", provider: { ok: true } } },
+        { rootId: "assoc", name: "feature/home-association", isWorktree: true, worktreeName: "home-association", git: { branch: "feature/home-association", provider: { ok: true } }, plan: associated },
+        { rootId: "contested", name: "feature/contested", isWorktree: true, worktreeName: "contested", git: { branch: "feature/contested", provider: { ok: true } } },
+      ] } };
+    });
+    await page.goto("/");
+    const card = roboRepoCard(page);
+    const worktree = checkoutRow(card, "feature/home-association");
+    const attached = worktree.getByRole("group", { name: "Plan in this worktree" });
+    await expect(attached.getByRole("button", { name: "Worktree plan", exact: true })).toBeVisible();
+    await expect(attached.getByRole("progressbar", { name: "Worktree plan completion" })).toHaveAttribute("aria-valuenow", "50");
+    await expect(card.getByRole("button", { name: "Worktree plan", exact: true })).toHaveCount(1);
+    await expect(checkoutRow(card, "main").getByRole("group", { name: "Plan in this worktree" })).toHaveCount(0);
+    await expect(checkoutRow(card, "feature/contested").getByRole("group", { name: "Plan in this worktree" })).toHaveCount(0);
+
+    const plans = additionalPlans(card);
+    await expect(plans).toContainText("4 Active · 0 Backlog");
+    await expect(plans.locator(".plan-item")).toHaveCount(3);
+    for (const title of ["Contested plan A", "Contested plan B", "Unassociated plan"]) {
+      await expect(plans.getByRole("button", { name: title, exact: true })).toBeVisible();
+    }
+    await expect(plans.getByRole("button", { name: "Worktree plan", exact: true })).toHaveCount(0);
   });
 
   test("Home shows inline plan counts, progress and token warnings rolled up by model", async ({ page }) => {
     await homeFixture(page);
     await page.goto("/");
     const card = roboRepoCard(page);
-    await expect(card.getByRole("heading", { name: "Plans", exact: true })).toBeVisible();
+    await expect(card.getByRole("heading", { name: "Additional Plans", exact: true })).toBeVisible();
     await expect(card).toContainText("2 Active · 22 Backlog");
     await expect(card.getByRole("link", { name: "all plans", exact: true })).toHaveAttribute("href", "/plans");
     await expect(card.getByRole("progressbar", { name: "First plan completion" })).toHaveAttribute("aria-valuenow", "25");
@@ -231,14 +302,11 @@ test.describe("shared plan drawer", () => {
   test("a Home plan title opens the same drawer, read-only, without leaving Home", async ({ page }) => {
     const plans = await (await page.request.get("/api/plans")).json();
     const record = plans.plans.find((item) => item.plan.title === "Drawer fixture plan");
-    await page.route("**/api/home", async (route) => {
-      const data = await (await route.fetch()).json();
-      const repository = data.repositories.find((item) => item.displayName === "RoboRepo");
+    await patchRoboRepo(page, (repository) => {
       repository.domains.plans = { status: "available", data: {
         counts: { active: 1, backlog: 0 },
-        active: [{ id: "drawerfx", key: record.key, title: "Drawer fixture plan", taskCounts: { total: 2, complete: 1 } }],
+        additionalActive: [{ id: "drawerfx", key: record.key, title: "Drawer fixture plan", taskCounts: { total: 2, complete: 1 } }],
       } };
-      await route.fulfill({ json: data });
     });
     await page.goto("/");
     await roboRepoCard(page).getByRole("button", { name: "Drawer fixture plan" }).click();
@@ -251,6 +319,25 @@ test.describe("shared plan drawer", () => {
     await expect(drawer.locator("plan-status .chip").first()).toHaveText("Active");
     await page.keyboard.press("Escape");
     await expect(drawer).not.toBeVisible();
+  });
+
+  test("a plan beneath its worktree opens the same read-only drawer", async ({ page }) => {
+    const plans = await (await page.request.get("/api/plans")).json();
+    const record = plans.plans.find((item) => item.plan.title === "Drawer fixture plan");
+    await patchRoboRepo(page, (repository) => {
+      const plan = { id: "drawerfx", key: record.key, title: "Drawer fixture plan", worktree: "drawer-tree", taskCounts: { total: 2, complete: 1 } };
+      repository.domains.plans = { status: "available", data: { counts: { active: 1, backlog: 0 }, additionalActive: [] } };
+      repository.domains.runtime = { status: "available", data: { checkouts: [
+        { rootId: "drawer-tree", name: "feature/drawer", isWorktree: true, worktreeName: "drawer-tree", git: { branch: "feature/drawer", provider: { ok: true } }, plan },
+      ] } };
+    });
+    await page.goto("/");
+    await checkoutRow(roboRepoCard(page), "feature/drawer").getByRole("button", { name: "Drawer fixture plan" }).click();
+    const drawer = page.locator("dialog#drawer");
+    await expect(drawer).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(drawer.locator("#drawer-title")).toHaveText("Drawer fixture plan");
+    await expect(drawer.locator("plan-status option-dropdown")).toHaveCount(0);
   });
 });
 
@@ -268,23 +355,36 @@ function planRow(card, title) {
   return card.locator(".plan-item").filter({ has: card.page().getByRole("button", { name: title, exact: true }) });
 }
 
+function additionalPlans(card) {
+  return card.locator(".home-domain-row").filter({ has: card.page().getByRole("heading", { name: "Additional Plans", exact: true }) });
+}
+
+function checkoutRow(card, branch) {
+  return card.locator(".repository-root").filter({ has: card.page().getByText(branch, { exact: true }) });
+}
+
 function roboRepoCard(page) {
   return page.locator(".repository-card").filter({ has: page.getByRole("heading", { name: "RoboRepo", exact: true }) }).first();
 }
 
-async function homeFixture(page) {
+// Serves the real /api/home response with the RoboRepo repository adjusted by `mutate`, so each test
+// states only the domain data it depends on.
+async function patchRoboRepo(page, mutate) {
   await page.route("**/api/home", async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
-    const repository = data.repositories.find((item) => item.displayName === "RoboRepo");
-    repository.domains.plans = { status: "available", data: {
-      counts: { active: 2, backlog: 22 },
-      active: [
-        { id: "first", title: "First plan", taskCounts: { total: 4, complete: 1 } },
-        { id: "untracked", title: "Untracked plan", taskCounts: { total: 0, complete: 0 } },
-        { id: "finished", title: "Finished plan", taskCounts: { total: 3, complete: 3 } },
-      ],
-    } };
+    const data = await (await route.fetch()).json();
+    mutate(data.repositories.find((item) => item.displayName === "RoboRepo"));
+    await route.fulfill({ json: data });
+  });
+}
+
+async function homeFixture(page) {
+  await patchRoboRepo(page, (repository) => {
+    const additionalActive = [
+      { id: "first", title: "First plan", taskCounts: { total: 4, complete: 1 } },
+      { id: "untracked", title: "Untracked plan", taskCounts: { total: 0, complete: 0 } },
+      { id: "finished", title: "Finished plan", taskCounts: { total: 3, complete: 3 } },
+    ];
+    repository.domains.plans = { status: "available", data: { counts: { active: 2, backlog: 22 }, additionalActive } };
     repository.domains.tokens = { status: "available", data: {
       warningCount: 8,
       warnings: [
@@ -297,6 +397,5 @@ async function homeFixture(page) {
       rootId: "main", name: "main", git: { branch: "main", provider: { ok: true } },
       primaryEntrypoint: { kind: "listener", opaqueKey: "fixture", origin: "http://127.0.0.1:4317", port: 4317, links: [] },
     }] } };
-    await route.fulfill({ json: data });
   });
 }

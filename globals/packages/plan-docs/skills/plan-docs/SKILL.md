@@ -68,9 +68,10 @@ These conditions must hold before a new plan can be called created. The full rul
 - **Generate an opaque `id`** of 6-8 lowercase base36 characters. Never derive it from the title,
   filename, or slug; it survives every rename and lifecycle move.
 - **Frontmatter carries only** `id`, `priority`, `next_action`, `blocked_by`, `depends_on`,
-  `related`, and `reviewed_commit`. Do not add `status`, `validated`, `created_at`, `updated_at`,
-  `owner`, `percent_complete`, `estimated_hours`, or `tags` — changing the schema is its own
-  decision, made first.
+  `related`, `reviewed_commit`, and `worktree`. A new plan leaves `worktree:` empty; `plan-start`
+  fills it when implementation begins in a linked worktree. Do not add `status`, `validated`,
+  `created_at`, `updated_at`, `owner`, `percent_complete`, `estimated_hours`, or `tags` — changing
+  the schema is its own decision, made first.
 - **Lifecycle is the folder, never a field.** New plans are written to `docs/plans/backlog/`.
 - **Never encode lifecycle, status, dates, or versions in the filename.**
 - **Load `technical-writing` before drafting, without being asked.**

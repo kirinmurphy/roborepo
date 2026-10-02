@@ -76,6 +76,64 @@ for (const [id, { boundaryPhrases }] of Object.entries(SKILLS)) {
   }
 }
 
+// --- plan-start's start transition: worktree metadata, plan-only commit, validator gate ---
+// Prose-presence coverage like the worktree-root gate above: the transition is agent-followed, so
+// these assertions are what keep its ordering and refusal behavior from eroding in later edits.
+{
+  const skillDir = path.join(repoRoot, "globals/packages/plan-start/skills/plan-start");
+  const normalize = (text) => text.replace(/\s+/g, " ");
+  const skill = normalize(fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8"));
+  const referencePath = path.join(skillDir, "references/start-validation.md");
+  assert.ok(fs.existsSync(referencePath), "plan-start: references/start-validation.md missing");
+  const reference = normalize(fs.readFileSync(referencePath, "utf8"));
+
+  assert.ok(skill.includes("Read `references/start-validation.md` before"), "plan-start: SKILL.md must load the start-validation reference");
+  const order = ["## Start Transition", "## Implementation Workflow"].map((heading) => skill.indexOf(heading));
+  assert.ok(order[0] > 0 && order[0] < order[1], "plan-start: Start Transition must precede the Implementation Workflow");
+
+  // The transition's steps must stay in this order: metadata, lifecycle move, plan-only commit,
+  // fresh validation, and only then the context switch.
+  const transition = skill.slice(order[0], order[1]);
+  const steps = [
+    "Write `worktree: <name>` into the canonical plan",
+    "from `backlog/` to `active/`",
+    "stage only the old and new canonical plan paths",
+    "Run the start validator against fresh disk and Git state",
+    "Enter the implementation worktree only after the validator returns `APPROVED`",
+  ];
+  let cursor = -1;
+  for (const step of steps) {
+    const at = transition.indexOf(step);
+    assert.ok(at > cursor, `plan-start: start transition step missing or out of order: "${step}"`);
+    cursor = at;
+  }
+  for (const phrase of ["Do not push", "at most three correction passes", "not the checkout directory's basename", "configuration-only commit"]) {
+    assert.ok(transition.includes(phrase), `plan-start: start transition missing "${phrase}"`);
+  }
+
+  for (const phrase of [
+    "rev-parse --absolute-git-dir",
+    "Never use `git add -A` or `.`",
+    "Never fold it into the transition commit",
+    "Do not push",
+    "Enter the target worktree only on `APPROVED`",
+    "at most three correction passes",
+    "do not enter the target worktree",
+    "Read every fact fresh",
+    "lists only the plan's rename (`R`) or modification (`M`)",
+    "status --porcelain -- docs/plans",
+    "Execution is still in the primary checkout",
+  ]) {
+    assert.ok(reference.includes(phrase), `plan-start: start-validation.md missing "${phrase}"`);
+  }
+
+  // Plan Docs owns the lifecycle half of the same transition; its start workflow must agree.
+  const planDocsStart = normalize(fs.readFileSync(path.join(repoRoot, "globals/packages/plan-docs/skills/plan-docs/references/workflow-start.md"), "utf8"));
+  for (const phrase of ["Git administrative name in `worktree`", "references/start-validation.md", "do not begin step 10 until it approves"]) {
+    assert.ok(planDocsStart.includes(phrase), `plan-docs: workflow-start.md missing "${phrase}"`);
+  }
+}
+
 // --- plans-config.json stays valid JSON and, when present, worktreeRoot is a well-formed string ---
 // worktreeRoot is optional and currently absent by default in this repo's own plans-config.json
 // (a user can remove it to re-trigger plan-start's first-time confirmation gate), so this only

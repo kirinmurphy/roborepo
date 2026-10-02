@@ -109,7 +109,8 @@ so `<plan-status>` renders lifecycle and priority as chips.
 Add an entry to the relevant domain's route table in its `scripts/cli/portal-routes-<domain>.mjs`
 file (see "Server Route Dispatch") whose handler returns JSON via
 `send(res, 200, "application/json", JSON.stringify(...))`. No token or origin check is required
-for GET routes — they stay tokenless on purpose so `curl`/local debugging keeps working. Call it
+for GET routes — they stay tokenless on purpose so `curl`/local debugging keeps working. They are
+still covered by the loopback Host check described under "Mutation-Token Contract". Call it
 from the page with `portalGetJson(path)`.
 
 ### Adding a Mutating API
@@ -219,8 +220,10 @@ Each source is projected independently into a small envelope:
 The aggregate request path reads bounded in-memory projections only:
 
 - Runtime supplies its cached repository/worktree snapshot. The mapper keeps lifecycle, branch and
-  Git status, and one promoted `primaryEntrypoint` per checkout; it drops paths, opaque runtime
-  keys, secondary ports, PIDs, and container internals.
+  Git status, each checkout's `projectRoot` (for the shared tooltip and copy control, never as
+  identity), a linked worktree's `worktreeName`, and one promoted `primaryEntrypoint` per checkout,
+  including that entrypoint's opaque key for route discovery. It drops every other opaque runtime
+  key, secondary ports, PIDs, and container internals.
 - Plans supplies its last cached discovery result. Missing scan coverage is `unavailable`, not an
   authoritative zero. Recently changed plans prefer Git last-change time and fall back to mtime.
 - Tokens supplies a compact repository/session warning projection retained beside the default
@@ -234,7 +237,9 @@ them synchronously.
 
 `urlKey` is the only repository identity placed in browser routes. It is allocated once in registry
 v2 and resolves to canonical `repositoryId` at the server boundary. The aggregate payload is an
-allowlist and never includes absolute checkout paths.
+allowlist. Identity fields (`repositoryId`, `urlKey`, summaries) are path-free; the only absolute
+paths it carries are each Runtime checkout's `projectRoot`, which feeds the shared checkout tooltip
+and copy control and is never used as identity or placed in a URL.
 
 ## Self-Describing Metadata
 
@@ -297,7 +302,13 @@ runs:
    `window.PORTAL_MANIFEST.token`.
 
 A forged POST from an unrelated site fails the origin check; a POST from a script that never
-loaded a portal page fails the token check. `portalPostJson` always attaches the token from
+loaded a portal page fails the token check.
+
+Before either check, every request — reads included — must name a loopback host: a `Host` header of
+`127.0.0.1`, `localhost`, or `[::1]` (any port), or no `Host` header at all. Tokenless reads would
+otherwise be open to DNS rebinding, where a hostile page re-points its own hostname at `127.0.0.1`
+and reads portal JSON under its own origin; its requests still carry that hostname, so they get a
+403. `portalPostJson` always attaches the token from
 `portalConfig()`, so any page using it automatically satisfies this contract.
 
 ## Checks to Run
