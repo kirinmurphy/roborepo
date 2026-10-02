@@ -455,6 +455,14 @@ Decisions made during implementation without stopping, recorded for review:
     paths. The Home plan's actual rule is narrower: identity fields and URLs are path-free, while each
     checkout's path is sent for its tooltip and copy control. Both docs now say that, and the user
     reference also lists the promoted application's Runtime key, which Home uses for route discovery.
+15. **Footer slot on the shared checkout row.** At review, Home's plan row repeated the shared row's
+    padding and offset. At the user's request, `buildRootSection()` now takes a generic `footer`
+    node rendered in a `.repository-root-footer` that owns the glyph-rail grid; Home's plan row spans
+    it as a subgrid. The component still knows nothing about Plans.
+16. **Loopback Host check (outside this plan's scope, done at the user's request).** Tokenless
+    portal reads could in principle be read by a DNS-rebound page. Every request must now name a
+    loopback host (`127.0.0.1`, `localhost`, `[::1]`) or carry no `Host` header; others get a 403.
+    Covered by two `test-cli.sh` assertions and documented in `docs/internal/portal-architecture.md`.
 
 ### Verification
 

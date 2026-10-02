@@ -50,7 +50,7 @@ function repositoryCard(repository, actions) {
 }
 
 function checkoutRow(checkout, actions) {
-  const section = buildRootSection({
+  return buildRootSection({
     root: {
       rootId: checkout.rootId,
       isWorktree: checkout.isWorktree,
@@ -65,15 +65,16 @@ function checkoutRow(checkout, actions) {
     repository: { name: "Repository" },
     mode: "home",
     onMountLinks: actions.onMountLinks,
+    footer: checkout.plan ? checkoutPlan(checkout.plan, actions.onOpenPlan) : null,
   });
-  // The plan this worktree implements, matched server-side by exact worktree name. Mounted by Home
-  // onto the shared row so the Runtime component stays free of Plans knowledge.
-  if (checkout.plan) {
-    const row = tpl("tpl-checkout-plan");
-    row.querySelector("[data-slot=plan]").append(planItem(checkout.plan, actions.onOpenPlan));
-    section.append(row);
-  }
-  return section;
+}
+
+// The plan this worktree implements, matched server-side by exact worktree name. Home builds it and
+// hands it to the shared row's generic footer, so the Runtime component stays free of Plans knowledge.
+function checkoutPlan(plan, onOpenPlan) {
+  const row = tpl("tpl-checkout-plan");
+  row.querySelector("[data-slot=plan]").append(planItem(plan, onOpenPlan));
+  return row;
 }
 
 function noCheckoutRow() {

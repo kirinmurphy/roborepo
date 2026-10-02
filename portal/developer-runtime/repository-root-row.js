@@ -36,7 +36,9 @@ let memberListSequence = 0;
 
 // `root` is undefined for the main slot when nothing has resolved a rootId yet (no active listener
 // on the main checkout) — the row still renders, so the card never looks like it is missing a piece.
-export function buildRootSection({ root, departed = [], repository, composeActions, instanceActions, mode = "runtime", onMountLinks }) {
+// `footer` is an optional node the calling page hangs beneath the row head, on the same glyph rail
+// (Home mounts a worktree's plan there). The row stays agnostic about what it holds.
+export function buildRootSection({ root, departed = [], repository, composeActions, instanceActions, mode = "runtime", onMountLinks, footer = null }) {
   const section = createRepositoryCheckoutRow({ controls: mode !== "home" });
   // Lets a rebuild find "this same checkout's" row across renders (see reconcileSection in app.js)
   // to carry its open/closed state forward — rootId is stable across polls, DOM position is not.
@@ -55,6 +57,11 @@ export function buildRootSection({ root, departed = [], repository, composeActio
     mountCopyDropdown(section, root);
   }
   fillPromotedLink(section, root);
+  if (footer) {
+    const slot = section.querySelector("[data-slot=root-footer]");
+    slot.append(footer);
+    slot.hidden = false;
+  }
   if (mode === "home") {
     if (root?.primaryEntrypoint?.opaqueKey) onMountLinks?.(section.querySelector("[data-slot=root-links]"), root.primaryEntrypoint);
     section.querySelector("[data-slot=members]")?.remove();
