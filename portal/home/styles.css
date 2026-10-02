@@ -51,13 +51,16 @@ main.home-main { padding-top: 28px; padding-bottom: 40px; }
 .domain-heading h4 { margin: 0; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
 .domain-summary, .domain-link { font-size: var(--text-xs); }
 .domain-summary { color: var(--dim); }
-.domain-link { margin-left: auto; }
+/* Plain inline link: body ink and an underline, not the browser's blue/visited purple. */
+.domain-link { margin-left: auto; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.domain-link:hover { color: var(--accent); }
 .domain-details { display: grid; gap: 2px; }
 .domain-details[hidden], .plan-progress[hidden], .plan-percent[hidden], .plan-complete-badge[hidden] { display: none; }
 .domain-note { margin: 0; color: var(--dim); font-size: var(--text-xs); }
-/* The plan a worktree implements, mounted in the shared checkout row's footer. Spanning the footer
- * as a subgrid puts the glyph on the checkout glyph rail without restating the row's geometry. */
-.checkout-plan { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+/* The plan a worktree implements, mounted in the shared checkout row's footer. It sits in the
+ * footer's text column, so its glyph lines up with the worktree's branch text and the plan reads as
+ * nested under that checkout rather than as a peer on the glyph rail. */
+.checkout-plan { grid-column: 2; display: flex; align-items: center; gap: var(--checkout-glyph-gap); min-width: 0; }
 .checkout-plan .plan-item { padding: 0; }
 .plan-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: var(--text-xs); }
 /* The title opens the shared plan drawer in place; it keeps the link look because that is what

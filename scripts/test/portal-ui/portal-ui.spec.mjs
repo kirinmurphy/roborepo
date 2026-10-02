@@ -41,7 +41,7 @@ test.describe("repository-first portal Home", () => {
     await expect(card).not.toContainText("Token Warnings");
   });
 
-  test("Additional Plans states partial and unavailable Plans coverage", async ({ page }) => {
+  test("Additional Plans states partial coverage and is omitted without active plans", async ({ page }) => {
     let plansEnvelope;
     await patchRoboRepo(page, (repository) => { repository.domains.plans = plansEnvelope; });
     plansEnvelope = { status: "partial", message: "Plans coverage is incomplete", data: {
@@ -54,13 +54,18 @@ test.describe("repository-first portal Home", () => {
     await expect(plans).toContainText("Plans coverage is incomplete");
     await expect(plans.getByRole("button", { name: "Partially scanned plan", exact: true })).toBeVisible();
 
-    plansEnvelope = { status: "unavailable", updatedAt: null, data: null, message: "Plans data is unavailable" };
-    await page.reload();
-    plans = additionalPlans(roboRepoCard(page));
-    await expect(plans.getByRole("heading", { name: "Additional Plans", exact: true })).toBeVisible();
-    await expect(plans).toContainText("Plans data is unavailable");
-    await expect(plans).not.toContainText("Active ·");
-    await expect(plans.locator(".plan-item")).toHaveCount(0);
+    for (const envelope of [
+      { status: "unavailable", updatedAt: null, data: null, message: "Plans has not scanned this repository" },
+      { status: "available", data: { counts: { active: 0, backlog: 0 }, additionalActive: [] } },
+      { status: "available", data: { counts: { active: 0, backlog: 5 }, additionalActive: [] } },
+    ]) {
+      plansEnvelope = envelope;
+      await page.reload();
+      const card = roboRepoCard(page);
+      await expect(card.locator(".repository-root").first()).toBeVisible();
+      await expect(additionalPlans(card)).toHaveCount(0);
+      await expect(card).not.toContainText("Plans has not scanned this repository");
+    }
   });
 
   test("an associated plan renders beneath its worktree and nowhere else", async ({ page }) => {

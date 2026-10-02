@@ -44,12 +44,13 @@ Each card combines a compact view of several domains:
   that worktree's row. The match is exact: the plan's value must equal the worktree's Git
   administrative name, exactly one active plan must claim it, and exactly one known worktree must
   carry it. Branch names and checkout paths are never used to guess.
-- **Additional Plans** — always shown. It lists every active plan that is not beneath a worktree:
-  plans with no `worktree`, plans naming a worktree Home does not currently show, and plans whose
-  match is ambiguous. Its Active and Backlog counts cover the whole repository, including plans
-  shown beneath worktrees. With nothing left to list, the heading, counts, and **all plans** link
-  remain. When Plans coverage is partial or unavailable, the section says so instead of showing a
-  misleading zero. Completed plans never fill the section.
+- **Additional Plans** — shown while the repository has at least one active plan. It lists every
+  active plan that is not beneath a worktree: plans with no `worktree`, plans naming a worktree Home
+  does not currently show, and plans whose match is ambiguous. Its Active and Backlog counts cover
+  the whole repository, including plans shown beneath worktrees. When every active plan sits beneath
+  a worktree, the heading, counts, and **all plans** link remain. When Plans coverage is partial,
+  the section says so. A repository with no active plans, or one Plans has not scanned, shows no
+  Plans section. Completed plans never fill the section.
 - **Tokens** — recent repository-associated session warnings appear when a cached Tokens analysis is
   available.
 - **Agents** — repository-scoped agent configuration is currently unavailable and is labeled that

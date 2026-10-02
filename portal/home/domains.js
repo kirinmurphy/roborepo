@@ -1,7 +1,8 @@
 import { portalFillSlots as fill, portalTpl as tpl } from "/portal/shared/api.js";
 
 export function appendRepositoryDomains(host, domains, { onOpenPlan } = {}) {
-  host.append(additionalPlansRow(domains.plans, onOpenPlan));
+  const plans = additionalPlansRow(domains.plans, onOpenPlan);
+  if (plans) host.append(plans);
   const tokens = domains.tokens.data;
   if (tokens?.warningCount > 0) {
     const warnings = tokens.warnings || tokens.recent || [];
@@ -26,13 +27,15 @@ function domainRow(label, summary, { glyph, href, linkLabel, warning = false, de
   return node;
 }
 
-// Always rendered, so a repository's plan coverage is stated rather than inferred from an absent
-// row. Lists only the active plans no worktree row claimed (an associated plan renders beneath its
-// checkout instead, never twice), while the counts stay repository-wide. With no additional plans
-// the heading, counts and link remain and nothing stands in for the empty list.
+// Rendered only while the repository has active plans: with none, or with no Plans scan to count
+// them, there is nothing to list and the row is omitted. Lists only the active plans no worktree row
+// claimed (an associated plan renders beneath its checkout instead, never twice), while the counts
+// stay repository-wide. When every active plan is attached to a worktree the heading, counts and
+// link remain and nothing stands in for the empty list.
 function additionalPlansRow(envelope, onOpenPlan) {
   const counts = envelope.data?.counts;
-  const summary = counts ? `${counts.active} Active · ${counts.backlog} Backlog` : "";
+  if (!counts?.active) return null;
+  const summary = `${counts.active} Active · ${counts.backlog} Backlog`;
   const details = (envelope.data?.additionalActive || []).map((plan) => planItem(plan, onOpenPlan));
   if (envelope.message) details.unshift(fill(tpl("tpl-domain-note"), { message: envelope.message }));
   return domainRow("Additional Plans", summary, { glyph: "plans", href: "/plans", linkLabel: "all plans", details });

@@ -34,8 +34,8 @@ from that updated `main`, not from the existing in-flight worktree.
   worktree.
 - Associate active plans with Runtime worktree rows by exact identifier, never by branch or
   absolute-path heuristics.
-- Preserve every unassociated or ambiguous active plan in an always-visible Additional Plans
-  section.
+- Preserve every unassociated or ambiguous active plan in an Additional Plans section, shown
+  whenever the repository has active plans.
 - Keep repository-wide Active and Backlog counts unchanged by presentation grouping.
 - Backfill only associations that can be proved from live Git worktree state.
 
@@ -101,9 +101,9 @@ what changed.
   passed from `domains.js`; there is no Plans heading in `index.html` to rename.
 - Home does not currently fall back to recently completed plans. The `recent` projection exists,
   but the Home renderer does not consume it.
-- Unavailable Plans data and zero counts currently hide the Plans row. This plan intentionally
-  changes that behavior so Additional Plans remains visible and communicates available, partial,
-  or unavailable coverage.
+- Unavailable Plans data and zero counts currently hide the Plans row. This plan initially changed
+  that behavior so Additional Plans always rendered; decision 17 restored hiding for unavailable
+  data and zero active plans.
 
 ### Live migration inventory
 
@@ -251,12 +251,13 @@ section returned by `buildRootSection()` with a Home-owned subordinate plan row 
 The subordinate row opens the same read-only plan drawer as an Additional Plans row and is not
 duplicated below.
 
-Always render **Additional Plans** for every repository:
+Render **Additional Plans** while the repository has at least one active plan (revised from
+"always render" by decision 17):
 
 - `available`: show repository-wide `Active · Backlog` counts and only
   `plans.additionalActive` rows;
 - `partial`: show the available counts/rows plus the envelope's incomplete-coverage message;
-- `unavailable`: show the envelope's unavailable message and no plan rows;
+- `unavailable`, or zero active plans: omit the section;
 - zero additional rows: keep the heading, counts, and all-plans link visible without an empty-state
   placeholder or completed-plan fallback.
 
@@ -381,8 +382,9 @@ fields.
   Plans.
 - Missing, stale, or ambiguous associations leave every affected active plan visible in Additional
   Plans and never attach one arbitrarily.
-- Additional Plans remains visible for zero rows and for partial/unavailable Plans coverage, with
-  repository-wide lifecycle counts retained whenever available.
+- Additional Plans remains visible for zero rows and for partial Plans coverage while the
+  repository has active plans, with repository-wide lifecycle counts retained. It is omitted when
+  there are no active plans or Plans data is unavailable (decision 17).
 - Worktrees without plans and active plans without worktrees remain valid and render normally.
 - Focused checks, Portal UI coverage, and `npm run check` pass, or any environmental block is
   recorded without claiming completion.
@@ -399,7 +401,7 @@ merge.
 | 1 — Schema and Runtime identity | Done. Plan records expose `worktree`; scaffolds emit `worktree:`; `resolveGitDir()` and `collectGitContext()` report `worktreeName`. |
 | 2 — Start transition and validator | Done. `plan-start/SKILL.md` gains a Start Transition section; `references/start-validation.md` holds the validator; Plan Docs `workflow-start.md` owns the lifecycle half. |
 | 3 — Repository association | Done. `associatePlans()` in `repository-overview-projections.mjs` produces `checkout.plan` and `plans.additionalActive`. |
-| 4 — Home presentation | Done. Additional Plans always renders; an associated plan mounts beneath its worktree through a Home-owned template. |
+| 4 — Home presentation | Done. Additional Plans renders while active plans exist (decision 17); an associated plan mounts beneath its worktree through a Home-owned template. |
 | 5 — Migration, docs, verification | Backfill value on `main` since `684a136` (not a plan-only commit; see decision 12). Docs updated. Verification below. |
 
 ### Migration result
@@ -436,7 +438,7 @@ Decisions made during implementation without stopping, recorded for review:
 7. **Coverage messages.** The envelope message renders as a note above any rows (new
    `tpl-domain-note`); the unavailable state shows no counts.
 8. **Subordinate row semantics.** `tpl-checkout-plan` is a `group` named "Plan in this worktree",
-   using the plans glyph on the checkout glyph rail.
+   using the plans glyph indented to the checkout's text column (decision 17).
 9. **Fresh-worktree fast-forward.** The start transition fast-forwards a worktree created in the
    same run to the transition commit, so the feature branch carries the canonical plan state. A
    reused worktree's branch is left alone.
@@ -466,6 +468,14 @@ Decisions made during implementation without stopping, recorded for review:
     portal reads could in principle be read by a DNS-rebound page. Every request must now name a
     loopback host (`127.0.0.1`, `localhost`, `[::1]`) or carry no `Host` header; others get a 403.
     Covered by two `test-cli.sh` assertions and documented in `docs/internal/portal-architecture.md`.
+17. **Home presentation revisions (user request after review).** Three changes supersede parts of
+    section 4 above. The worktree plan row is indented so its glyph aligns with the worktree's
+    branch text instead of sitting on the glyph rail; it occupies the footer's text column rather
+    than spanning it as a subgrid. Additional Plans is omitted when the repository has no active
+    plans or Plans data is unavailable, including "Plans has not scanned this repository"; a
+    partial-coverage note is therefore shown only alongside active plans. The **all plans** and
+    **all activity** links use body ink with an underline instead of the browser's default link
+    colors.
 
 ### Verification
 
