@@ -10,18 +10,13 @@ import {
 } from "../cli/repositories.mjs";
 import { recordRepositoryDiscovery } from "../cli/repositories.mjs";
 import { repositorySummary, repositoryDetailPayload } from "../../modules/repositories/index.mjs";
+import { fakeResponse } from "./lib/fake-response.mjs";
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "roborepo-repo-api-"));
 const stateRoot = path.join(tempRoot, "state");
 
-// Minimal mock res capturing status/body.
-function mockRes() {
-  return { statusCode: null, body: null, headers: {},
-    writeHead(code, headers) { this.statusCode = code; Object.assign(this.headers, headers || {}); },
-    end(body) { this.body = body; } };
-}
 function get(urlPath, handlers) {
-  const res = mockRes();
+  const res = fakeResponse();
   const matched = dispatchRoutes([repositoriesRoutes], { method: "GET" }, res, urlPath, "", handlers);
   return { matched, res };
 }
@@ -91,10 +86,10 @@ try {
   assert.equal(missing.res.statusCode, 404, "unknown repository -> 404");
 
   // Non-repositories path is not matched (lets route() fall through).
-  assert.equal(dispatchRoutes([repositoriesRoutes], { method: "GET" }, mockRes(), "/api/plans", "", handlers), false);
+  assert.equal(dispatchRoutes([repositoriesRoutes], { method: "GET" }, fakeResponse(), "/api/plans", "", handlers), false);
 
   // ---- PATCH visibility via handler (POST/PATCH body path) ----
-  const res = mockRes();
+  const res = fakeResponse();
   const req = patchReq({ visibility: "hidden" });
   dispatchRoutes([repositoriesRoutes], req, res, `/api/repositories/${encoded}`, "", handlers);
   // readJsonBody consumes the request async; flush the mock's data/end below.
