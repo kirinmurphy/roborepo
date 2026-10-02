@@ -6,7 +6,7 @@ import path from "node:path";
 import { repositoriesRoutes } from "../cli/portal-routes-repositories.mjs";
 import { dispatchRoutes } from "../cli/portal-router.mjs";
 import {
-  loadRepositoriesPayload, loadRepositoryPayload, loadRepositoryAssociations, patchRepository,
+  loadRepositoriesPayload, loadRepositoryPayload, loadRepositoryPayloadByUrlKey, loadRepositoryAssociations, patchRepository,
 } from "../cli/repositories.mjs";
 import { recordRepositoryDiscovery } from "../cli/repositories.mjs";
 import { repositorySummary, repositoryDetailPayload } from "../../modules/repositories/index.mjs";
@@ -40,6 +40,8 @@ try {
   assert.ok(!/\/(Users|home|tmp|var|private)\//.test(json), "summary must not contain a filesystem path");
   assert.ok(!("root" in summary) && !("localRoots" in summary), "summary carries no root field");
   assert.equal(summary.repositoryId, id);
+  assert.equal(summary.urlKey, "roborepo");
+  assert.equal(summary.pinned, false);
   assert.equal(summary.providerUrl, "https://github.com/kirinmurphy/roborepo");
   assert.deepEqual([...summary.discoveredBy].sort(), ["developer-runtime", "plans"]);
   assert.equal(summary.capabilities.developerRuntime, true);
@@ -54,6 +56,7 @@ try {
   assert.equal(detail.localRoots.length, 1);
   assert.equal(detail.localRoots[0].kind, "primary");
   assert.ok(!("rootId" in detail.localRoots[0]), "detail localRoots expose kind/timestamps, not the opaque rootId");
+  assert.equal(loadRepositoryPayloadByUrlKey({ urlKey: "roborepo", stateRoot }).repositoryId, id);
 
   // ---- Route handler dispatch ----
   const handlers = {
@@ -62,7 +65,22 @@ try {
     loadRepositoryAssociations: (p) => loadRepositoryAssociations({ ...p, stateRoot }),
     patchRepository: (p) => patchRepository({ ...p, stateRoot }),
     enrollRepositoryInPlans: () => ({ covered: true }),
+    loadHomeOverview: () => ({ repositories: [{ repositoryId: id }] }),
+    loadRepositoryOverview: ({ urlKey }) => urlKey === "roborepo"
+      ? { repository: loadRepositoryPayloadByUrlKey({ urlKey, stateRoot }) }
+      : (() => { const error = new Error("unknown repository"); error.code = "NOT_FOUND"; throw error; })(),
   };
+
+  const home = get("/api/home", handlers);
+  assert.equal(home.res.statusCode, 200);
+  assert.equal(JSON.parse(home.res.body).repositories.length, 1);
+
+  const overview = get("/api/repositories/roborepo/overview", handlers);
+  assert.equal(overview.res.statusCode, 200);
+  assert.equal(JSON.parse(overview.res.body).repository.urlKey, "roborepo");
+  const missingOverview = get("/api/repositories/missing/overview", handlers);
+  assert.equal(missingOverview.res.statusCode, 404);
+  assert.equal(dispatchRoutes([repositoriesRoutes], { method: "GET" }, mockRes(), "/api/repositories/%E0%A4%A/overview", "", handlers), false, "malformed urlKey encoding does not match a route");
 
   const list = get("/api/repositories", handlers);
   assert.equal(list.matched, true);

@@ -27,6 +27,7 @@ import {
   resolveGitDir,
   supersededBy,
   ageOutCandidates,
+  forgetRepository,
   hideRepository,
   pinRepository,
   updateRegistry,
@@ -252,6 +253,37 @@ export function setDeveloperRuntimeRepositoryPinned({ repositoryId, pinned }) {
   return { ok: true, developerRuntime: loadDeveloperRuntimeSnapshot() };
 }
 
+export function forgetDeveloperRuntimeRepository({ repositoryId }) {
+  if (!repositoryId || typeof repositoryId !== "string") {
+    return { ok: false, status: 400, error: "repositoryId is required", developerRuntime: loadDeveloperRuntimeSnapshot() };
+  }
+  // Checked inside the mutation, against the registry about to be written, rather than the cached
+  // snapshot: that can be stale or — before the first refresh lands — empty, which would let a
+  // repository with recorded checkouts be forgotten.
+  let hasCheckouts = false;
+  try {
+    updateRegistry({
+      stateRoot,
+      mutate: (reg) => {
+        hasCheckouts = checkoutRootsFor(reg, repositoryId).length > 0;
+        return hasCheckouts ? false : forgetRepository(reg, repositoryId);
+      },
+    });
+  } catch (err) {
+    return { ok: false, status: 400, error: String(err?.message || err), developerRuntime: loadDeveloperRuntimeSnapshot() };
+  }
+  if (hasCheckouts) {
+    return {
+      ok: false,
+      status: 400,
+      error: "cannot forget a repository with known checkouts; hide it instead",
+      developerRuntime: loadDeveloperRuntimeSnapshot(),
+    };
+  }
+  scheduleRefresh();
+  return { ok: true, developerRuntime: loadDeveloperRuntimeSnapshot() };
+}
+
 export function setDeveloperRuntimePortalInfo(info) {
   portalInfo = info;
   if (lastSnapshot) {
@@ -421,6 +453,7 @@ function buildSnapshot({ discovery, settings = loadSettings({ stateRoot }), refr
     refresh,
     now,
     repositoryNames: registryDisplayNames(registry),
+    repositoryUrlKeys: registryUrlKeys(registry),
     persistedRepositories,
     idleMainCheckouts,
     hiddenRepositories: collectHiddenRepositories(registry),
@@ -732,6 +765,15 @@ function registryDisplayNames(registry = loadRegistrySafe()) {
     if (record.displayName) names.set(id, record.displayName);
   }
   return names;
+}
+
+function registryUrlKeys(registry = loadRegistrySafe()) {
+  if (!registry) return new Map();
+  const keys = new Map();
+  for (const [id, record] of Object.entries(registry.repositories || {})) {
+    if (record.urlKey) keys.set(id, record.urlKey);
+  }
+  return keys;
 }
 
 // Same read-and-degrade shape as registryDisplayNames: an unreadable registry costs the pins, not

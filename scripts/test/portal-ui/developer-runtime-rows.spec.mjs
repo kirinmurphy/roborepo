@@ -17,7 +17,7 @@ import { buildDeveloperRuntimeSnapshot, defaultSettings } from "../../../modules
 const DEMO = "git:github.com/example/demo";
 const SHOP = "git:github.com/example/shop";
 const IDLE = "git:github.com/example/idle";
-const WORKTREE_BRANCH = "codex/telemetry-tokens-conditions-report";
+const WORKTREE_BRANCH = "codex/telemetry-tokens-conditions-and-waste-report";
 const mainGit = { provider: { ok: true }, branch: "main", isWorktree: false, ahead: 0, behind: 0 };
 const worktreeGit = { provider: { ok: true }, branch: WORKTREE_BRANCH, isWorktree: true, ahead: 0, behind: 0 };
 
@@ -171,6 +171,7 @@ test.describe("Runtime checkout rows (developer-runtime-repository-row-layout)",
   test("the promoted member's Links dropdown moves into the checkout row", async ({ page }) => {
     const main = row(page, "demo-main");
     await expect(main.locator(".repository-root-head").getByRole("button", { name: "Links", exact: true })).toBeVisible();
+    await expect(main.getByRole("button", { name: "Links", exact: true }).locator("portal-icon[name=link] svg")).toBeVisible();
     await main.getByRole("button", { name: "Show 2 members" }).click();
     const memberCard = (port) => main.locator("[data-slot=members] .instance-card")
       .filter({ has: page.getByRole("link", { name: `:${port}`, exact: true }) });

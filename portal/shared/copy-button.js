@@ -17,7 +17,7 @@ import { portalCopyText, portalTpl as tpl, portalFillSlots as fill } from "./api
 const COPIED_DURATION_MS = 5000;
 
 class PortalCopyButton extends HTMLElement {
-  static observedAttributes = ["label", "icon", "disabled"];
+  static observedAttributes = ["label", "icon", "icon-size", "disabled"];
 
   connectedCallback() {
     if (this.button) {
@@ -63,7 +63,11 @@ class PortalCopyButton extends HTMLElement {
     // and this method only refreshes the aria-label + disabled state.
     if (!this._copied) {
       const icon = this.button.querySelector('[data-slot="icon"]');
-      if (icon) icon.setAttribute("name", this.getAttribute("icon") || "copy");
+      if (icon) {
+        icon.setAttribute("name", this.getAttribute("icon") || "copy");
+        // An icon-only button beside an icon dropdown passes the dropdown's step so the two match.
+        icon.setAttribute("size", this.getAttribute("icon-size") || "sm");
+      }
       const labelEl = this.button.querySelector('[data-slot="label"]');
       if (labelEl) labelEl.textContent = label || "";
     }

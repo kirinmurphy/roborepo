@@ -1,7 +1,7 @@
 ---
 id: jqi1dof
 priority: high
-next_action: Review the completed implementation and decide whether to commit it or begin integration closeout
+next_action: Review the Home and Runtime visual refinements on the persistent preview before integration closeout
 blocked_by: []
 depends_on: []
 related:
@@ -16,7 +16,7 @@ reviewed_commit: 4ad4eeb
 
 ## Summary
 
-Home already exists. `scripts/cli/portal-server.mjs` serves a `home` page at `/` as the default open destination, and Agents already lives at its canonical `/config` route. What Home is *not* yet is repository-first: `portal/home/index.html` is a static welcome page with four section cards (Agents, Plans, Tokens, Runtime) and no page script.
+The implemented Home is a repository directory at `/`, with shared Runtime checkout rows. The persistent repository detail route is implemented but currently parked (see [Detail page parked](#detail-page-parked)). This plan records the original implementation and the subsequent visual refinements. Agents remains at `/config`.
 
 This story evolves that existing shell into a repository-first workspace and adds a persistent repository detail route. Home should answer one operational question: **what repositories am I working in, what is happening in each one, and how do I immediately get back into a running project?** It is a jumping-off point, not a passive metrics dashboard. Quick access to active worktrees/checkouts and the user-facing application running in each is the primary use case.
 
@@ -32,10 +32,10 @@ Repository detail lives at `/repositories/<urlKey>`: a bookmarkable, back/forwar
 - Add `/repositories/<urlKey>` as a persistent repository detail route.
 - Allocate a stable browser `urlKey` as repository identity (the minimum identity work the detail route requires), designed so [[pljvmyh]] consumes it unchanged.
 - Reuse the completed Runtime workspace infrastructure (`deriveLifecycle`, `lastSeenAtFor`, `primaryEntrypoint`, the private local-root index, `pinRepository`) rather than building a second repository lifecycle/recency model.
-- Show concise per-repository Git, Runtime, Plans, Tokens, and Agents status without duplicating the full domain pages.
+- Show concise per-repository Git, Runtime, Plans, and Tokens status without duplicating the full domain pages.
 - Keep Runtime the deeper operational surface; Home shows the useful application entrypoint, Runtime explains how it is hosted.
 - Degrade per domain: one failed domain must not remove a repository from Home or detail.
-- Keep normal browser payloads free of absolute filesystem paths.
+- Keep repository identity payloads path-free; supply checkout paths only through the local workspace projection for shared tooltips and copy controls.
 
 ## Non-goals
 
@@ -47,11 +47,11 @@ Repository detail lives at `/repositories/<urlKey>`: a bookmarkable, back/forwar
 - Exposing secondary Runtime ports, container IDs, Compose internals, PIDs, or raw listener inventory on Home.
 - A modal-only repository detail experience.
 - Broad global cross-cutting dashboards: global telemetry-threshold policy, a structured Doctor redesign, Doctor caching architecture, an installation health dashboard, a generic Attention/health aggregator. Repository-associated warnings are in scope only where they directly improve the repository experience.
-- Exposing repository checkout paths on Home or detail.
+- Exposing private registry alias/path indexes; checkout tooltips and copy controls use the local workspace projection.
 
 ## Current State
 
-Verified against `80728a7`.
+Original baseline, verified against `80728a7`. The implementation status below records the current refinements.
 
 **Already shipped — do not re-plan:**
 
@@ -166,7 +166,7 @@ Required behavior (exact layout may evolve):
 - inactive checkouts stay visible without a link;
 - Home never requires navigating to Runtime to open an already-running worktree.
 
-The data already exists: `buildDeveloperRuntimeSnapshot` produces `repository.roots[]`, each with `isWorktree`, `git` (branch), and `primaryEntrypoint`. Home consumes that repository-keyed view; it does not re-enumerate checkouts. For a repository with unusually many worktrees, use a compact/collapsible presentation rather than collapsing the rows into an aggregate count.
+The data already exists: `buildDeveloperRuntimeSnapshot` produces `repository.roots[]`, each with `isWorktree`, `git` (branch), and `primaryEntrypoint`. Home consumes that repository-keyed view; it does not re-enumerate checkouts. Use the same compact checkout row as Runtime, with every known checkout visible.
 
 ### 4. Runtime behavior on Home: promoted primary entrypoint only
 
@@ -206,43 +206,41 @@ The architectural principle, not the exact copy, is the requirement: **checkout/
 
 Git fields a Home row needs (the likely contract surface): branch/worktree name, dirty state, ahead/behind, a notable drift warning, current/default branch where useful. Keep it compact; the deeper Git view belongs on repository detail, which can read more from the same contract.
 
-### 6. Plans summary (coverage-aware)
+### 6. Plans summary
 
-Home shows repository-associated plan information: active count, backlog count, and recently changed where useful.
+Home hides Plans when there are no known active or backlog plans. A populated section has one
+header: **Plans** `2 Active · 22 Backlog`, followed by the small lowercase `view all plans` link.
+Active plans link to their plan and show a subtle progress bar and percentage derived from checklist
+counts. A plan without checklist tasks shows an em dash with a “No checklist tasks” tooltip.
 
-Until [[pljvmyh]] lands, **Plans still owns its `discoveryRoots`** (`modules/plan-docs/index.mjs`). A repository Home knows about may be entirely outside what Plans has scanned. Therefore Home must not render `0 plans` as an authoritative zero. Represent domain coverage explicitly — a small state such as `available` / `partial` / `unavailable` / `stale` (or a simpler equivalent) — so "not scanned" never looks like "no plans". Home consumes whatever repository-associated plan data exists today; it does not redesign Plans discovery. That redesign is [[pljvmyh]], which resolves this coverage ambiguity by making Plans scan the canonical repository set.
+The projection retains per-domain coverage and freshness. Hidden sections do not assert that an
+unscanned repository has zero plans. Plans discovery remains owned by [[pljvmyh]]. Detail retains
+recently changed plans using Git last-commit time, falling back to filesystem mtime, within seven days.
 
-For "recently changed", prefer the plan file's Git last-commit timestamp, falling back to filesystem mtime; label it **Recently changed**, not "created" (do not infer creation from first discovery). Use a trailing seven-day window.
+### 7. Token warnings
 
-### 7. Tokens summary
+Home hides Tokens when there are no warnings. A populated section has one header: warning icon,
+**Token Warnings**, warning count, and the small lowercase `view all activity` link to `/tokens`.
+Every repository-associated warning is listed with its kind and session context. The projection
+retains the five-item recent summary for detail alongside the full warning list for Home.
 
-Keep a compact repository-level token/session signal on Home: warning count, highest severity, or recent concerning session state. Repository detail can expand it. This story does not rewrite the Tokens dashboard and does not depend on global telemetry-policy work. The Tokens report also returns `waste` totals (each turn counted once); a repository-scoped waste share is a candidate signal once shared scope lands.
+### 8. Agents/config
 
-### 8. Agents/config summary
+Home has no Agents summary subsection. Its repository action menu retains the Agents link.
+Repository detail retains the unavailable placeholder until repository-scoped configuration exists.
 
-Agent configuration is not repository-aware yet. Home/detail establish a stable conceptual slot, but the initial state is `unavailable`; do not claim `not configured` when no repository-scoped check exists. Future repository-aware config can replace the envelope with `configured` or `not-configured` data without changing the card contract.
+### 9. Shared repository and checkout rows
 
-### 9. Repository card surface
+Runtime supplies the canonical row layout for both pages. Repository titles link to detail (on
+Home, not while detail is parked — see [Detail page parked](#detail-page-parked)), with shared
+provider links, inactive badges, and dimmed text. Home retains Agents, Pin/Unpin, Hide, and
+Forget This Repo where applicable; forgetting is limited to repositories without known checkouts.
 
-A repository Home surface might look like this (illustrative only — Git state may instead sit alongside the checkout rows if that reads cleaner; do not lock the plan to a redundant layout):
-
-```text
-my-project
-
-main                  :4317 ↗
-feature/new-layout    :5173 ↗
-fix/auth
-experiment/foo        :3000 ↗
-
-Git      1 dirty · 1 behind
-Plans    2 active · 4 backlog
-Tokens   1 warning
-Agents   Unavailable
-
-View repository →
-```
-
-The required *behavior* (identifiable checkouts, immediate access to running apps, compact cross-domain status, coverage honesty) outranks the exact section structure.
+Checkout rows share glyphs, identity tooltips, copy controls, Git warnings, promoted ports, and a
+Links glyph. Links opens the shared discovered-page/API panel; Home offers navigation and API
+inspection, while Runtime owns saved-link editing. The local workspace projection includes the
+promoted application's opaque key for lazy route discovery. Home omits member expansion and the
+checkout action menu, including its empty spacing wrapper.
 
 ### 10. Persistent repository detail route
 
@@ -253,6 +251,17 @@ Add:
 ```
 
 A persistent route (not a modal) so detail is bookmarkable, supports back/forward, and has room to grow. Resolve `urlKey` at the server boundary; keep internal data keyed by canonical `repositoryId`.
+
+#### Detail page parked
+
+**Decision — park the detail page; keep its code in the tree.** Commit `0ada45e` parked repository detail after the original ten phases landed. Until it is un-parked:
+
+- every `/repositories/<urlKey>` request redirects to Home (`redirect: "/"` on the `PAGE_ROUTES` entry in `scripts/cli/portal-server.mjs`), so the unknown/hidden-key unavailable state in section 11 is not reachable from a browser;
+- Home repository titles do not link to detail;
+- `portal/repositories/`, the `GET /api/repositories/:urlKey/overview` API, and route matching/decoding stay implemented and tested;
+- `scripts/test/portal-pages-check.mjs` and the portal UI suite assert the redirect and the unlinked titles, so un-parking is a deliberate change to those tests.
+
+The rest of this section, section 11, and Routing and Navigation describe detail as it behaves once un-parked.
 
 Detail is the repository-centric cross-domain view. The distinction from domain pages:
 
@@ -285,7 +294,7 @@ Implementation and tests must cover:
 - recognizing the `/repositories/:urlKey` page pattern while leaving `PAGES` and its five-item browser manifest unchanged;
 - extracting and decoding `urlKey`;
 - serving the repository detail shell;
-- malformed path encoding → server 404; unknown or hidden `urlKey` → overview API 404 rendered by the detail shell as an explicit unavailable state, never a redirect to Home or "all";
+- malformed path encoding → server 404; unknown or hidden `urlKey` → overview API 404 rendered by the detail shell as an explicit unavailable state, never a redirect to Home or "all" (while detail is parked, every detail URL redirects Home instead — see [Detail page parked](#detail-page-parked));
 - marking Home active in global navigation while repository detail is open;
 - preserving the existing static global-nav and metadata behavior (all continue to read `PAGES`).
 
@@ -348,7 +357,7 @@ The canonical page layout (already true except the last row) is:
 Navigation behavior:
 
 - Home always opens unscoped `/` (it is the directory; it does not use `/?repository=…`);
-- repository cards open `/repositories/<urlKey>`;
+- repository cards open `/repositories/<urlKey>` (not while detail is parked);
 - repository detail links into Plans/Tokens/Agents using the shared scope [[pljvmyh]] defines;
 - Runtime links remain unscoped;
 - browser back/forward works across Home → detail → domain pages.
@@ -421,7 +430,7 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 - [x] Render every known checkout/worktree with branch/name.
 - [x] Associate the promoted Runtime entrypoint per checkout.
 - [x] Keep inactive checkouts visible without a link.
-- [x] Use a compact/collapsible presentation for repositories with many worktrees.
+- [x] Render all checkouts using Runtime’s compact row component.
 
 ### Phase 5 — Runtime quick accessibility
 
@@ -451,7 +460,7 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 
 ### Phase 9 — Agents/config integration
 
-- [x] Render the repository agent/config slot as `unavailable`; reserve `configured`/`not-configured` for a future real repository-scoped check.
+- [x] Keep the Agents link in Home’s repository menu and the unavailable configuration placeholder on detail.
 
 ### Phase 10 — Repository detail composition and polish
 
@@ -463,9 +472,18 @@ Scoped domain links (`/plans?repository=<urlKey>`, etc.) depend on the shared sc
 
 Adjust ordering if implementation inspection suggests a stronger sequence; Phases 1–2 (identity + routing) should land before the visible directory work in Phase 3.
 
+### Phase 11 — Home visual refinements
+
+- [x] Render the shared Links glyph and discovered-route panel on Home and Runtime.
+- [x] Remove Home’s empty checkout-menu spacing.
+- [x] Hide empty Plans and Tokens sections and remove their colored status dots.
+- [x] Move Plans counts into its header and show active-plan checklist progress.
+- [x] List token warnings under the requested header and link to `/tokens`.
+- [ ] Review the persistent preview visually; automated browser access is blocked by host policy.
+
 ## Implementation Status
 
-All ten phases are implemented on `codex/portal-repository-home-and-detail`. No implementation task
+The original ten phases and the Phase 11 code changes are implemented on `codex/portal-repository-home-and-detail`. No implementation task
 is blocked. The implementation kept these material decisions from the plan and review pass:
 
 - registry v1 resets directly to a fresh v2 file with no migration or backup;
@@ -474,9 +492,11 @@ is blocked. The implementation kept these material decisions from the plan and r
 - Home/detail polls read cached Runtime, Plans, and Tokens projections and never start their
   expensive refresh paths synchronously;
 - dynamic route parameters are escaped before they enter the inline browser manifest;
-- detail links remain unscoped until [[pljvmyh]] supplies shared repository scope.
+- detail links remain unscoped until [[pljvmyh]] supplies shared repository scope;
+- the detail page is parked: its route redirects Home and Home titles do not link to it (see
+  [Detail page parked](#detail-page-parked)).
 
-Verification completed successfully:
+Original implementation verification (before the visual refinements):
 
 - the exhaustive unit run passed 117/117 suites;
 - the portal browser run passed 24 tests with two opt-in documentation screenshot cases skipped;
@@ -484,6 +504,18 @@ Verification completed successfully:
   available Docker clean-machine, and browser gates; Windows installer parity was skipped because
   PowerShell is unavailable on the validation host;
 - `git diff --check` and syntax checks for the changed server/browser modules passed.
+
+## Visual Refinement Verification
+
+- `npm run check` passed, including 420 main checks, installer/package and available Docker
+  clean-machine checks, and 28 browser tests; two optional screenshot cases were skipped.
+- Windows installer parity was skipped because PowerShell is unavailable.
+- Focused repository-overview and telemetry-overview checks passed. Browser regressions reproduced
+  the missing glyph and Home Links control before the fixes, then passed afterward.
+- The active plan passed schema, lifecycle, naming, and relationship validation.
+- `git diff --check` passed.
+- The persistent preview server was restarted on port 59468 from this worktree. Automated visual
+  review of that preview remains blocked by browser policy; isolated fixture tests passed.
 
 ## Risks
 
@@ -526,11 +558,11 @@ Add focused coverage for:
 - coverage-aware Plans state (no misleading authoritative zero when Plans has not scanned a repository);
 - recently-changed plan timestamp precedence and seven-day boundaries under a fixed clock;
 - repository-associated Tokens warnings;
-- Agents stable-state rendering;
+- Home omitting the Agents subsection while preserving its menu link;
 - partial responses when one domain fails, with the repository card still rendering;
 - stale domain envelopes preserving last successful data and per-domain timestamps;
 - Home/detail requests avoiding synchronous Runtime discovery, Plans refresh, or telemetry analysis; Runtime may schedule its established asynchronous refresh after returning the cached snapshot;
-- no absolute paths in Home/detail browser payloads.
+- path-free identity payloads and checkout paths scoped to local tooltip/copy data.
 
 ## Acceptance Criteria
 
@@ -545,11 +577,11 @@ Add focused coverage for:
 - Git state is represented on Home and expanded on detail.
 - Plans state is repository-associated and coverage-aware (no misleading authoritative zero before [[pljvmyh]]).
 - Tokens warnings can be repository-associated.
-- Agents has a stable future-facing state.
+- Home has no Agents subsection; repository detail retains the future configuration placeholder.
 - `/repositories/<urlKey>` works, is bookmarkable, and supports back/forward.
 - Dynamic repository-detail page routing is supported without breaking the static nav manifest.
 - `urlKey` is allocated at record creation, collision-safe, and consumable by [[pljvmyh]]; an older registry resets to fresh without migration or backup.
 - One failed domain does not break the full repository card or detail page.
-- No absolute filesystem paths leak through general browser-safe repository payloads.
+- General repository identity payloads stay path-free; local checkout tooltip/copy data is projected explicitly.
 - Runtime remains the deeper operational surface.
 - Targeted unit/browser checks and the full `npm run check` gate pass.

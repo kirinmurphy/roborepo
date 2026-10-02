@@ -9,6 +9,7 @@ import {
   safeRepositoryId,
   validateRegistry,
 } from "./schema.mjs";
+import { allocateRepositoryUrlKey, validateRepositoryUrlKey } from "./url-key.mjs";
 
 import { LAST_SEEN_DEBOUNCE_MS } from "./config.mjs";
 
@@ -27,12 +28,14 @@ export function loadRegistry({ stateRoot, fsApi = fs } = {}) {
   const filePath = registryPathFor(stateRoot);
   try {
     const parsed = JSON.parse(fsApi.readFileSync(filePath, "utf8"));
-    const migrated = migrateRegistry(parsed);
-    if (parsed.version !== REGISTRY_VERSION) {
-      backupRegistryFile(filePath, parsed.version, fsApi);
-      writeRegistry({ stateRoot, registry: migrated, fsApi });
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("repository registry must be an object");
+    if (Number.isInteger(parsed.version) && parsed.version < REGISTRY_VERSION) {
+      const fresh = defaultRegistry();
+      writeRegistry({ stateRoot, registry: fresh, fsApi });
+      return fresh;
     }
-    return validateRegistry(migrated);
+    if (parsed.version !== REGISTRY_VERSION) throw new Error(`unsupported repository registry version: ${parsed.version}`);
+    return validateRegistry(parsed);
   } catch (err) {
     if (err && err.code === "ENOENT") return defaultRegistry();
     if (err instanceof SyntaxError) throw new Error("repository registry contains malformed JSON");
@@ -68,25 +71,6 @@ export function updateRegistry({ stateRoot, mutate, expectedRevision, fsApi = fs
   return next;
 }
 
-function migrateRegistry(parsed) {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("repository registry must be an object");
-  if (parsed.version === REGISTRY_VERSION) return parsed;
-  // No prior versions exist yet. When v2 arrives, add a v1->v2 branch here (mirrors
-  // developer-runtime migrateSettings) and back up the old file in loadRegistry before rewriting.
-  throw new Error(`unsupported repository registry version: ${parsed.version}`);
-}
-
-function backupRegistryFile(filePath, version, fsApi) {
-  const backupPath = filePath.replace(/registry\.json$/, `registry.v${version}.backup.json`);
-  try {
-    fsApi.accessSync(backupPath);
-    return; // Never overwrite an existing backup (idempotent re-migration).
-  } catch {}
-  try {
-    fsApi.copyFileSync(filePath, backupPath);
-  } catch {}
-}
-
 // ---- In-memory mutators (operate on a registry clone; used inside updateRegistry) ----
 
 // Shared guard: every mutator needs an existing record and fails identically without one.
@@ -102,7 +86,8 @@ export function upsertRepository(registry, { id, kind, displayName, providerUrl 
   safeRepositoryId(id);
   const existing = registry.repositories[id];
   if (!existing) {
-    const record = newRepositoryRecord(id, { kind, displayName, providerUrl, normalizedRemote, now });
+    const urlKey = allocateRepositoryUrlKey(registry, { repositoryId: id, displayName });
+    const record = newRepositoryRecord(id, { kind, urlKey, displayName, providerUrl, normalizedRemote, now });
     registry.repositories[id] = record;
     return record;
   }
@@ -111,6 +96,16 @@ export function upsertRepository(registry, { id, kind, displayName, providerUrl 
   if (normalizedRemote != null && existing.normalizedRemote !== normalizedRemote) existing.normalizedRemote = normalizedRemote;
   existing.updatedAt = now;
   return existing;
+}
+
+export function repositoryIdForUrlKey(registry, urlKey, { includeHidden = false } = {}) {
+  validateRepositoryUrlKey(urlKey);
+  const source = Object.values(registry.repositories || {}).find((record) => record.urlKey === urlKey);
+  if (!source) return null;
+  const repositoryId = resolveRegistryAlias(registry, source.id);
+  const record = registry.repositories?.[repositoryId];
+  if (!record || (!includeHidden && record.visibility === "hidden")) return null;
+  return repositoryId;
 }
 
 // Append or refresh a discovery-provenance entry for one source. Idempotent per source: repeated
@@ -232,6 +227,21 @@ export function hideRepository(registry, id, { hidden, now = new Date().toISOStr
   if (hidden) delete record.restoredAt;
   else record.restoredAt = now;
   record.updatedAt = now;
+  return true;
+}
+
+// Explicitly forget an observed repository. This is reserved for the UI's no-known-checkout
+// action: it removes the registry observation, not files in the checkout and not domain data held
+// elsewhere. A future scan can register the repository again if it is observed later.
+export function forgetRepository(registry, id) {
+  requireRecord(registry, id, "forget");
+  delete registry.repositories[id];
+  for (const [source, target] of Object.entries(registry.aliases || {})) {
+    if (source === id || target === id) delete registry.aliases[source];
+  }
+  for (const [rootId, entry] of Object.entries(registry.localRootPaths || {})) {
+    if (entry.repositoryId === id) delete registry.localRootPaths[rootId];
+  }
   return true;
 }
 

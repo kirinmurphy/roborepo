@@ -19,6 +19,22 @@ function writeResult(res, fn) {
 export const repositoriesRoutes = defineRoutes([
   {
     method: "GET",
+    path: "/api/home",
+    handler: (req, res, { handlers }) => {
+      writeResult(res, () => handlers.loadHomeOverview());
+      return true;
+    },
+  },
+  {
+    method: "GET",
+    path: "/api/repositories/:urlKey/overview",
+    handler: (req, res, { params, handlers }) => {
+      writeResult(res, () => handlers.loadRepositoryOverview({ urlKey: params.urlKey }));
+      return true;
+    },
+  },
+  {
+    method: "GET",
     path: "/api/repositories",
     handler: (req, res, { handlers }) => {
       send(res, 200, "application/json", JSON.stringify(handlers.loadRepositories()));

@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { repoRoot } from "./paths.mjs";
 import { computePortalSourceHash } from "./portal-source-hash.mjs";
 import { send } from "./portal-routes-http.mjs";
-import { dispatchRoutes, validateRouteTables } from "./portal-router.mjs";
+import { dispatchRoutes, matchSegments, validateRouteTables } from "./portal-router.mjs";
 import { configRoutes } from "./portal-routes-config.mjs";
 import { maintenanceRoutes } from "./portal-routes-maintenance.mjs";
 import { plansRoutes } from "./portal-routes-plans.mjs";
@@ -55,7 +55,7 @@ const STATIC_TYPES = {
 // marks the page served at "/" (what `roborepo web` opens). Home owns "/" as its canonical route;
 // Agents lives at canonical "/config". Order here is the global nav order.
 export const PAGES = [
-  { path: "/", id: "home", title: "Home", dir: "home", default: true },
+  { path: "/", id: "home", title: "Repos", dir: "home", default: true },
   { path: "/config", id: "config", title: "Agents", dir: "config" },
   { path: "/plans", id: "plans", title: "Plans", dir: "plans" },
   // The token report owns /tokens (id/dir keep the tokens module paths).
@@ -67,9 +67,20 @@ export const PAGES = [
     dir: "developer-runtime",
   },
 ];
-const PAGE_BY_PATH = new Map(PAGES.map((p) => [p.path, p]));
+export const PAGE_ROUTES = [
+  ...PAGES.map((page) => ({ ...page, navId: page.id })),
+  // Parked: the detail page stays in the tree but every request redirects Home until it returns.
+  { path: "/repositories/:urlKey", id: "repository-detail", navId: "home", title: "Repository", dir: "repositories", redirect: "/" },
+].map((page) => ({ ...page, segments: page.path.split("/").filter(Boolean) }));
 // Shape shared by /api/portal/status and the browser-injected manifest so both can never drift.
 const pageManifest = () => PAGES.map(({ path, id, title }) => ({ path, id, title }));
+
+export function serializeInlineJson(value) {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
 
 // The <head> boilerplate (theme-flash guard + meta tags) is identical across every page except
 // the title and stylesheet href, so each page's index.html holds just a {{HEAD}} marker instead
@@ -113,17 +124,23 @@ const WIDGET_TEMPLATES_PARTIAL_PATH = path.join(
 );
 const renderWidgetTemplates = () => fs.readFileSync(WIDGET_TEMPLATES_PARTIAL_PATH, "utf8");
 
-const pageHtml = (page, token) =>
+// The plan detail drawer (dialog, its templates, and its stylesheet link) — shared by Plans and
+// Home so a plan title opens the same popup on both. Only pages that place {{PLAN_DRAWER}} get it.
+const PLAN_DRAWER_PARTIAL_PATH = path.join(PORTAL_DIR, "plans", "plan-drawer-partial.html");
+const renderPlanDrawer = () => fs.readFileSync(PLAN_DRAWER_PARTIAL_PATH, "utf8");
+
+const pageHtml = (page, token, routeParams = {}) =>
   fs
     .readFileSync(path.join(PORTAL_DIR, page.dir, "index.html"), "utf8")
     .replace("{{HEAD}}", renderHead(page))
     .replace("{{CHROME}}", renderChrome())
     .replace("{{LOADING}}", renderLoading())
     .replace("{{WIDGET_TEMPLATES}}", renderWidgetTemplates())
+    .replace("{{PLAN_DRAWER}}", () => renderPlanDrawer())
     .replace(
       "</head>",
       `<meta name="cli-portal-token" content="${token}" />\n` +
-        `<script>window.PORTAL_MANIFEST = ${JSON.stringify({ token, pages: pageManifest() })};</script>\n</head>`,
+      `<script>window.PORTAL_MANIFEST = ${serializeInlineJson({ token, pages: pageManifest(), currentPageId: page.navId || page.id, routeParams })};</script>\n</head>`,
     );
 
 export function startPortalServer(handlers) {
@@ -226,10 +243,23 @@ function route(req, res, handlers, mutationToken) {
 }
 
 function handlePortalPage(req, res, urlPath, mutationToken) {
-  const page = PAGE_BY_PATH.get(urlPath);
-  if (!page) return false;
-  send(res, 200, "text/html; charset=utf-8", pageHtml(page, mutationToken));
+  const match = matchPortalPage(urlPath);
+  if (!match) return false;
+  if (match.page.redirect) {
+    res.writeHead(302, { Location: match.page.redirect });
+    res.end();
+    return true;
+  }
+  send(res, 200, "text/html; charset=utf-8", pageHtml(match.page, mutationToken, match.params));
   return true;
+}
+
+export function matchPortalPage(urlPath) {
+  for (const page of PAGE_ROUTES) {
+    const params = matchSegments(page.segments, urlPath);
+    if (params !== null) return { page, params };
+  }
+  return null;
 }
 
 function handlePortalAsset(req, res, urlPath) {

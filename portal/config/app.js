@@ -131,7 +131,7 @@ function applySnapshot(snap) {
     last = changed;
     render(snap);
   }
-  portalSetUpdatedAt();
+  portalSetUpdatedAt(new Date(), { cadenceMs: POLL_INTERVAL_MS });
 }
 function showError(err) {
   console.error(err);
