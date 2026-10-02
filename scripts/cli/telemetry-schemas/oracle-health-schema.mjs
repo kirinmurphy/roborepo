@@ -10,7 +10,7 @@ const ISSUES = ["malformed_evidence", "unsupported_analysis_options", "duplicate
   "malformed_marker", "unsupported_marker_schema", "unsupported_marker_type", "missing_marker_kinds", "unsupported_marker_kind",
   "unknown_marker_scope", "unknown_session_condition", "changing_session_snapshot"];
 const ERRORS = ["comparison_error", "evidence_read_error", "worker_start_error", "worker_crash", "worker_timeout",
-  "invalid_worker_result", "signature_error"];
+  "invalid_worker_result", "invalid_cached_health", "signature_error"];
 const SUMMARIES = {
   passed: "Production and oracle calculations agree for the checked supported evidence.",
   checking: "An independent comparison is in progress.",
@@ -49,7 +49,7 @@ export function staleOracleHealth(result) {
 // Re-project cached state at the HTTP boundary. The observer already stores this schema, but an
 // explicit allowlist here prevents a future cache/debug field from becoming a public response.
 export function projectOracleHealthResult(value) {
-  if (!validHealthResult(value)) return emptyOracleHealth("unavailable", "invalid_worker_result");
+  if (!validHealthResult(value)) return emptyOracleHealth("unavailable", "invalid_cached_health");
   return projectHealth(value, value);
 }
 

@@ -13,32 +13,38 @@ const DIFFERENCES = { policy: "evidence policy", session_count: "session counts"
   changes: "change boundaries", regression: "regression" };
 const ERRORS = { comparison_error: "comparison error", evidence_read_error: "evidence read error",
   worker_start_error: "worker start error", worker_crash: "worker crash", worker_timeout: "worker timeout",
-  invalid_worker_result: "invalid worker result", signature_error: "evidence signature error" };
+  invalid_worker_result: "invalid worker result", invalid_cached_health: "invalid cached result",
+  signature_error: "evidence signature error" };
 const ISSUE_LABELS = { skipped_evidence: "skipped evidence", malformed_event: "malformed events",
   unsupported_event_schema: "unsupported event schemas", unknown_model: "unknown models",
   unresolved_repository: "unresolved repositories", malformed_tokens: "malformed token data" };
 
-const panel = createOracleHealthPanel();
-panel.start();
-
-function createOracleHealthPanel() {
+// app.js starts this panel from the report's setup state. With live telemetry it polls for as long
+// as the page is visible. The demo and telemetry-off states have no live evidence for the observer
+// to change, so there it polls only until the first settled status and then stops.
+export function createOracleHealthPanel() {
   const badge = document.getElementById("oracle-health-status");
   const open = document.getElementById("oracle-health-open");
   const dialog = document.getElementById("oracle-health-dialog");
-  let timer = null, inFlight = false, rendered = null;
+  let timer = null, inFlight = false, rendered = null, live = false, settled = false;
   open.addEventListener("click", () => { dialog.showModal(); open.setAttribute("aria-expanded", "true"); });
-  dialog.querySelector("[data-oracle-close]").addEventListener("click", close);
-  dialog.querySelector("[data-doc-guide]").addEventListener("click", close);
+  dialog.querySelector('[data-slot="close"]').addEventListener("click", close);
   dialog.addEventListener("close", () => open.setAttribute("aria-expanded", "false"));
   portalWireBackdropClose(dialog, close);
-  document.addEventListener("visibilitychange", () => document.hidden ? stopTimer() : (refresh(), startTimer()));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopTimer();
+    else if (!settled) { refresh(); startTimer(); }
+  });
 
   async function refresh() {
     if (inFlight || document.hidden) return;
     inFlight = true;
-    try { render(normalize(await portalGetJson("/api/telemetry/oracle-health"))); }
-    catch { render(unavailable()); }
+    let health;
+    try { health = normalize(await portalGetJson("/api/telemetry/oracle-health")); }
+    catch { health = unavailable(); }
     finally { inFlight = false; }
+    render(health);
+    if (!live && !["checking", "stale"].includes(health.status)) { settled = true; stopTimer(); }
   }
   function render(health) {
     // Identical polls skip DOM writes so the polite live region is not re-announced.
@@ -63,7 +69,9 @@ function createOracleHealthPanel() {
   function close() { if (dialog.open) dialog.close(); }
   function startTimer() { if (timer == null) timer = setInterval(refresh, POLL_MS); }
   function stopTimer() { clearInterval(timer); timer = null; }
-  return { start() { refresh(); if (!document.hidden) startTimer(); } };
+  return {
+    start(options) { live = options.live; refresh(); if (!document.hidden) startTimer(); },
+  };
 }
 
 function normalize(value) {

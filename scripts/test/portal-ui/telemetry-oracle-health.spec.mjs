@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { documentationScenario } from "../fixtures/telemetry-conditions-documentation.mjs";
 
 const checks = ["sessions", "operations", "conditions", "boundaries", "gating", "regression", "loops"];
 const labels = { passed: "Passed", checking: "Checking", stale: "Stale", partial: "Partial",
@@ -29,6 +30,10 @@ test("oracle health exposes every text status and an accessible singleton dialog
   await expect(dialog).toContainText("Condition comparisons");
   await expect(dialog).toContainText("Disagreement in: condition comparisons.");
   await expect(dialog).not.toContainText("PRIVATE");
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(open).toHaveAttribute("aria-expanded", "false");
+  await open.click();
   await dialog.getByRole("button", { name: "Read the Oracle health guide" }).click();
   await expect(dialog).not.toBeVisible();
   await expect(open).toHaveAttribute("aria-expanded", "false");
@@ -50,12 +55,33 @@ test("oracle polling updates independently and endpoint failure leaves the repor
   await page.evaluate(() => { window.__oracleReportNode = document.querySelector("#findings").firstElementChild; });
   await expect(page.getByRole("status", { name: "Oracle health" })).toHaveText("Oracle health: Passed", { timeout: 8_000 });
   expect(await page.evaluate(() => window.__oracleReportNode === document.querySelector("#findings").firstElementChild)).toBe(true);
+  // The demo report has no live evidence to change, so polling stops at the first settled status.
+  const settledRequests = requests;
+  await page.waitForTimeout(6_000);
+  expect(requests).toBe(settledRequests);
 
   await page.unroute("**/api/telemetry/oracle-health");
   await page.route("**/api/telemetry/oracle-health", (route) => route.abort());
   await page.reload();
   await expect(page.getByRole("status", { name: "Oracle health" })).toHaveText("Oracle health: Unavailable");
   await expect(page.getByRole("heading", { name: "Identifiable waste" })).toBeVisible();
+});
+
+test("live telemetry keeps polling oracle health after a settled status", async ({ page, request }) => {
+  const config = await (await request.get("/api/config")).json();
+  config.telemetry = { ...config.telemetry, enabled: true };
+  config.machineHarnesses = [{ id: "claude", enabled: true, confidence: "confirmed" }];
+  await page.route("**/api/config", (route) => route.fulfill({ json: config }));
+  await page.route("**/api/data", (route) => route.fulfill({ json: documentationScenario().report }));
+  await page.route("**/api/telemetry/markers", (route) => route.abort());
+  let requests = 0;
+  await page.route("**/api/telemetry/oracle-health", (route) => {
+    requests += 1;
+    return route.fulfill({ json: health(requests === 1 ? "passed" : "stale") });
+  });
+  await page.goto("/tokens");
+  await expect(page.getByRole("status", { name: "Oracle health" })).toHaveText("Oracle health: Passed");
+  await expect(page.getByRole("status", { name: "Oracle health" })).toHaveText("Oracle health: Stale", { timeout: 8_000 });
 });
 
 test("oracle health remains legible across themes, forced colors, and mobile", async ({ page }) => {

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { telemetryRoutes } from "../cli/portal-routes-telemetry.mjs";
 import { dispatchRoutes } from "../cli/portal-router.mjs";
 import { createOracleHealthResult } from "../cli/telemetry-schemas/oracle-health-schema.mjs";
+import { fakeResponse } from "./lib/fake-response.mjs";
 
 const secret = "PRIVATE PROMPT /private/path RAW JSONL";
 const signature = `sha256:${"a".repeat(64)}`;
@@ -23,7 +24,7 @@ const response = dispatch("GET", {
   analyzeTelemetry: () => { throw new Error("the cached route must not run analysis"); },
   readSpool: () => { throw new Error("the cached route must not read evidence"); },
 });
-assert.equal(response.status, 200);
+assert.equal(response.statusCode, 200);
 assert.equal(response.headers["Cache-Control"], "no-store");
 assert.equal(response.headers["Content-Type"], "application/json");
 assert.equal(reads, 1, "the route reads the cached state exactly once");
@@ -34,19 +35,17 @@ const malformed = dispatch("GET", { loadOracleHealth: () => ({ ...cached, schema
 const fallback = JSON.parse(malformed.body);
 assert.equal(fallback.schema, 1);
 assert.equal(fallback.status, "unavailable");
-assert.equal(fallback.error_category, "invalid_worker_result");
+assert.equal(fallback.error_category, "invalid_cached_health", "malformed cache state is not reported as a worker fault");
 assert.ok(!malformed.body.includes(secret), "malformed cache state cannot escape through fallback text");
 
 reads = 0;
 const rejected = dispatch("POST", { loadOracleHealth: () => { reads += 1; return cached; } });
-assert.equal(rejected.status, 405);
+assert.equal(rejected.statusCode, 405);
 assert.equal(reads, 0, "non-GET requests never touch cached observer state");
 console.log("telemetry oracle cached route and privacy checks passed");
 
 function dispatch(method, handlers) {
-  const res = { status: null, headers: null, body: null,
-    writeHead(status, headers) { this.status = status; this.headers = headers; },
-    end(body) { this.body = body; } };
+  const res = fakeResponse();
   const handled = dispatchRoutes([telemetryRoutes], { method }, res,
     "/api/telemetry/oracle-health", "", handlers);
   assert.equal(handled, true);

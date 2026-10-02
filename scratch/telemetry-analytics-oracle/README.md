@@ -2,7 +2,13 @@
 
 A visual entry point for reviewing this branch. The images show the current Tokens page with
 fictional sample data. The independent oracle comparison, live observer, and Oracle health badge
-are implemented; these captures predate the badge.
+are implemented.
+
+## Oracle health
+
+![Oracle health badge in light mode](../../docs/images/tokens/oracle-health-light.png)
+
+![Oracle health details in light mode](../../docs/images/tokens/oracle-health-detail-light.png)
 
 ## Condition comparison
 
@@ -14,7 +20,7 @@ are implemented; these captures predate the badge.
 
 ![Before/after comparison for a recorded change](../../docs/images/tokens/recorded-change-light.png)
 
-[Browse all ten screenshots](../../docs/images/tokens/README.md) ·
+[Browse all screenshots](../../docs/images/tokens/README.md) ·
 [Read the user guide](../../docs/user/guides/telemetry.md) ·
 [Read the oracle implementation and coverage](../../docs/internal/telemetry-internals.md#independent-oracle)
 

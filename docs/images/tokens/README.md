@@ -1,4 +1,4 @@
-# Telemetry conditions screenshots
+# Tokens page screenshots
 
 These images show the real Tokens UI using **fictional, deterministic sample data**.
 They contain no personal telemetry. Both light and dark versions are provided.
@@ -15,6 +15,8 @@ Click an image to inspect it at full size. Each row shows the same sample in bot
 | Event ledger: observed problems and recorded changes in time | ![Event ledger in light mode](event-ledger-light.png) | ![Event ledger in dark mode](event-ledger-dark.png) |
 | Recorded change: before/after counts and boundary exclusions | ![Recorded change in light mode](recorded-change-light.png) | ![Recorded change in dark mode](recorded-change-dark.png) |
 | Mark a change: effective time, repository scope, and watched problems | ![Mark a change in light mode](mark-change-light.png) | ![Mark a change in dark mode](mark-change-dark.png) |
+| Oracle health: the live comparison badge beside the report period | ![Oracle health badge in light mode](oracle-health-light.png) | ![Oracle health badge in dark mode](oracle-health-dark.png) |
+| Oracle health details: freshness, aggregate counts, coverage, checked invariants, and limits | ![Oracle health details in light mode](oracle-health-detail-light.png) | ![Oracle health details in dark mode](oracle-health-detail-dark.png) |
 
 ## Reproduce
 

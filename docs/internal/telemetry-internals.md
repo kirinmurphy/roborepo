@@ -117,9 +117,12 @@ their checked metadata and cannot become current again without a new accepted co
 
 The portal starts the observer after listening and caches only its latest sanitized result in
 memory. Restarting the process starts with `checking`. `GET /api/telemetry/oracle-health`
-re-projects that cache through the versioned schema and performs no analysis or evidence read. The
-Tokens page polls the endpoint every five seconds while visible; endpoint failures change only the
-badge to `Unavailable` and do not block or re-render the report.
+re-projects that cache through the versioned schema and performs no analysis or evidence read; a
+cached value that fails validation is served as `unavailable` with `invalid_cached_health`, distinct
+from a worker's `invalid_worker_result`. With live telemetry, the Tokens page polls the endpoint
+every five seconds while visible. In the demo and telemetry-off states it polls only until the first
+settled status, because no live evidence can change. Endpoint failures change only the badge to
+`Unavailable` and do not block or re-render the report.
 
 ### Observer scheduling and freshness
 

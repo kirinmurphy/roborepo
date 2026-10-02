@@ -29,6 +29,10 @@ independent recomputation over the same current local evidence. Open **Oracle he
 freshness, duration, aggregate evidence counts, coverage, checked invariants, and the latest
 privacy-safe result.
 
+![Oracle health badge reading Passed beside the report period, with its details button.](../../images/tokens/oracle-health-light.png)
+
+![Oracle health details showing a passed status, current evidence, aggregate counts, coverage, checked invariants, and limits.](../../images/tokens/oracle-health-detail-light.png)
+
 | Status | Meaning |
 | --- | --- |
 | **Passed** | The production analyzer and independent oracle agree for every supported checked row, and the result matches the current evidence. |
