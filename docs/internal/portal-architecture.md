@@ -109,7 +109,8 @@ so `<plan-status>` renders lifecycle and priority as chips.
 Add an entry to the relevant domain's route table in its `scripts/cli/portal-routes-<domain>.mjs`
 file (see "Server Route Dispatch") whose handler returns JSON via
 `send(res, 200, "application/json", JSON.stringify(...))`. No token or origin check is required
-for GET routes — they stay tokenless on purpose so `curl`/local debugging keeps working. Call it
+for GET routes — they stay tokenless on purpose so `curl`/local debugging keeps working. They are
+still covered by the loopback Host check described under "Mutation-Token Contract". Call it
 from the page with `portalGetJson(path)`.
 
 ### Adding a Mutating API
@@ -299,7 +300,13 @@ runs:
    `window.PORTAL_MANIFEST.token`.
 
 A forged POST from an unrelated site fails the origin check; a POST from a script that never
-loaded a portal page fails the token check. `portalPostJson` always attaches the token from
+loaded a portal page fails the token check.
+
+Before either check, every request — reads included — must name a loopback host: a `Host` header of
+`127.0.0.1`, `localhost`, or `[::1]` (any port), or no `Host` header at all. Tokenless reads would
+otherwise be open to DNS rebinding, where a hostile page re-points its own hostname at `127.0.0.1`
+and reads portal JSON under its own origin; its requests still carry that hostname, so they get a
+403. `portalPostJson` always attaches the token from
 `portalConfig()`, so any page using it automatically satisfies this contract.
 
 ## Checks to Run

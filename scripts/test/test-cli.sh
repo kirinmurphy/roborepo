@@ -886,6 +886,10 @@ if node -e 'const s=require("node:net").createServer();s.once("error",()=>proces
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/docs/user/reference/runtime.md' | grep -q '^# Runtime'"
   assert "developer-runtime: GET snapshot works without token" \
     bash -c "curl -s 'http://127.0.0.1:${cfg_port}/api/developer-runtime' >'${cfg_home}/developer-runtime-get.json' && node -e \"const j=require('${cfg_home}/developer-runtime-get.json');process.exit(j.capabilities&&Array.isArray(j.projects)&&Array.isArray(j.unmatchedInstances)?0:1)\""
+  assert "portal: GET with a non-loopback Host is rejected (DNS rebinding)" \
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:${cfg_port}/api/home' -H 'Host: rebind.example.com:${cfg_port}')\" = 403 ]"
+  assert "portal: GET with a localhost Host is served" \
+    bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:${cfg_port}/api/developer-runtime' -H 'Host: localhost:${cfg_port}')\" = 200 ]"
   assert "developer-runtime: refresh rejects missing token" \
     bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://127.0.0.1:${cfg_port}/api/developer-runtime/refresh' -H 'Content-Type: application/json' -d '{}')\" = 403 ]"
   assert "developer-runtime: mutation rejects cross-origin request" \

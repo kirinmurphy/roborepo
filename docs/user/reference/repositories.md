@@ -101,8 +101,9 @@ the path itself.
 
 Checkout paths are machine-local facts, and the browser receives them only as checkout details. The
 Home payload includes each known checkout's path for its tooltip and copy button. It is never used
-as identity and never appears in a URL. The portal listens on `127.0.0.1` only, so the payload is
-served to this machine's browser and nowhere else.
+as identity and never appears in a URL. The portal listens on `127.0.0.1` only and answers only
+requests addressed to a loopback host name, so the payload is served to this machine's browser and
+not to other websites open in it.
 
 Repository pages receive an allowlisted payload: the display name, stable browser key, lifecycle,
 branch and worktree identity, selected Git facts, checkout paths as above, and the promoted
