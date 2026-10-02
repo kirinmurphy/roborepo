@@ -234,7 +234,9 @@ them synchronously.
 
 `urlKey` is the only repository identity placed in browser routes. It is allocated once in registry
 v2 and resolves to canonical `repositoryId` at the server boundary. The aggregate payload is an
-allowlist and never includes absolute checkout paths.
+allowlist. Identity fields (`repositoryId`, `urlKey`, summaries) are path-free; the only absolute
+paths it carries are each Runtime checkout's `projectRoot`, which feeds the shared checkout tooltip
+and copy control and is never used as identity or placed in a URL.
 
 ## Self-Describing Metadata
 

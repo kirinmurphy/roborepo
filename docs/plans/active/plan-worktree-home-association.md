@@ -1,14 +1,15 @@
 ---
 id: wk7p4n2
 priority: high
-next_action: Wait for plan jqi1dof and branch codex/portal-repository-home-and-detail to merge into main, then verify the repository-first Home contracts on updated main before beginning Phase 1 in a new implementation worktree.
-blocked_by:
+next_action: Review and merge branch claude/plan-worktree-home-association into main, and decide whether 684a136 stands as this plan's start transition.
+blocked_by: []
+depends_on:
   - jqi1dof
-depends_on: []
 related:
   - qk4mz7t2
   - plan-lifecycle-suite-workflow-navigation
-reviewed_commit: a19032d
+reviewed_commit: 388d8cf
+worktree: plan-worktree-home-association
 ---
 
 # Associate Active Plans with Their Worktrees
@@ -54,7 +55,9 @@ from that updated `main`, not from the existing in-flight worktree.
 ## Current State
 
 Repository claims were checked against `main` at `a19032d` and against the committed
-repository-first Home branch at `0ada45e`.
+repository-first Home branch at `0ada45e`, then re-verified on `main` at `388d8cf` after that branch
+merged. This section records the state before implementation; see **Implementation Status** for
+what changed.
 
 ### Plan documents and start workflow
 
@@ -269,75 +272,78 @@ name or historical plan prose.
 
 ### Phase 0 — Confirm the prerequisite merge
 
-- [ ] Confirm [[jqi1dof]] and the intended `codex/portal-repository-home-and-detail` changes are on
+- [x] Confirm [[jqi1dof]] and the intended `codex/portal-repository-home-and-detail` changes are on
       updated `main`, including repository-overview sources/projections, Home modules, and tests.
-- [ ] Start this plan from updated `main` in a new implementation worktree; do not reuse the
+- [x] Start this plan from updated `main` in a new implementation worktree; do not reuse the
       prerequisite worktree.
-- [ ] Update `reviewed_commit` to the integrated `main` commit reviewed before implementation.
+- [x] Update `reviewed_commit` to the integrated `main` commit reviewed before implementation.
 
 ### Phase 1 — Plan schema and Runtime identity
 
-- [ ] Add optional `worktree` semantics to
+- [x] Add optional `worktree` semantics to
       `globals/packages/plan-docs/skills/plan-docs/references/plan-schema.md`, the creation gates in
       `globals/packages/plan-docs/skills/plan-docs/SKILL.md`, and
       `references/workflow-create.md`.
-- [ ] Add an empty `worktree:` line to new/missing-frontmatter scaffolds in
+- [x] Add an empty `worktree:` line to new/missing-frontmatter scaffolds in
       `modules/plan-docs/repair.mjs` without requiring historical plans to be rewritten.
-- [ ] Expose `worktree` from `modules/plan-docs/index.mjs#buildPlanRecord()` and cover populated,
+- [x] Expose `worktree` from `modules/plan-docs/index.mjs#buildPlanRecord()` and cover populated,
       empty, and absent values in `scripts/test/plan-docs-check.mjs` and repair coverage.
-- [ ] Extend `modules/repositories/identity.mjs#resolveGitDir()` and
+- [x] Extend `modules/repositories/identity.mjs#resolveGitDir()` and
       `modules/developer-runtime/git.mjs#collectGitContext()` with the Git administrative worktree
       name, including ordinary-clone and linked-worktree tests in
       `scripts/test/developer-runtime-git-check.mjs`.
 
 ### Phase 2 — Start transition and validator
 
-- [ ] Update `globals/packages/plan-docs/skills/plan-docs/references/workflow-start.md` with its
+- [x] Update `globals/packages/plan-docs/skills/plan-docs/references/workflow-start.md` with its
       lifecycle-owned portion of the transition.
-- [ ] Rewrite the relevant `plan-start/SKILL.md` steps so metadata, lifecycle movement, explicit
+- [x] Rewrite the relevant `plan-start/SKILL.md` steps so metadata, lifecycle movement, explicit
       plan-only staging/commit, and validator approval happen before the context switch.
-- [ ] Add `globals/packages/plan-start/skills/plan-start/references/start-validation.md` with the
+- [x] Add `globals/packages/plan-start/skills/plan-start/references/start-validation.md` with the
       three-pass validator contract and failure behavior.
-- [ ] Extend `scripts/test/plan-promote-plan-start-check.mjs` to preserve reference loading,
+- [x] Extend `scripts/test/plan-promote-plan-start-check.mjs` to preserve reference loading,
       ordering, metadata, commit, and validator requirements.
 
 ### Phase 3 — Repository association
 
-- [ ] Carry plan `worktree` and Runtime `worktreeName` through
+- [x] Carry plan `worktree` and Runtime `worktreeName` through
       `scripts/cli/repository-overview-sources.mjs`.
-- [ ] Add the exact, lossless association in
+- [x] Add the exact, lossless association in
       `scripts/cli/repository-overview-projections.mjs`, producing `checkout.plan` and
       `plans.additionalActive` without changing lifecycle counts.
-- [ ] Extend `scripts/test/repository-overview-check.mjs` for exact matches, main checkouts,
+- [x] Extend `scripts/test/repository-overview-check.mjs` for exact matches, main checkouts,
       missing names, missing worktrees, duplicate plan claims, duplicate Runtime names, and
       unavailable/partial Plans envelopes.
 
 ### Phase 4 — Home presentation
 
-- [ ] Reuse/export the plan-item renderer in `portal/home/domains.js` and change the standalone
+- [x] Reuse/export the plan-item renderer in `portal/home/domains.js` and change the standalone
       label to **Additional Plans**.
-- [ ] Update `portal/home/templates.js` to mount an associated plan beneath its Home worktree row
+- [x] Update `portal/home/templates.js` to mount an associated plan beneath its Home worktree row
       without changing the shared Runtime checkout component.
-- [ ] Add any associated-plan wrapper template to `portal/home/index.html` and style the subordinate
+- [x] Add any associated-plan wrapper template to `portal/home/index.html` and style the subordinate
       row in `portal/home/styles.css`.
-- [ ] Render Additional Plans for available, partial, unavailable, and zero-additional-plan states;
+- [x] Render Additional Plans for available, partial, unavailable, and zero-additional-plan states;
       retain repository-wide counts and never duplicate or substitute a completed plan.
-- [ ] Extend `scripts/test/portal-ui/portal-ui.spec.mjs` for association, plan-drawer behavior,
+- [x] Extend `scripts/test/portal-ui/portal-ui.spec.mjs` for association, plan-drawer behavior,
       non-duplication, unmatched/conflicting plans, coverage messages, and the empty Additional
       Plans state using semantic locators.
 
 ### Phase 5 — Migration, documentation, and verification
 
-- [ ] Re-read live worktrees and backfill only proved active-plan associations, including this
+- [x] Re-read live worktrees and backfill only proved active-plan associations, including this
       plan's implementation worktree; leave the clean-machine plan unassociated unless new evidence
       exists.
-- [ ] Update `docs/user/reference/plans-portal.md` and the relevant Home/Runtime user documentation
+- [x] Update `docs/user/reference/plans-portal.md` and the relevant Home/Runtime user documentation
       with the portable identity, association, and Additional Plans behavior.
-- [ ] Run focused Plan Docs, plan-start, Runtime Git, repository-overview, and Portal UI checks.
-- [ ] Run `npm run check` because the change crosses plan schema, shared Runtime data, repository
+- [x] Run focused Plan Docs, plan-start, Runtime Git, repository-overview, and Portal UI checks.
+- [x] Run `npm run check` because the change crosses plan schema, shared Runtime data, repository
       aggregation, generated skill validation, and browser behavior.
-- [ ] Validate this plan against Plan Docs schema, lifecycle, naming, relationships, and the
+- [x] Validate this plan against Plan Docs schema, lifecycle, naming, relationships, and the
       technical-writing/code/test rules.
+
+- [ ] Decide whether `684a136` stands as this plan's start transition; see decision 12.
+- [ ] Review and merge `claude/plan-worktree-home-association` into `main`.
 
 ## Validation
 
@@ -380,6 +386,98 @@ fields.
 - Worktrees without plans and active plans without worktrees remain valid and render normally.
 - Focused checks, Portal UI coverage, and `npm run check` pass, or any environmental block is
   recorded without claiming completion.
+
+## Implementation Status
+
+Implemented on branch `claude/plan-worktree-home-association`, started from `main` at `388d8cf`
+after [[jqi1dof]] merged. The implementation is committed on that branch and awaits review and
+merge.
+
+| Phase | State |
+| --- | --- |
+| 0 — Prerequisite merge | Done. `jqi1dof` is in `completed/`; overview sources/projections, Home modules, and their tests are on `main`. |
+| 1 — Schema and Runtime identity | Done. Plan records expose `worktree`; scaffolds emit `worktree:`; `resolveGitDir()` and `collectGitContext()` report `worktreeName`. |
+| 2 — Start transition and validator | Done. `plan-start/SKILL.md` gains a Start Transition section; `references/start-validation.md` holds the validator; Plan Docs `workflow-start.md` owns the lifecycle half. |
+| 3 — Repository association | Done. `associatePlans()` in `repository-overview-projections.mjs` produces `checkout.plan` and `plans.additionalActive`. |
+| 4 — Home presentation | Done. Additional Plans always renders; an associated plan mounts beneath its worktree through a Home-owned template. |
+| 5 — Migration, docs, verification | Backfill value on `main` since `684a136` (not a plan-only commit; see decision 12). Docs updated. Verification below. |
+
+### Migration result
+
+Live inventory re-read during implementation:
+
+| Plan | Result |
+| --- | --- |
+| `wk7p4n2` — this plan | `worktree: plan-worktree-home-association`, proved by the linked worktree created for this implementation. |
+| `qk4mz7t2` — clean-machine install sandbox | No live linked worktree relates to it; left unassociated. |
+| `jqi1dof` — repository-first Home | Now `completed`, so it is not joined; not backfilled even though its worktree still exists. |
+
+### Decision log
+
+Decisions made during implementation without stopping, recorded for review:
+
+1. **Field placement.** `worktree:` is the last scaffold line, after `reviewed_commit`.
+2. **Value normalization.** The plan record trims a string value and reports `""` for absent,
+   empty, or non-string values. No validation finding flags path-like values; exact-equality
+   joining already makes a malformed value an unmatched Additional Plan.
+3. **Main checkouts.** The overview projection sets `worktreeName` to null whenever
+   `isWorktree` is false, even if Git data carried a name, so a main checkout can never match.
+4. **Payload shape.** `plans.active` stays the full active list beside the new
+   `plans.additionalActive`, so the repository detail page and other consumers are unaffected.
+   Only the Runtime checkout projection carries `plan`; the Git domain projection does not.
+5. **Missing domains.** Runtime unavailable puts every active plan in Additional Plans; Plans
+   unavailable leaves every checkout unchanged.
+6. **Which worktrees can match.** Only checkouts Runtime currently lists can receive a plan. A
+   stopped worktree of a running repository is not a Runtime root today, so its plan appears in
+   Additional Plans. Widening Runtime's root set is out of scope.
+7. **Coverage messages.** The envelope message renders as a note above any rows (new
+   `tpl-domain-note`); the unavailable state shows no counts.
+8. **Subordinate row semantics.** `tpl-checkout-plan` is a `group` named "Plan in this worktree",
+   using the plans glyph on the checkout glyph rail.
+9. **Fresh-worktree fast-forward.** The start transition fast-forwards a worktree created in the
+   same run to the transition commit, so the feature branch carries the canonical plan state. A
+   reused worktree's branch is left alone.
+10. **Validator form.** The validator is an agent-run checklist of Git commands in
+    `references/start-validation.md`, not a new `roborepo` command. A deterministic command is a
+    possible follow-up if the prose gate proves unreliable.
+11. **No feature commits.** Implementation is left uncommitted on the feature branch; this session
+    had no instruction to commit.
+12. **Backfill not committed by this session.** This session wrote the `worktree` value to the
+    canonical copy on `main` and mirrored it to the feature branch without committing, because
+    committing was not requested. The value then reached `main` in `684a136`, a user commit that
+    also changed `case-study-pack/skills/case-study/SKILL.md`. The association is therefore
+    committed, but not as a plan-only transition: validator check 4 would refuse that commit. This
+    session began before the start transition existed, so its own start never passed the validator.
+13. **Empty value in the payload.** A plan with no `worktree` carries `""` in the Home payload, the
+    same representation as the plan record, rather than converting it to `null` in between.
+14. **Privacy wording corrected.** `docs/user/reference/repositories.md` and
+    `docs/internal/portal-architecture.md` claimed the Home payload never contains absolute checkout
+    paths. The Home plan's actual rule is narrower: identity fields and URLs are path-free, while each
+    checkout's path is sent for its tooltip and copy control. Both docs now say that, and the user
+    reference also lists the promoted application's Runtime key, which Home uses for route discovery.
+
+### Verification
+
+Run in the implementation worktree on 2026-10-02:
+
+| Check | Result |
+| --- | --- |
+| `node scripts/test/plan-docs-check.mjs` | passed |
+| `node scripts/test/plan-docs-repair-check.mjs` | passed |
+| `node scripts/test/plan-promote-plan-start-check.mjs` | passed |
+| `node scripts/test/developer-runtime-git-check.mjs` | passed |
+| `node scripts/test/repositories-check.mjs` | passed |
+| `node scripts/test/repository-overview-check.mjs` | passed |
+| `npm run test:portal-ui` | 34 passed, 2 documentation-screenshot specs skipped by design |
+| `npm run check` | `CI checks passed`, including the Docker clean-machine suites; Windows installer parity skipped because `pwsh` is not installed |
+
+Manual: a hermetic portal rendered Home with one matched worktree, one unmatched worktree, and one
+Additional Plan; the matched plan appeared once, beneath its worktree, on the checkout glyph rail.
+The Home payload for an association carries only the worktree name; no new path field was added.
+
+Plan Docs validation of this document through `buildPlanSnapshot()` reports `active`, `ready`,
+`worktree: plan-worktree-home-association`, and no findings. The `technical-writing` Validator was
+not run as a separate pass on the added sections.
 
 ## Risks and Open Decisions
 

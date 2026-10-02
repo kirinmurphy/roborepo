@@ -432,6 +432,9 @@ function buildPlanRecord(repository, absolutePath, relativePath, stat, projectNa
       dependencies: parsed.frontmatter.depends_on || [],
       related: parsed.frontmatter.related || [],
       reviewedCommit: parsed.frontmatter.reviewed_commit || "",
+      // Git's administrative name for the one linked worktree implementing this plan (see
+      // plan-schema.md). Empty means unassociated; Home joins it to Runtime's git.worktreeName.
+      worktree: typeof parsed.frontmatter.worktree === "string" ? parsed.frontmatter.worktree.trim() : "",
       reviewState: git.reviewState,
       modifiedAt: stat.mtime.toISOString(),
       gitLastChangedAt: git.lastChangedAt,

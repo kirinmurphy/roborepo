@@ -1,12 +1,7 @@
 import { portalFillSlots as fill, portalTpl as tpl } from "/portal/shared/api.js";
 
 export function appendRepositoryDomains(host, domains, { onOpenPlan } = {}) {
-  const counts = domains.plans.data?.counts;
-  if (counts && counts.active + counts.backlog > 0) {
-    host.append(domainRow("Plans", `${counts.active} Active · ${counts.backlog} Backlog`, {
-      glyph: "plans", href: "/plans", linkLabel: "all plans", details: activePlanDetails(domains.plans, onOpenPlan),
-    }));
-  }
+  host.append(additionalPlansRow(domains.plans, onOpenPlan));
   const tokens = domains.tokens.data;
   if (tokens?.warningCount > 0) {
     const warnings = tokens.warnings || tokens.recent || [];
@@ -31,25 +26,37 @@ function domainRow(label, summary, { glyph, href, linkLabel, warning = false, de
   return node;
 }
 
-function activePlanDetails(envelope, onOpenPlan) {
-  return (envelope.data?.active || []).map((plan) => {
-    const total = plan.taskCounts?.total || 0;
-    const percent = total > 0 ? Math.round((plan.taskCounts.complete / total) * 100) : null;
-    const done = percent === 100;
-    const node = fill(tpl("tpl-plan-item"), { title: plan.title, percent: percent === null ? "—" : `${percent}%` });
-    node.querySelector("[data-slot=title]").addEventListener("click", () => onOpenPlan?.(plan));
-    node.title = percent === null ? "No checklist tasks" : `${plan.taskCounts.complete} of ${total} tasks complete`;
-    const progress = node.querySelector("[data-slot=progress]");
-    progress.hidden = percent === null || done;
-    node.querySelector("[data-slot=percent]").hidden = done;
-    node.querySelector("[data-slot=complete]").hidden = !done;
-    if (percent !== null && !done) {
-      progress.setAttribute("aria-label", `${plan.title} completion`);
-      progress.setAttribute("aria-valuenow", String(percent));
-      progress.style.setProperty("--percent", String(percent));
-    }
-    return node;
-  });
+// Always rendered, so a repository's plan coverage is stated rather than inferred from an absent
+// row. Lists only the active plans no worktree row claimed (an associated plan renders beneath its
+// checkout instead, never twice), while the counts stay repository-wide. With no additional plans
+// the heading, counts and link remain and nothing stands in for the empty list.
+function additionalPlansRow(envelope, onOpenPlan) {
+  const counts = envelope.data?.counts;
+  const summary = counts ? `${counts.active} Active · ${counts.backlog} Backlog` : "";
+  const details = (envelope.data?.additionalActive || []).map((plan) => planItem(plan, onOpenPlan));
+  if (envelope.message) details.unshift(fill(tpl("tpl-domain-note"), { message: envelope.message }));
+  return domainRow("Additional Plans", summary, { glyph: "plans", href: "/plans", linkLabel: "all plans", details });
+}
+
+// One active plan with its completion ring, shared by Additional Plans and the plan row Home mounts
+// beneath an associated worktree. Its title opens the read-only plan drawer.
+export function planItem(plan, onOpenPlan) {
+  const total = plan.taskCounts?.total || 0;
+  const percent = total > 0 ? Math.round((plan.taskCounts.complete / total) * 100) : null;
+  const done = percent === 100;
+  const node = fill(tpl("tpl-plan-item"), { title: plan.title, percent: percent === null ? "—" : `${percent}%` });
+  node.querySelector("[data-slot=title]").addEventListener("click", () => onOpenPlan?.(plan));
+  node.title = percent === null ? "No checklist tasks" : `${plan.taskCounts.complete} of ${total} tasks complete`;
+  const progress = node.querySelector("[data-slot=progress]");
+  progress.hidden = percent === null || done;
+  node.querySelector("[data-slot=percent]").hidden = done;
+  node.querySelector("[data-slot=complete]").hidden = !done;
+  if (percent !== null && !done) {
+    progress.setAttribute("aria-label", `${plan.title} completion`);
+    progress.setAttribute("aria-valuenow", String(percent));
+    progress.style.setProperty("--percent", String(percent));
+  }
+  return node;
 }
 
 function warningSummary(count, warnings) {

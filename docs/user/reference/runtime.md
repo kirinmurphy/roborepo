@@ -57,7 +57,9 @@ position. Collection is deliberately split by what can be read correctly:
   parse `.git/HEAD`, loose refs, `packed-refs`, and the config file directly, so they work even when
   the `git` binary is missing. A linked worktree reads its own HEAD and refs while sharing
   `packed-refs` and config through `commondir`, which is why a worktree reports its own branch but
-  the same canonical repository as its primary clone.
+  the same canonical repository as its primary clone. A linked worktree also reports its Git
+  administrative name — the `<name>` in `.git/worktrees/<name>` — which is what a plan's `worktree`
+  field matches on Home. A main checkout reports none.
 - **A subprocess** supplies dirty state, ahead/behind, and base-branch drift. These need work no
   filesystem read can do correctly: dirty state requires parsing the binary index and
   stat-comparing the worktree against it, and the commit-graph questions require walking loose

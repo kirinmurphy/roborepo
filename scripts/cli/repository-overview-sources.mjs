@@ -77,7 +77,7 @@ function planSummary(plans, now) {
     .slice(0, 5);
   const active = plans
     .filter((plan) => plan.lifecycle === "active")
-    .map((plan) => ({ id: plan.id, key: plan.key, title: plan.title, lifecycle: plan.lifecycle, changedAt: planChangedAt(plan), taskCounts: { total: plan.taskCounts?.total || 0, complete: plan.taskCounts?.complete || 0 } }))
+    .map((plan) => ({ id: plan.id, key: plan.key, title: plan.title, lifecycle: plan.lifecycle, changedAt: planChangedAt(plan), worktree: plan.worktree || "", taskCounts: { total: plan.taskCounts?.total || 0, complete: plan.taskCounts?.complete || 0 } }))
     .sort((a, b) => Date.parse(b.changedAt || 0) - Date.parse(a.changedAt || 0) || a.title.localeCompare(b.title));
   return { counts, active, recent };
 }
@@ -90,6 +90,9 @@ function projectWorkspace(repository) {
       rootId: root.rootId || null,
       name: root.git?.branch || (root.isWorktree ? "Worktree" : "Main checkout"),
       isWorktree: root.isWorktree === true,
+      // Git's administrative worktree name; the key a plan's `worktree` frontmatter joins on. Main
+      // checkouts never carry one, so they can never receive a plan.
+      worktreeName: root.isWorktree === true ? root.git?.worktreeName || null : null,
       projectRoot: root.projectRoot || null,
       checkoutState: root.checkoutState || "present",
       checkoutReason: root.checkoutReason || null,

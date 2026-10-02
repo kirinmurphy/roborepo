@@ -100,6 +100,7 @@ Supported managed fields:
 - `depends_on`
 - `related`
 - `reviewed_commit`
+- `worktree`
 
 Unsupported syntax produces warnings rather than guessed behavior. Duplicate keys, invalid IDs,
 invalid priority values, and non-array relationship fields are warnings.
@@ -110,6 +111,18 @@ The Markdown parser extracts:
 - headings
 - Markdown checkbox tasks
 - excerpt
+
+### Worktree association
+
+`worktree` is optional. When set, it holds Git's administrative name for the linked worktree
+implementing the plan — the `<name>` in `.git/worktrees/<name>`, not the checkout directory and not
+the branch. It never holds a path. New and repaired plans get an empty `worktree:` line; older plans
+without the line stay valid. `plan-start` records the value, commits it to the plan on the base
+branch, and validates it before implementation moves into the worktree.
+
+Home uses the value to show an active plan beneath its worktree. Anything short of one exact match
+— an empty value, a worktree that no longer exists, two plans claiming one name — leaves the plan
+under **Additional Plans**. See [Repositories](repositories.md#repository-cards).
 
 ## Validation
 

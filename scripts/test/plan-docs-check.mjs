@@ -35,6 +35,7 @@ blocked_by: []
 depends_on: []
 related: []
 reviewed_commit:
+worktree: ready-plan-tree
 ---
 # Ready Plan
 
@@ -84,6 +85,7 @@ blocked_by: []
 depends_on: []
 related: []
 reviewed_commit:
+worktree:
 ---
 # Movable Plan
 
@@ -161,6 +163,11 @@ Run targeted checks.
   assert.equal(ready.plan.lifecycle, "backlog");
   assert.equal(ready.plan.readiness, "ready");
   assert.equal(ready.plan.taskCounts.remaining, 1);
+  // `worktree` is optional: populated, empty, and absent all parse, and only a value associates.
+  assert.equal(ready.plan.worktree, "ready-plan-tree");
+  assert.equal(snapshot.plans.find((item) => item.plan.id === "movable-plan").plan.worktree, "");
+  assert.equal(snapshot.plans.find((item) => item.plan.id === "no-priority-plan").plan.worktree, "");
+  assert.equal(ready.plan.validation.findings.some((item) => /frontmatter/i.test(item.code)), false);
   const root = snapshot.plans.find((item) => item.plan.relativePath.endsWith("root.md"));
   assert.equal(root.plan.lifecycle, "unclassified");
   assert.match(root.plan.validation.warnings.join("\n"), /unclassified/);

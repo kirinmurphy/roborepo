@@ -6,7 +6,8 @@
 4. Create or revise one plan instead of duplicating scope.
 5. **Identity checkpoint — complete before drafting any body content.** See below.
 6. Write new plans into `docs/plans/backlog/`.
-7. Add minimal frontmatter from `plan-schema.md`.
+7. Add minimal frontmatter from `plan-schema.md`, including an empty `worktree:` line. Do not fill
+   it at creation; a backlog plan has no implementation worktree yet.
 8. Follow `writing-guidelines.md`.
 9. Run both validation layers. See below.
 10. Leave concrete `next_action`.

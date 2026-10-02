@@ -54,6 +54,19 @@ main.home-main { padding-top: 28px; padding-bottom: 40px; }
 .domain-link { margin-left: auto; }
 .domain-details { display: grid; gap: 2px; }
 .domain-details[hidden], .plan-progress[hidden], .plan-percent[hidden], .plan-complete-badge[hidden] { display: none; }
+.domain-note { margin: 0; color: var(--dim); font-size: var(--text-xs); }
+/* The plan a worktree implements, hung beneath that checkout's row on the same glyph rail. The row
+ * head above already carries the rail's left padding, so this repeats it rather than indenting —
+ * the plan belongs to the checkout without reading as a nested checkout. */
+.checkout-plan {
+  display: grid;
+  grid-template-columns: var(--checkout-glyph-width) minmax(0, 1fr);
+  column-gap: var(--checkout-glyph-gap);
+  align-items: center;
+  padding: 0 16px 8px;
+  margin-top: -4px;
+}
+.checkout-plan .plan-item { padding: 0; }
 .plan-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: var(--text-xs); }
 /* The title opens the shared plan drawer in place; it keeps the link look because that is what
  * it behaves like, it just doesn't navigate. */

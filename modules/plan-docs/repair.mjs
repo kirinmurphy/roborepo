@@ -31,6 +31,7 @@ export function scaffoldFrontmatter() {
     "depends_on: []",
     "related: []",
     "reviewed_commit:",
+    "worktree:",
     "---",
     "",
     "",

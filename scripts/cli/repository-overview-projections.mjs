@@ -75,10 +75,11 @@ export function unavailableState(message) {
 function repositoryOverview(record, context) {
   const workspace = context.workspace;
   const lifecycle = workspace?.lifecycle || { state: "idle", reason: "Runtime has not observed this repository yet" };
-  const runtime = perRepositoryEnvelope(context.runtimeState, workspace || { lifecycle, checkouts: [] });
+  const association = associatePlans(workspace, context.plans);
+  const runtime = perRepositoryEnvelope(context.runtimeState, association.workspace || { lifecycle, checkouts: [] });
   const git = perRepositoryEnvelope(context.runtimeState, workspace ? gitSummary(workspace) : { checkouts: [], warnings: [] });
-  const plans = context.plans
-    ? perRepositoryEnvelope(context.plansState, context.plans)
+  const plans = association.plans
+    ? perRepositoryEnvelope(context.plansState, association.plans)
     : unavailableEnvelope("Plans has not scanned this repository");
   const tokens = perRepositoryEnvelope(context.telemetryState, context.telemetry || { sessionCount: 0, warningCount: 0, highestSeverity: null, recent: [] });
   return {
@@ -93,6 +94,38 @@ function repositoryOverview(record, context) {
       tokens,
       agents: unavailableEnvelope("Repository-scoped agent configuration is not available yet"),
     },
+  };
+}
+
+// Joins active plans to the linked worktrees implementing them, by exact `worktree` name only.
+// Lossless by construction: a plan attaches to at most one checkout as `checkout.plan`, and every
+// active plan that does not attach stays in `plans.additionalActive`. A name claimed by two active
+// plans, or exposed by two Runtime worktrees, attaches nothing — picking one would assert a
+// relationship the evidence does not support. Counts and `recent` are untouched; grouping is
+// presentation, not lifecycle. Without plan data the checkouts are returned as they were.
+function associatePlans(workspace, plans) {
+  if (!plans) return { workspace, plans };
+  const activePlans = plans.active || [];
+  // Main checkouts never carry a worktreeName (see projectWorkspace), so the name alone gates a match.
+  const named = (workspace?.checkouts || []).filter((checkout) => checkout.worktreeName);
+  if (!named.length || !activePlans.some((plan) => plan.worktree)) {
+    return { workspace, plans: { ...plans, additionalActive: activePlans } };
+  }
+
+  const tally = (values) => values.reduce((counts, value) => counts.set(value, (counts.get(value) || 0) + 1), new Map());
+  const worktreeNames = tally(named.map((checkout) => checkout.worktreeName));
+  const claims = tally(activePlans.map((plan) => plan.worktree).filter(Boolean));
+  const attachable = new Map(activePlans
+    .filter((plan) => claims.get(plan.worktree) === 1 && worktreeNames.get(plan.worktree) === 1)
+    .map((plan) => [plan.worktree, plan]));
+
+  const checkouts = workspace.checkouts.map((checkout) => {
+    const plan = checkout.worktreeName && attachable.get(checkout.worktreeName);
+    return plan ? { ...checkout, plan } : checkout;
+  });
+  return {
+    workspace: { ...workspace, checkouts },
+    plans: { ...plans, additionalActive: activePlans.filter((plan) => attachable.get(plan.worktree) !== plan) },
   };
 }
 

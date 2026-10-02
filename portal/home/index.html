@@ -68,6 +68,15 @@
         </span>
       </div>
     </template>
+    <template id="tpl-domain-note">
+      <p class="domain-note" data-slot="message"></p>
+    </template>
+    <template id="tpl-checkout-plan">
+      <div class="checkout-plan" role="group" aria-label="Plan in this worktree">
+        <portal-icon class="domain-glyph" name="plans" aria-hidden="true"></portal-icon>
+        <div data-slot="plan"></div>
+      </div>
+    </template>
     <template id="tpl-token-warnings">
       <ul class="token-warnings" aria-label="Token warnings"></ul>
     </template>
