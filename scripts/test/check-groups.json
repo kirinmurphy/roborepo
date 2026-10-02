@@ -11,6 +11,11 @@
     "permission-rule-home-path-check.mjs",
     "telemetry-oracle-check.mjs",
     "telemetry-oracle-core-check.mjs",
-    "telemetry-oracle-live-check.mjs"
+    "telemetry-oracle-live-check.mjs",
+    "telemetry-oracle-health-check.mjs",
+    "telemetry-oracle-worker-check.mjs",
+    "telemetry-oracle-observer-check.mjs",
+    "telemetry-oracle-signature-check.mjs",
+    "telemetry-oracle-runtime-check.mjs"
   ]
 }

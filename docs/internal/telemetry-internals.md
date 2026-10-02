@@ -100,9 +100,51 @@ persistence, approximate waste attribution, and browser rendering retain their f
 | `failed` | Comparable input produces disagreement on covered fields, even if coverage is incomplete. |
 | `unavailable` | Input is empty or unsafe to compare, or a calculation throws. |
 
-The portal does not yet invoke this comparison, retain its result, or expose a health endpoint or
-badge. Scheduling, worker isolation, and freshness validation remain in the
-[live observer plan](../plans/active/telemetry-analytics-oracle-live-observer.md).
+The one-shot `telemetry-oracle-worker.mjs` reads raw spool, marker, snapshot, and registry evidence
+once, calls the comparison boundary, posts one sanitized result, and exits. It accepts explicit
+store paths and a caller-supplied `sha256:` evidence signature. The controller captures
+that signature before starting the worker and re-reads it when the worker exits. Parsed evidence
+goes to the boundary with non-enumerable spool provenance; malformed JSON contributes
+reader-skipped counts. Read failures produce `unavailable` with `evidence_read_error`.
+
+`telemetry-schemas/oracle-health-schema.mjs` projects schema version `1`, aggregate counts,
+coverage, checked time, duration, signature, fixed summaries, and allowlisted diagnostic categories.
+The pure transitions in `telemetry-oracle-observer.mjs` require the current signature when accepting
+a result. A mismatch yields `stale`; a missing signature yields `unavailable`. Stale results retain
+their checked metadata and cannot become current again without a new accepted comparison.
+
+The portal starts the observer after listening and caches only its latest sanitized result in
+memory. Restarting the process starts with `checking`. The health endpoint and Tokens badge remain
+in [Phase 6 of the live observer plan](../plans/active/telemetry-analytics-oracle-live-observer.md#phase-6-health-endpoint-and-tokens-badge).
+
+### Observer scheduling and freshness
+
+```mermaid
+flowchart TD
+    stores[Spool, markers, snapshots, repository registry] -->|supply file metadata| signature[Complete evidence signature]
+    signature -->|schedule latest changed evidence| observer[Observer controller]
+    observer -->|start one isolated run| worker[One-shot comparison worker]
+    worker -->|return sanitized result and exit| fresh{Signature still current?}
+    signature -->|re-read after worker exit| fresh
+    fresh -->|accept current result| cache[In-memory health cache]
+    fresh -->|mark stale and schedule latest evidence| observer
+```
+
+| Control | Behavior |
+| --- | --- |
+| Startup | Begin one run from the deferred portal-listening callback. |
+| Change detection | Poll every two seconds; debounce for 12 seconds of quiet, with a 60-second maximum wait under continuous changes. |
+| Signature | Hash sorted filenames plus each file's device, inode, size, nanosecond modification time, and change time. Read no evidence content on this path. |
+| Covered stores | Spool JSONL files, the marker file, snapshot JSON files, and the raw repository registry. The production report cache also includes experiments. |
+| Unreadable evidence | Return `unavailable`; retry when signatures can be read. A disappearing directory member is an unstable read, not missing evidence to ignore. |
+| Concurrency | Retain one active worker until its exit event; coalesce changes to the newest signature. A message or termination request does not release the worker slot. |
+| Completion | Re-read the signature after exit. Any observed change during the run invalidates it, even if the signature later reverts. |
+| Failure | Terminate after 30 seconds; startup failures, crashes, invalid messages, and timeouts are `unavailable`. Retry unavailable results after the quiet interval on unchanged evidence. |
+| Shutdown | On server close, SIGTERM, or SIGINT, stop timers, request worker termination, and reject late outcomes. Signal-driven process exit awaits worker exit. |
+
+`telemetry.mjs` owns file signatures and worker construction. The controller accepts those
+dependencies and clock/timer functions; `getHealth()` copies cached state without reading files or
+starting work. The independent calculation modules remain separate from both.
 
 ### Verification layers
 
@@ -112,13 +154,19 @@ badge. Scheduling, worker isolation, and freshness validation remain in the
 | Analytics arithmetic | `telemetry-oracle-check` | Covered values agree with an independent raw-event implementation. |
 | Oracle independence | `telemetry-oracle-core-check` | Imports respect the core boundary; calculations preserve inputs and evidence-policy behavior. |
 | Live comparison contract | `telemetry-oracle-live-check` | Unsupported evidence prevents a pass; injected disagreements fail; output excludes raw values and exception text. |
+| Health status contract | `telemetry-oracle-health-check` | Versioned results reject malformed output; pure transitions cannot accept a stale pass as current. |
+| Worker isolation and reading | `telemetry-oracle-worker-check` | A real worker counts skipped records, preserves raw evidence support checks, emits one sanitized result, and exits. |
+| Scheduling and lifecycle | `telemetry-oracle-observer-check` | Fake-clock checks enforce debounce, maximum wait, coalescing, freshness, retries, timeout, and exit-before-restart behavior. |
+| Evidence freshness | `telemetry-oracle-signature-check` | All consumed stores participate in a metadata-only signature, including replacements and same-size edits. |
+| Runtime responsiveness | `telemetry-oracle-runtime-check` | Portal status requests complete during a real worker comparison over a near-cap synthetic spool. |
 | Presentation rules | conditions presentation checks | Thin evidence, neutral bands, and correlation-only language are presented honestly. |
 | Browser integration | portal UI suite | The report reaches the Tokens page and its interactions render correctly. |
 
 Run `npm run test:telemetry-oracle` for the deterministic comparison summary. Run
 `node scripts/test/telemetry-oracle-core-check.mjs` and
-`node scripts/test/telemetry-oracle-live-check.mjs` for the runtime boundary checks. All three belong
-to the `ci` check group run by `npm run check`. The synthetic CI summary lists case and evidence
+`node scripts/test/telemetry-oracle-live-check.mjs` for the comparison boundary checks. Run
+`node scripts/test/run-checks.mjs --filter telemetry-oracle` to include the health and worker checks.
+All eight belong to the `ci` check group run by `npm run check`. The synthetic CI summary lists case and evidence
 counts; a failure includes the seed, disagreement, metadata, and minimized replayable JSONL.
 
 ### Live evidence support
@@ -144,7 +192,7 @@ of the independent calculation modules.
 | Marker schemas `1` and `2` | Supported arithmetic for active change markers watching spike, loop, and read-warning. Unknown scope, missing watched kinds, or unresolved supersede references prevent a pass. |
 | Unsupported watched kinds such as `over-testing`, malformed/unknown markers, or duplicate marker IDs | Input unavailable. Phase, outcome, experiment, and note markers have no covered change projection. |
 | Filtered analysis options or a caller-supplied production hash index | Unsupported. The live boundary accepts an unfiltered snapshot plus raw repository registry evidence. |
-| Reader-skipped or malformed persisted records | The reader supplies nonnegative counts through `skippedEvidence`; any positive count prevents a pass. The planned worker must wire this contract. |
+| Reader-skipped or malformed persisted records | The worker supplies nonnegative parse-failure counts for events, markers, snapshots, and registry evidence through `skippedEvidence`; any positive count prevents a pass. Parsed unsafe shapes remain in the supplied evidence. |
 
 `inspectOracleEvidence()` counts supplied event rows and fixed coverage categories before analysis.
 `compareTelemetryOracle()` compares the same full in-memory event array on both sides when its
@@ -155,8 +203,8 @@ be compared, but agreement returns `partial`.
 The live comparison returns aggregate counts, coverage categories, and names of disagreeing
 projection fields. CI uses the same core and comparison projections while retaining its synthetic
 values, shrinker, and replay output. The comparison result describes agreement over the supplied
-input. A current health result also requires the versioned schema, signature validation, and worker lifecycle planned in
-[Phase 5](../plans/active/telemetry-analytics-oracle-live-observer.md#phase-5-isolated-live-observer).
+input. The worker wraps that result in the versioned schema; the observer establishes freshness
+using the complete signature and worker lifecycle described above.
 
 ## Configuration Snapshots
 

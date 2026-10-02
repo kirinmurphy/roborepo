@@ -1,7 +1,7 @@
 ---
 id: koww80zh
 priority: high
-next_action: Begin Phase 5 with the versioned health-result schema and pure status transitions, then wire the isolated worker to compareTelemetryOracle with one raw evidence snapshot and explicit skipped-evidence counts
+next_action: Begin Phase 6 with the cached oracle-health route and privacy/schema tests, then add the accessible Tokens badge and singleton details dialog
 blocked_by: []
 depends_on: []
 related:
@@ -31,7 +31,7 @@ supported input snapshot; it does not claim that capture is complete, that every
 is independently verified, or that any observed condition caused an outcome.
 
 This plan includes the work already completed for the oracle and marks it complete. Remaining work
-starts at the isolated live observer and ends when the live status, documentation, privacy
+starts at the cached health endpoint and Tokens badge and ends when the live status, documentation, privacy
 boundaries, CI visibility, and browser behavior are verified.
 
 ## Context
@@ -116,14 +116,17 @@ The oracle now recomputes these values without importing production analysis hel
 
 ### Current limitations
 
-- The extracted core and privacy-safe live comparison boundary are implemented. The isolated
-  worker, freshness rules, scheduler, endpoint, and badge remain unimplemented.
+- The independent core, privacy-safe comparison boundary, health schema, complete evidence
+  signature, isolated worker, observer controller, and portal startup/shutdown wiring are
+  implemented. The health endpoint and Tokens badge remain unimplemented.
 - The CI result exits nonzero on disagreement and therefore breaks the build, but a successful
   summary is still nested inside the full CI log.
-- The live portal does not run the oracle, retain its latest result, or expose a health endpoint.
+- The live portal runs the observer and retains its latest sanitized result in memory. The result
+  is not yet exposed through HTTP or the Tokens page.
 - Coverage accounting distinguishes supported evidence, unresolved conditions, and unsafe shapes.
-  The worker must supply raw registry evidence and counts of records skipped by the reader; the
-  observer must still enforce freshness before exposing a comparison as current.
+  The worker supplies raw registry evidence and counts of records skipped by its reader. The
+  controller supplies a fresh complete signature to the tested status transitions before accepting
+  a comparison as current.
 - The current failure shrinker is appropriate for small deterministic cases. Applying its repeated
   full analysis to a large personal spool would be expensive and could produce sensitive output,
   so it must remain test-only.
@@ -138,6 +141,11 @@ These are feasibility measurements, not permanent performance budgets:
 | Current 4 MB spool, 1,845 events | about 55 ms | about 292 ms average | Safe off-thread; noticeable if placed on the request path. |
 | Synthetic 12 MB spool, 5,535 events | not measured | about 0.99 seconds | Full recomputation scales with raw evidence size. |
 | Synthetic 24 MB spool, 11,070 events | not measured | about 2.2 seconds and about 28 MB temporary heap growth | Requires one-run-at-a-time isolation and cache-only HTTP responses. |
+| Phase 5 synthetic 24 MiB spool, 11,405 events | included in worker duration | 1,012 ms for reading and both calculations | 46 lightweight portal responses completed while the real worker ran; this fixture does not measure the report's separate startup warm-up. |
+
+Reproduce the Phase 5 measurement with `node scripts/test/telemetry-oracle-runtime-check.mjs`.
+It writes synthetic evidence near the 25 MiB per-harness cap and requests `/api/portal/status`
+while the observer runs. Timings and concurrent response counts vary by machine and load.
 
 The naive implementation sorts serialized evidence and evaluates sessions across discovered
 conditions. Its practical cost is approximately `N log N` in event volume, with additional work
@@ -178,6 +186,7 @@ evidence. Neither result should be presented as the other.
 | `scripts/cli/telemetry-oracle-run.mjs` | Orchestrate the independent modules and return the oracle's covered projection. It does not import the production analyzer or presentation formatters. |
 | `scripts/cli/telemetry-oracle-compare.mjs` | Invoke production analysis as a black box, project its covered fields, compare them with `telemetry-oracle-run.mjs`, and shape sanitized disagreement metadata. This is the only shared runtime module allowed to know both implementations. |
 | `scripts/test/telemetry-oracle-check.mjs` | Deterministic fixtures, seeded generation, regression pins, shrinking, black-box invocation of production analysis, and rich CLI/CI output. |
+| `scripts/cli/telemetry-schemas/oracle-health-schema.mjs` | Versioned, privacy-safe health projection with fixed status summaries, aggregate counts, coverage categories, and sanitized errors. |
 | `scripts/cli/telemetry-oracle-worker.mjs` | Read one live evidence snapshot, run production and oracle calculations over the same raw inputs, compare covered projections, and return a privacy-safe result. |
 | `scripts/cli/telemetry-oracle-observer.mjs` | Own one-worker-at-a-time scheduling, debounce, timeout, stale-result rejection, cached state, and shutdown. It receives change-signature and worker dependencies rather than embedding portal routing. |
 | `scripts/cli/telemetry.mjs` | Wire the observer into portal startup/shutdown and provide the complete evidence signature. Do not put oracle arithmetic here. |
@@ -190,8 +199,8 @@ evidence. Neither result should be presented as the other.
 
 The implemented acceptance rules, coverage categories, and sanitized comparison results are
 specified in [Telemetry Internals](../../internal/telemetry-internals.md#live-evidence-support).
-Phase 5 must preserve that contract: supply raw repository registry evidence and reader-skipped
-record counts, then enforce signature freshness before exposing a comparison as current health.
+The worker supplies raw repository registry evidence and reader-skipped record counts. The
+controller enforces signature freshness before accepting a comparison as current health.
 
 ### Live execution sequence
 
@@ -388,22 +397,22 @@ a computation itself. The existing report stays usable when the health endpoint 
       unresolved, malformed, or dependent on an unsupported shape.
 - [x] Keep live comparison output separate from the CI shrinker and synthetic replay output.
 
-### Phase 5: Isolated live observer
+### Phase 5: Isolated live observer — completed
 
-- [ ] Implement the versioned health-result schema and pure status transition rules.
-- [ ] Implement a worker entry point that reads one evidence snapshot, invokes the production
+- [x] Implement the versioned health-result schema and pure status transition rules.
+- [x] Implement a worker entry point that reads one evidence snapshot, invokes the production
       analyzer as a black box, invokes the independent oracle, and compares only the oracle's
       declared projections.
-- [ ] Extend the existing evidence signature to cover spool files, markers, snapshots, and
+- [x] Extend the existing evidence signature to cover spool files, markers, snapshots, and
       repository identity evidence used by either side.
-- [ ] Implement an observer controller with startup scheduling, two-second signature checks,
+- [x] Implement an observer controller with startup scheduling, two-second signature checks,
       12-second quiet debounce, 60-second maximum deferral, one worker at a time, 30-second timeout,
       stale-result rejection, retry, and clean shutdown.
-- [ ] Ensure a changing spool coalesces to the newest pending signature rather than creating a
+- [x] Ensure a changing spool coalesces to the newest pending signature rather than creating a
       worker queue.
-- [ ] Cache only the latest privacy-safe result in the portal process; do not persist a green status
+- [x] Cache only the latest privacy-safe result in the portal process; do not persist a green status
       across process restarts before it has been recomputed.
-- [ ] Add deterministic observer tests with fake signatures, clocks, and worker outcomes for
+- [x] Add deterministic observer tests with fake signatures, clocks, and worker outcomes for
       `checking`, `passed`, `stale`, `partial`, `unavailable`, `failed`, timeout, crash, coalescing,
       and shutdown behavior.
 
@@ -446,7 +455,11 @@ a computation itself. The existing report stays usable when the health endpoint 
 npm run test:telemetry-oracle
 node scripts/test/telemetry-oracle-core-check.mjs
 node scripts/test/telemetry-oracle-live-check.mjs
+node scripts/test/telemetry-oracle-health-check.mjs
+node scripts/test/telemetry-oracle-worker-check.mjs
 node scripts/test/telemetry-oracle-observer-check.mjs
+node scripts/test/telemetry-oracle-signature-check.mjs
+node scripts/test/telemetry-oracle-runtime-check.mjs
 node scripts/test/run-checks.mjs --filter telemetry
 ```
 
@@ -458,7 +471,8 @@ Expected results:
 - observer state tests prove stale results cannot become green and obsolete signatures coalesce;
 - unsupported live rows produce `partial` or `unavailable`, never `passed`.
 
-The observer and route checks become runnable when Phases 5 and 6 add their files.
+All oracle and observer checks above are runnable and registered in the CI group. The route check
+becomes runnable when Phase 6 adds its file.
 
 ### API and browser checks
 
@@ -499,6 +513,47 @@ parity gate is required before handoff. Report any command that cannot run rathe
 a narrower check and claiming completion.
 
 ## Verification
+
+Phase 5 observer evidence:
+
+- `telemetry-oracle-observer-check.mjs` uses fake clocks, signatures, and workers to verify startup,
+  polling, quiet debounce, maximum deferral, coalescing, all six statuses, retries, timeouts, crashes,
+  signature failures, and clean shutdown. It also covers signature reversion, completion between
+  polling ticks, delayed/rejected termination, and late events from former workers.
+- `telemetry-oracle-signature-check.mjs` verifies marker changes with an absent spool, additions,
+  removals, renames, same-size edits with restored modification time, replacements, ignored
+  extensions, metadata-only reads, and explicit failure for unreadable evidence.
+- `telemetry-oracle-runtime-check.mjs` passes with a real worker and local portal over 25,167,813
+  bytes of synthetic evidence. The comparison passed, the worker exited, and portal requests
+  completed during calculation. The measured duration and request count appear in the table above.
+- `node scripts/test/telemetry-conditions-cache-check.mjs` passes with the observer wired into
+  actual portal startup and SIGTERM shutdown. It still detects snapshot creation, edits, and
+  eviction without another capture.
+- `node scripts/test/run-checks.mjs --filter telemetry` passes all 32 suites. The final
+  `npm run check` passes repository health (101 checks), 420 CLI checks, installer collision
+  checks, 17 CI suites, package installation, all four Linux Docker scenario families, and 31
+  browser tests. Windows parity was skipped because PowerShell was unavailable; two opt-in
+  documentation screenshot tests were skipped. `git diff --check` passes.
+
+Phase 5 schema and worker evidence:
+
+- `node scripts/test/run-checks.mjs --filter telemetry-oracle` passes all five suites. The original
+  deterministic summary remains nine cases, 879 events, 204 condition rows, 21 marker comparisons,
+  and 32 regression groups; the independent calculation modules are unchanged.
+- The health checks cover all six statuses, stale-result rejection against the supplied current
+  signature, retry after unavailable results, operational error categories, input preservation,
+  malformed worker output, and privacy-safe projection. The worker's signature is supplied by its
+  caller; the subsequent observer work above supplies complete signatures and final re-reading.
+- Real worker-thread tests read disposable spool, marker, snapshot, and registry files. They
+  verify raw legacy repository resolution, explicit skipped-record counts across stores, unsafe
+  parsed rows, I/O failures, one sanitized message, no diagnostic output, and exit after a result.
+- The telemetry-filtered suite passed 28 of 29 checks inside the sandbox. The remaining cache
+  check could not bind localhost; `node scripts/test/telemetry-conditions-cache-check.mjs` passed
+  outside the sandbox.
+- The final `npm run check` passes outside the sandbox: repository health (101 checks), 420 CLI
+  checks, installer collisions, 14 CI suites, packed-package installation, all four Linux Docker
+  scenario families, and 31 browser tests. Windows parity was skipped because PowerShell was
+  unavailable; two opt-in documentation screenshot tests were skipped. `git diff --check` passes.
 
 Phase 4 evidence:
 
