@@ -1302,13 +1302,9 @@ wireSessionChips();
 wireDocGuideIcons();
 wireHintToggle();
 
-// ── Doc-guide info icons ──
-// Same one-delegate pattern as the v1 dashboard: any <portal-info-icon data-doc-anchor> opens
-// the shared doc-guide popup pre-scrolled to that heading. The guide is server-rendered from
-// docs/user/guides/telemetry.md — the popup and the on-disk doc are always the same content.
-// Anchors are placed only where the guide section genuinely describes the tokens section
-// (testing-efficiency, session-detail); sections the guide doesn't cover get NO icon rather
-// than a mismatched one.
+// ── Doc-guide triggers ──
+// One delegate covers section info icons and the Oracle health dialog's guide button. The guide
+// is server-rendered from docs/user/guides/telemetry.md, and each trigger opens its matching anchor.
 const docModal = createDocGuideModal(document.getElementById("tokensdocmodal"), async () => {
   try {
     return await portalGetJson("/api/telemetry/guide");
@@ -1323,9 +1319,9 @@ document.getElementById("tokensdocmodal").addEventListener("close", () => {
 });
 function wireDocGuideIcons() {
   document.addEventListener("click", (event) => {
-    const trigger = event.target.closest("portal-info-icon[data-doc-anchor]");
+    const trigger = event.target.closest("portal-info-icon[data-doc-anchor], [data-doc-guide][data-doc-anchor]");
     if (!trigger) return;
-    trigger.setAttribute("aria-expanded", "true");
+    if (trigger.matches("portal-info-icon")) trigger.setAttribute("aria-expanded", "true");
     docModal.open(trigger.dataset.docAnchor);
   });
 }
