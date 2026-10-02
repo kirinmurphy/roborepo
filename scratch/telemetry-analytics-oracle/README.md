@@ -1,8 +1,8 @@
 # Telemetry review screenshots
 
 A visual entry point for reviewing this branch. The images show the current Tokens page with
-fictional sample data. The independent oracle comparison is implemented; its live observer and
-status badge remain planned work.
+fictional sample data. The independent oracle comparison, live observer, and Oracle health badge
+are implemented; these captures predate the badge.
 
 ## Condition comparison
 

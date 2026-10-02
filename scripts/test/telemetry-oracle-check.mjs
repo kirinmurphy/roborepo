@@ -58,14 +58,9 @@ function requireCoverage(ok, message) {
   if (!ok) throw new Error(`oracle fixture lost required coverage: ${message}`);
 }
 
-function appendJobSummary(status, totals = {}) {
+function appendJobSummary(body) {
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-  if (!summaryPath) return;
-  const outcome = status === "passed" ? "Passed" : "Failed";
-  const details = status === "passed"
-    ? `\n\n${totals.cases} cases · ${totals.events} raw events · ${totals.conditions} condition rows · ${totals.markers} marker comparisons · ${totals.regressions} regression groups`
-    : "\n\nSee the detailed log for the seed, disagreement, fixture metadata, and minimized replayable JSONL.";
-  fs.appendFileSync(summaryPath, `## Telemetry analytics oracle\n\n${status === "passed" ? "✅" : "❌"} ${outcome}${details}\n`, "utf8");
+  if (summaryPath) fs.appendFileSync(summaryPath, `## Telemetry analytics oracle\n\n${body}\n`, "utf8");
 }
 
 function main() {
@@ -116,12 +111,12 @@ function main() {
   console.log(`  seeds: ${seeds.join(", ")}`);
   console.log("  exact checks: harness-scoped sessions, token coverage, operation deduplication, condition cohorts, boundary exclusions, evidence gating, per-call regression, loop isolation");
   console.log("  failure evidence: seed, production/oracle disagreement, snapshots, markers, and minimized replayable JSONL");
-  appendJobSummary("passed", totals);
+  appendJobSummary(`✅ Passed\n\n${totals.cases} cases · ${totals.events} raw events · ${totals.conditions} condition rows · ${totals.markers} marker comparisons · ${totals.regressions} regression groups`);
 }
 
 try {
   main();
 } catch (error) {
-  appendJobSummary("failed");
+  appendJobSummary("❌ Failed\n\nSee the detailed log for the seed, disagreement, fixture metadata, and minimized replayable JSONL.");
   throw error;
 }

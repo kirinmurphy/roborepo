@@ -28,17 +28,7 @@ export function createOracleHealthResult(comparison, metadata) {
   if (!validComparison(comparison) || !validMetadata(metadata)) {
     return emptyOracleHealth("unavailable", "invalid_worker_result");
   }
-  const coverage = comparison.coverage;
-  return {
-    schema: ORACLE_HEALTH_SCHEMA_VERSION, status: comparison.status,
-    checked_at: metadata.checked_at, duration_ms: metadata.duration_ms, evidence_signature: metadata.evidence_signature,
-    event_count: comparison.event_count, session_count: comparison.session_count, operation_count: comparison.operation_count,
-    coverage: { supported_events: coverage.supported_events, unsupported_events: coverage.unsupported_events,
-      comparable: coverage.comparable, complete: coverage.complete,
-      issues: coverage.issues.map(({ category, count }) => ({ category, count })), checks: [...coverage.checks] },
-    differences: [...comparison.differences], summary: SUMMARIES[comparison.status],
-    ...(comparison.error_category ? { error_category: comparison.error_category } : {}),
-  };
+  return projectHealth(comparison, metadata);
 }
 
 export function emptyOracleHealth(status = "checking", errorCategory = null) {
@@ -60,16 +50,21 @@ export function staleOracleHealth(result) {
 // explicit allowlist here prevents a future cache/debug field from becoming a public response.
 export function projectOracleHealthResult(value) {
   if (!validHealthResult(value)) return emptyOracleHealth("unavailable", "invalid_worker_result");
+  return projectHealth(value, value);
+}
+
+// The single public field allowlist shared by worker results and the HTTP boundary.
+function projectHealth(source, metadata) {
+  const coverage = source.coverage;
   return {
-    schema: ORACLE_HEALTH_SCHEMA_VERSION, status: value.status,
-    checked_at: value.checked_at, duration_ms: value.duration_ms, evidence_signature: value.evidence_signature,
-    event_count: value.event_count, session_count: value.session_count, operation_count: value.operation_count,
-    coverage: { supported_events: value.coverage.supported_events, unsupported_events: value.coverage.unsupported_events,
-      comparable: value.coverage.comparable, complete: value.coverage.complete,
-      issues: value.coverage.issues.map(({ category, count }) => ({ category, count })),
-      checks: [...value.coverage.checks] },
-    differences: [...value.differences], summary: SUMMARIES[value.status],
-    ...(value.error_category ? { error_category: value.error_category } : {}),
+    schema: ORACLE_HEALTH_SCHEMA_VERSION, status: source.status,
+    checked_at: metadata.checked_at, duration_ms: metadata.duration_ms, evidence_signature: metadata.evidence_signature,
+    event_count: source.event_count, session_count: source.session_count, operation_count: source.operation_count,
+    coverage: { supported_events: coverage.supported_events, unsupported_events: coverage.unsupported_events,
+      comparable: coverage.comparable, complete: coverage.complete,
+      issues: coverage.issues.map(({ category, count }) => ({ category, count })), checks: [...coverage.checks] },
+    differences: [...source.differences], summary: SUMMARIES[source.status],
+    ...(source.error_category ? { error_category: source.error_category } : {}),
   };
 }
 
@@ -85,18 +80,9 @@ function validMetadata(value) {
 
 function validHealthResult(value) {
   if (!value || value.schema !== ORACLE_HEALTH_SCHEMA_VERSION || !STATUSES.includes(value.status)) return false;
-  if (![value.event_count, value.session_count, value.operation_count].every(count)) return false;
-  if (value.session_count > value.event_count || value.operation_count > value.event_count) return false;
+  if (!validCountsAndCoverage(value)) return false;
   if (value.checked_at !== null && !validMetadata(value)) return false;
   if (value.checked_at === null && (value.duration_ms !== null || value.evidence_signature !== null)) return false;
-  const coverage = value.coverage;
-  if (!coverage || ![coverage.supported_events, coverage.unsupported_events].every(count)
-    || coverage.supported_events + coverage.unsupported_events !== value.event_count
-    || typeof coverage.comparable !== "boolean" || typeof coverage.complete !== "boolean") return false;
-  if (!Array.isArray(coverage.issues) || coverage.issues.length > ISSUES.length
-    || coverage.issues.some((issue) => !issue || !ISSUES.includes(issue.category) || !count(issue.count) || issue.count === 0)) return false;
-  if (!allowedList(coverage.checks, CHECKS) || !allowedList(value.differences, FIELDS)) return false;
-  if (value.error_category != null && (value.status !== "unavailable" || !ERRORS.includes(value.error_category))) return false;
   if (["passed", "partial", "failed"].includes(value.status) && value.checked_at === null) return false;
   if (value.status === "checking" && value.checked_at !== null) return false;
   return value.summary === SUMMARIES[value.status];
@@ -104,6 +90,18 @@ function validHealthResult(value) {
 
 function validComparison(value) {
   if (!value || !["passed", "partial", "failed", "unavailable"].includes(value.status)) return false;
+  if (!validCountsAndCoverage(value)) return false;
+  const coverage = value.coverage;
+  if (value.status === "unavailable") return value.differences.length === 0;
+  if (!coverage.comparable || value.event_count === 0 || coverage.checks.length !== CHECKS.length) return false;
+  if (value.status === "failed") return value.differences.length > 0;
+  if (value.differences.length) return false;
+  const complete = coverage.unsupported_events === 0 && coverage.issues.length === 0;
+  return value.status === "passed" ? coverage.complete && complete : !coverage.complete && !complete;
+}
+
+// Shape rules common to worker comparisons and cached health results.
+function validCountsAndCoverage(value) {
   if (![value.event_count, value.session_count, value.operation_count].every(count)) return false;
   if (value.session_count > value.event_count || value.operation_count > value.event_count) return false;
   const coverage = value.coverage;
@@ -113,13 +111,7 @@ function validComparison(value) {
   if (!Array.isArray(coverage.issues) || coverage.issues.length > ISSUES.length
     || coverage.issues.some((issue) => !issue || !ISSUES.includes(issue.category) || !count(issue.count) || issue.count === 0)) return false;
   if (!allowedList(coverage.checks, CHECKS) || !allowedList(value.differences, FIELDS)) return false;
-  if (value.error_category != null && (!ERRORS.includes(value.error_category) || value.status !== "unavailable")) return false;
-  if (value.status === "unavailable") return value.differences.length === 0;
-  if (!coverage.comparable || value.event_count === 0 || coverage.checks.length !== CHECKS.length) return false;
-  if (value.status === "failed") return value.differences.length > 0;
-  if (value.differences.length) return false;
-  const complete = coverage.unsupported_events === 0 && coverage.issues.length === 0;
-  return value.status === "passed" ? coverage.complete && complete : !coverage.complete && !complete;
+  return value.error_category == null || (value.status === "unavailable" && ERRORS.includes(value.error_category));
 }
 
 function count(value) { return Number.isSafeInteger(value) && value >= 0; }
