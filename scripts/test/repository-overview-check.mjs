@@ -101,7 +101,8 @@ assert.equal(active.domains.plans.data.recent[0].changedAt, "2026-09-29T12:00:00
 assert.deepEqual(active.domains.plans.data.recent.map((plan) => plan.id), ["active-plan", "backlog-plan"], "recent plans stay inside the trailing seven-day window");
 assert.equal(active.domains.tokens.data.warningCount, 2);
 assert.equal(active.domains.tokens.data.warnings[0].kind, "spike");
-assert.deepEqual(active.domains.plans.data.active[0].taskCounts, { total: 8, complete: 3 });
+assert.deepEqual(active.domains.plans.data.additionalActive[0].taskCounts, { total: 8, complete: 3 });
+assert.equal("active" in active.domains.plans.data, false, "the full active list stays server-side; each plan is sent once");
 assert.equal(active.domains.agents.status, "unavailable");
 assert.equal(home.repositories.find((repository) => repository.repositoryId === PINNED).domains.plans.status, "unavailable", "unscanned Plans coverage is not reported as zero");
 assert.equal(active.domains.runtime.data.checkouts[0].projectRoot, "/private/worktrees/active-feature", "shared checkout tooltips and copy controls receive the checkout path");
@@ -264,7 +265,9 @@ assert.deepEqual(
   "every active plan that did not attach stays in Additional Plans, and the attached one is not duplicated",
 );
 assert.deepEqual(associated.domains.plans.data.counts, { active: 7, backlog: 1 }, "repository-wide counts include attached plans");
-assert.equal(associated.domains.plans.data.active.length, 7, "the full active list is unchanged by grouping");
+assert.equal(associated.domains.plans.data.additionalActive.length
+  + associated.domains.runtime.data.checkouts.filter((checkout) => checkout.plan).length, 7,
+  "every active plan is sent exactly once, beneath its worktree or in Additional Plans");
 assert.deepEqual(associated.domains.runtime.data.checkouts.find((checkout) => checkout.rootId === "matched").plan,
   { id: "matched", key: "key-matched", title: "Plan matched", lifecycle: "active", changedAt: "2026-09-29T12:00:00.000Z", worktree: "feature-a", taskCounts: { total: 2, complete: 1 } },
   "the attached plan carries the same compact record Additional Plans rows use, and no path");

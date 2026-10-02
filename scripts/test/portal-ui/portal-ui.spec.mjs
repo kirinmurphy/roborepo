@@ -27,7 +27,7 @@ test.describe("repository-first portal Home", () => {
 
   test("Additional Plans stays visible with no rows while empty Tokens stays hidden", async ({ page }) => {
     await patchRoboRepo(page, (repository) => {
-      repository.domains.plans = { status: "available", data: { counts: { active: 1, backlog: 3 }, active: [{ id: "elsewhere", title: "Attached elsewhere", taskCounts: { total: 0, complete: 0 } }], additionalActive: [], recent: [{ id: "done", title: "Recently completed plan", lifecycle: "completed" }] } };
+      repository.domains.plans = { status: "available", data: { counts: { active: 1, backlog: 3 }, additionalActive: [], recent: [{ id: "done", title: "Recently completed plan", lifecycle: "completed" }] } };
     });
     await page.goto("/");
     const card = roboRepoCard(page);
@@ -46,7 +46,6 @@ test.describe("repository-first portal Home", () => {
     await patchRoboRepo(page, (repository) => { repository.domains.plans = plansEnvelope; });
     plansEnvelope = { status: "partial", message: "Plans coverage is incomplete", data: {
       counts: { active: 1, backlog: 2 },
-      active: [{ id: "partial", title: "Partially scanned plan", taskCounts: { total: 2, complete: 1 } }],
       additionalActive: [{ id: "partial", title: "Partially scanned plan", taskCounts: { total: 2, complete: 1 } }],
     } };
     await page.goto("/");
@@ -74,7 +73,6 @@ test.describe("repository-first portal Home", () => {
       const unassociated = { id: "loose", title: "Unassociated plan", worktree: "", taskCounts: { total: 1, complete: 0 } };
       repository.domains.plans = { status: "available", data: {
         counts: { active: 4, backlog: 0 },
-        active: [associated, ...contested, unassociated],
         additionalActive: [...contested, unassociated],
       } };
       repository.domains.runtime = { status: "available", data: { checkouts: [
@@ -302,7 +300,6 @@ test.describe("shared plan drawer", () => {
     await patchRoboRepo(page, (repository) => {
       repository.domains.plans = { status: "available", data: {
         counts: { active: 1, backlog: 0 },
-        active: [{ id: "drawerfx", key: record.key, title: "Drawer fixture plan", taskCounts: { total: 2, complete: 1 } }],
         additionalActive: [{ id: "drawerfx", key: record.key, title: "Drawer fixture plan", taskCounts: { total: 2, complete: 1 } }],
       } };
     });
@@ -324,7 +321,7 @@ test.describe("shared plan drawer", () => {
     const record = plans.plans.find((item) => item.plan.title === "Drawer fixture plan");
     await patchRoboRepo(page, (repository) => {
       const plan = { id: "drawerfx", key: record.key, title: "Drawer fixture plan", worktree: "drawer-tree", taskCounts: { total: 2, complete: 1 } };
-      repository.domains.plans = { status: "available", data: { counts: { active: 1, backlog: 0 }, active: [plan], additionalActive: [] } };
+      repository.domains.plans = { status: "available", data: { counts: { active: 1, backlog: 0 }, additionalActive: [] } };
       repository.domains.runtime = { status: "available", data: { checkouts: [
         { rootId: "drawer-tree", name: "feature/drawer", isWorktree: true, worktreeName: "drawer-tree", git: { branch: "feature/drawer", provider: { ok: true } }, plan },
       ] } };
@@ -377,12 +374,12 @@ async function patchRoboRepo(page, mutate) {
 
 async function homeFixture(page) {
   await patchRoboRepo(page, (repository) => {
-    const active = [
+    const additionalActive = [
       { id: "first", title: "First plan", taskCounts: { total: 4, complete: 1 } },
       { id: "untracked", title: "Untracked plan", taskCounts: { total: 0, complete: 0 } },
       { id: "finished", title: "Finished plan", taskCounts: { total: 3, complete: 3 } },
     ];
-    repository.domains.plans = { status: "available", data: { counts: { active: 2, backlog: 22 }, active, additionalActive: active } };
+    repository.domains.plans = { status: "available", data: { counts: { active: 2, backlog: 22 }, additionalActive } };
     repository.domains.tokens = { status: "available", data: {
       warningCount: 8,
       warnings: [

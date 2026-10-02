@@ -422,9 +422,12 @@ Decisions made during implementation without stopping, recorded for review:
    joining already makes a malformed value an unmatched Additional Plan.
 3. **Main checkouts.** The overview projection sets `worktreeName` to null whenever
    `isWorktree` is false, even if Git data carried a name, so a main checkout can never match.
-4. **Payload shape.** `plans.active` stays the full active list beside the new
-   `plans.additionalActive`, so the repository detail page and other consumers are unaffected.
-   Only the Runtime checkout projection carries `plan`; the Git domain projection does not.
+4. **Payload shape.** The full active list stays server-side: the Plans envelope carries `counts`,
+   `recent`, and `additionalActive`, and each attached plan travels only as `checkout.plan`. Each
+   active plan therefore reaches the browser exactly once, so no view can render one in two places.
+   (Initially `plans.active` was kept beside `additionalActive`; review found no reader, and the user
+   chose to remove it.) Only the Runtime checkout projection carries `plan`; the Git domain
+   projection does not.
 5. **Missing domains.** Runtime unavailable puts every active plan in Additional Plans; Plans
    unavailable leaves every checkout unchanged.
 6. **Which worktrees can match.** Only checkouts Runtime currently lists can receive a plan. A

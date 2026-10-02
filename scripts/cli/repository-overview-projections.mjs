@@ -103,13 +103,16 @@ function repositoryOverview(record, context) {
 // plans, or exposed by two Runtime worktrees, attaches nothing — picking one would assert a
 // relationship the evidence does not support. Counts and `recent` are untouched; grouping is
 // presentation, not lifecycle. Without plan data the checkouts are returned as they were.
+//
+// The full active list is consumed here and not passed on: each active plan reaches the browser
+// exactly once, beneath its worktree or in Additional Plans, so no view can render one twice.
 function associatePlans(workspace, plans) {
   if (!plans) return { workspace, plans };
-  const activePlans = plans.active || [];
+  const { active: activePlans = [], ...summary } = plans;
   // Main checkouts never carry a worktreeName (see projectWorkspace), so the name alone gates a match.
   const named = (workspace?.checkouts || []).filter((checkout) => checkout.worktreeName);
   if (!named.length || !activePlans.some((plan) => plan.worktree)) {
-    return { workspace, plans: { ...plans, additionalActive: activePlans } };
+    return { workspace, plans: { ...summary, additionalActive: activePlans } };
   }
 
   const tally = (values) => values.reduce((counts, value) => counts.set(value, (counts.get(value) || 0) + 1), new Map());
@@ -125,7 +128,7 @@ function associatePlans(workspace, plans) {
   });
   return {
     workspace: { ...workspace, checkouts },
-    plans: { ...plans, additionalActive: activePlans.filter((plan) => attachable.get(plan.worktree) !== plan) },
+    plans: { ...summary, additionalActive: activePlans.filter((plan) => attachable.get(plan.worktree) !== plan) },
   };
 }
 
