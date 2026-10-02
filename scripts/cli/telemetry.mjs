@@ -956,31 +956,53 @@ const ORACLE_EVIDENCE_PATHS = Object.freeze({ spoolDir: telemetrySpoolDir, marke
 // Metadata-only, per-file stamps cover replacements and provenance changes as well as appends.
 // Hash before leaving this boundary: directory entries and state paths are private evidence.
 export function telemetryOracleEvidenceSignature(paths = ORACLE_EVIDENCE_PATHS) {
-  const evidence = [evidenceDirectoryStamp(paths.spoolDir, ".jsonl"), evidenceFileStamp(paths.markersPath),
-    evidenceDirectoryStamp(paths.snapshotsDir, ".json"), evidenceFileStamp(paths.registryPath)];
+  return hashEvidence(oracleEvidence(paths, true));
+}
+
+function oracleEvidence(paths, strict) {
+  return [evidenceDirectoryStamp(paths.spoolDir, ".jsonl", strict), evidenceFileStamp(paths.markersPath, true, strict),
+    evidenceDirectoryStamp(paths.snapshotsDir, ".json", strict), evidenceFileStamp(paths.registryPath, true, strict)];
+}
+
+function hashEvidence(evidence) {
   return `sha256:${createHash("sha256").update(JSON.stringify(evidence)).digest("hex")}`;
 }
 
-function evidenceDirectoryStamp(directory, extension) {
+// Non-strict stamps record an unreadable entry in place instead of throwing.
+function evidenceDirectoryStamp(directory, extension, strict = true) {
   let files;
   try { files = fs.readdirSync(directory).filter((file) => file.endsWith(extension)).sort(); }
-  catch (error) { if (error.code === "ENOENT") return ["missing"]; throw error; }
+  catch (error) { if (error.code === "ENOENT") return ["missing"]; if (strict) throw error; return unreadableStamp(error); }
   // A disappearing member is an unstable read, not an empty directory. The observer retries.
-  return files.map((file) => [file, evidenceFileStamp(path.join(directory, file), false)]);
+  return files.map((file) => [file, evidenceFileStamp(path.join(directory, file), false, strict)]);
 }
 
-function evidenceFileStamp(file, optional = true) {
-  let stat;
-  try { stat = fs.statSync(file, { bigint: true }); }
-  catch (error) { if (optional && error.code === "ENOENT") return ["missing"]; throw error; }
-  if (!stat.isFile()) throw new Error("Evidence entry is not a file");
-  return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].map(String);
+function evidenceFileStamp(file, optional = true, strict = true) {
+  try {
+    const stat = fs.statSync(file, { bigint: true });
+    if (!stat.isFile()) throw new Error("Evidence entry is not a file");
+    return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].map(String);
+  } catch (error) {
+    if (optional && error.code === "ENOENT") return ["missing"];
+    if (strict) throw error;
+    return unreadableStamp(error);
+  }
+}
+
+function unreadableStamp(error) {
+  return ["unreadable", error.code || "not-a-file"];
 }
 
 // Reports also consume experiments, which do not affect the oracle's declared projections.
+// Report cache keys degrade per entry instead of throwing: a persistently unreadable entry yields a
+// stable key (no recompute on every request) while changes to every other entry still invalidate it.
+// A single constant fallback would instead freeze the cache on stale data. The oracle stays strict.
+export function telemetryReportEvidenceSignature(paths = { ...ORACLE_EVIDENCE_PATHS, experimentsDir: telemetryExperimentsDir }) {
+  return hashEvidence([...oracleEvidence(paths, false), evidenceDirectoryStamp(paths.experimentsDir, ".json", false)]);
+}
+
 function spoolSignature() {
-  try { return `${telemetryOracleEvidenceSignature()}|${JSON.stringify(evidenceDirectoryStamp(telemetryExperimentsDir, ".json"))}`; }
-  catch { return `unreadable:${Date.now()}`; }
+  return telemetryReportEvidenceSignature();
 }
 
 // Plain full-read of the whole spool. Used by the one-shot CLI paths (`telemetry report`/`export`)

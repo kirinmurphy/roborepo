@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { telemetryOracleEvidenceSignature } from "../cli/telemetry.mjs";
+import { telemetryOracleEvidenceSignature, telemetryReportEvidenceSignature } from "../cli/telemetry.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "oracle-signature-"));
 const paths = { spoolDir: path.join(root, "spool"), snapshotsDir: path.join(root, "snapshots"),
@@ -33,5 +33,20 @@ try {
   finally { fs.readFileSync = read; }
   assert.throws(() => telemetryOracleEvidenceSignature({ ...paths, spoolDir: path.join(paths.spoolDir, "renamed.jsonl") }),
     "unreadable evidence does not manufacture a stable missing signature");
+
+  // Report cache keys stay stable across a persistent unreadable entry, yet still track other evidence.
+  const reportPaths = { ...paths, experimentsDir: path.join(root, "experiments") };
+  const report = () => telemetryReportEvidenceSignature(reportPaths);
+  fs.mkdirSync(path.join(paths.spoolDir, "bad.jsonl"));
+  assert.throws(signature, "oracle stays strict on a non-file spool entry");
+  const degraded = report(); assert.match(degraded, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(report(), degraded, "a persistent unreadable entry does not churn report cache keys");
+  fs.writeFileSync(paths.markersPath, "changed while degraded");
+  assert.notEqual(report(), degraded, "other evidence still invalidates while one entry is unreadable");
+  const beforeExperiment = report(); fs.mkdirSync(reportPaths.experimentsDir);
+  fs.writeFileSync(path.join(reportPaths.experimentsDir, "exp.json"), "{}");
+  assert.notEqual(report(), beforeExperiment, "experiments invalidate report keys");
+  fs.rmSync(path.join(paths.spoolDir, "bad.jsonl"), { recursive: true });
+  assert.doesNotThrow(signature, "oracle recovers once the entry is readable");
   console.log("telemetry oracle complete evidence signature checks passed");
 } finally { fs.rmSync(root, { recursive: true, force: true }); }
