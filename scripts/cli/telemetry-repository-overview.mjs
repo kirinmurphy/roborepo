@@ -41,7 +41,8 @@ function addWarning(repositoryBySession, ensure, kind, severity, row) {
   const summary = ensure(repositoryId);
   summary.warningCount += 1;
   if (summary.highestSeverity !== "high") summary.highestSeverity = severity;
-  summary.warnings.push({ kind, severity, sessionId: row.session_id, harness: row.harness || null, at: row.ts || null });
+  // Model comes from the conditions ledger attached in analyzeTelemetry; Home rolls warnings up by it.
+  summary.warnings.push({ kind, severity, sessionId: row.session_id, harness: row.harness || null, model: row.condition_context?.model || null, at: row.ts || null });
 }
 
 function sessionKey(record) {

@@ -10,7 +10,7 @@ const events = [
 ];
 const report = {
   sessions: [{ session_id: "s1", harness: "codex" }, { session_id: "s2", harness: "codex" }, { session_id: "unresolved", harness: "codex" }],
-  spikes: [{ session_id: "s1", harness: "codex", ts: "2026-09-30T10:30:00.000Z" }],
+  spikes: [{ session_id: "s1", harness: "codex", ts: "2026-09-30T10:30:00.000Z", condition_context: { model: "gpt-5-codex" } }],
   loops: [],
   read_warnings: [{ session_id: "s2", harness: "codex", ts: "2026-09-30T11:30:00.000Z" }],
 };
@@ -21,6 +21,7 @@ assert.equal(projection.repositories[REPOSITORY].sessionCount, 2);
 assert.equal(projection.repositories[REPOSITORY].warningCount, 2);
 assert.equal(projection.repositories[REPOSITORY].highestSeverity, "high");
 assert.deepEqual(projection.repositories[REPOSITORY].recent.map((finding) => finding.kind), ["read-warning", "spike"]);
+assert.deepEqual(projection.repositories[REPOSITORY].warnings.map((finding) => finding.model), [null, "gpt-5-codex"], "warnings carry the model Home rolls up by");
 assert.equal(Object.keys(projection.repositories).length, 1, "unresolved sessions stay out of repository summaries");
 
 const manyWarnings = buildTelemetryRepositoryProjection(events, {

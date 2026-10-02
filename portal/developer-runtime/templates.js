@@ -736,7 +736,7 @@ const DRIFT_RULES = [
     return git.baseBehind
       ? {
           level: "warn",
-          text: `${formatDuration(age)}${suffix} behind ${base} (${git.baseBehind})`,
+          text: `${formatDuration(age)}${suffix} behind ${base} (${git.baseBehind} commit${git.baseBehind === 1 ? "" : "s"})`,
           title: driftTitle(git, base, now),
         }
       // Nothing landed on the base, so there is no merge to do — only a branch point that is

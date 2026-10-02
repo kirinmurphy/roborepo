@@ -40,6 +40,8 @@
   --badge-cmd-line: #238636;
   --badge-cmd-bg: #0d2214;
   --knob: #fff;
+  /* Brand mark (the header robot): plain white on the dark header. */
+  --logo: #ffffff;
   --warn-line: #7a641f;
   --warn-bg: #241f0e;
   /* Notice/callout tints — subtle border+bg pairs per severity, tuned like --warn-line/--warn-bg
@@ -152,6 +154,8 @@
   --badge-cmd-line: #aceebb;
   --badge-cmd-bg: #dafbe1;
   --knob: #ffffff;
+  /* White would vanish on the light header, so light mode inverts the mark to ink. */
+  --logo: var(--ink);
   --warn-line: #d4a72c;
   --warn-bg: #fdf3b8;
   --alert-line: #ffcecb;
@@ -312,26 +316,74 @@ samp {
   display: flex;
 }
 
-/* No flex: h1 + #portal-updated are inline-block instead, so the updated text naturally wraps
- * onto its own line below "roborepo" once the header gets too narrow to fit both — no breakpoint
- * to measure or maintain. */
+/* Wrapping flex: the robot and #portal-updated center on one line, and the updated text drops onto
+ * its own line once the header gets too narrow to fit both — no breakpoint to measure or maintain. */
 .portal-header .logo-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1rem;
   min-width: 0;
-  padding: 0.5rem 1.25rem;
+  padding: 0.25rem 1.25rem;
   padding-left: 0;
 }
 
 .portal-header h1 {
-  display: inline-block;
+  display: flex;
   font-size: var(--text-md);
+  line-height: 1;
   margin: 0;
-  margin-right: 0.5rem;
   font-weight: 600;
 }
+.portal-logo a {
+  display: inline-flex;
+  color: var(--logo);
+  border-radius: 6px;
+}
+.portal-logo a:hover {
+  filter: brightness(1.1);
+}
+/* Freshness, not a clock: a quiet dot while polling is on time, and a short word only once it
+ * isn't. Each step up is a little more visible than the last; none of them should compete with
+ * page content. States are set by portalSetUpdatedAt in api.js. */
 .portal-updated {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: middle;
   color: var(--dim);
   font-size: var(--text-2xs);
+}
+.portal-updated-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dim);
+  opacity: 0.5;
+}
+.portal-updated[data-state="active"] .portal-updated-dot {
+  background: var(--ok);
+  opacity: 0.55;
+}
+.portal-updated[data-state="active"] .portal-updated-label {
+  opacity: 0.6;
+}
+.portal-updated[data-state="waiting"] .portal-updated-dot {
+  background: var(--warn);
+  opacity: 0.9;
+}
+.portal-updated[data-state="waiting"] {
+  color: var(--warn);
+}
+.portal-updated[data-state="disconnected"] .portal-updated-dot {
+  background: var(--spike);
+  opacity: 1;
+}
+.portal-updated[data-state="disconnected"] {
+  color: var(--spike);
+}
+.portal-updated-label:empty {
+  display: none;
 }
 nav {
   display: flex;
@@ -400,8 +452,8 @@ portal-info-icon,
  * `sm` is the floor for legibility. */
 :root {
   --icon-sm: 16px;
-  --icon-md: 20px;
-  --icon-lg: 24px;
+  --icon-md: 22px;
+  --icon-lg: 26px;
   --icon-xl: 30px;
   --icon-xxl: 40px;
   --icon-xxxl: 48px;

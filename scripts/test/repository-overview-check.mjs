@@ -163,11 +163,48 @@ assert.equal(degraded.repositories[0].domains.runtime.status, "unavailable");
 assert.equal(degraded.repositories[0].domains.plans.status, "unavailable");
 assert.equal(degraded.repositories[0].domains.tokens.status, "unavailable");
 
+// Home order: pinned, running real repositories, running fixtures, idle real repositories, idle
+// fixtures. The fixtures above all carry the github.com/example prefix, so this mixes in real ids.
+const REAL_ACTIVE = "git:github.com/acme/real-active";
+const REAL_IDLE = "git:github.com/acme/real-idle";
+const REAL_PINNED_IDLE = "git:github.com/acme/real-pinned";
+const FIXTURE_IDLE = "git:github.com/example/fixture-idle";
+const groupedRegistry = defaultRegistry();
+for (const [id, name] of [[REAL_ACTIVE, "Real Active"], [REAL_IDLE, "Zebra Idle"], [REAL_PINNED_IDLE, "Real Pinned"], [FIXTURE_IDLE, "Fixture Idle"], [ACTIVE, "Active App"]]) {
+  addRepository(id, name, "2026-09-30T11:00:00.000Z", groupedRegistry);
+}
+pinRepository(groupedRegistry, REAL_PINNED_IDLE, { pinned: true, now: NOW.toISOString() });
+const groupedRuntime = {
+  generatedAt: NOW.toISOString(),
+  refresh: { state: "idle", error: null },
+  repositories: [
+    { repositoryId: REAL_ACTIVE, name: "Real Active", lifecycle: { state: "active", reason: null }, roots: [] },
+    { repositoryId: ACTIVE, name: "Active App", lifecycle: { state: "active", reason: null }, roots: [] },
+    { repositoryId: FIXTURE_IDLE, name: "Fixture Idle", lifecycle: { state: "idle", reason: null }, roots: [] },
+    { repositoryId: REAL_IDLE, name: "Zebra Idle", lifecycle: { state: "idle", reason: null }, roots: [] },
+    { repositoryId: REAL_PINNED_IDLE, name: "Real Pinned", lifecycle: { state: "idle", reason: null }, roots: [] },
+  ],
+};
+const grouped = createRepositoryOverviewService({
+  loadRegistry: () => structuredClone(groupedRegistry),
+  loadRuntime: () => structuredClone(groupedRuntime),
+  loadPlans: () => ({ truncated: false, errors: [], repositories: [], plans: [] }),
+  loadTelemetry: () => ({ status: "available", repositories: {} }),
+  now: () => NOW,
+}).loadHome();
+assert.deepEqual(
+  grouped.repositories.map((repository) => repository.repositoryId),
+  [REAL_PINNED_IDLE, REAL_ACTIVE, ACTIVE, REAL_IDLE, FIXTURE_IDLE],
+  "Home orders pinned, active, active fixtures, idle, then idle fixtures",
+);
+assert.equal(grouped.repositories.find((repository) => repository.repositoryId === FIXTURE_IDLE).fixture, true);
+assert.equal(grouped.repositories.find((repository) => repository.repositoryId === REAL_IDLE).fixture, false);
+
 console.log("repository-overview-check passed");
 
-function addRepository(id, name, seenAt) {
+function addRepository(id, name, seenAt, target = registry) {
   const kind = id.startsWith("git:") ? "git" : "local";
-  upsertRepository(registry, { id, kind, displayName: name, now: seenAt });
-  recordDiscovery(registry, id, { source: "developer-runtime", evidence: "git-remote", confidence: kind === "git" ? "high" : "medium", now: seenAt });
-  registerLocalRoot(registry, id, { rootId: id.slice(-8).replace(/[^a-z0-9]/g, "a"), now: seenAt });
+  upsertRepository(target, { id, kind, displayName: name, now: seenAt });
+  recordDiscovery(target, id, { source: "developer-runtime", evidence: "git-remote", confidence: kind === "git" ? "high" : "medium", now: seenAt });
+  registerLocalRoot(target, id, { rootId: id.slice(-8).replace(/[^a-z0-9]/g, "a"), now: seenAt });
 }

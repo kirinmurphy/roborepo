@@ -6,8 +6,9 @@
       {{WIDGET_TEMPLATES}}
       <main id="main" class="inner home-main">
         {{LOADING}}
+        <div id="home-harness-banner" class="home-harness-banner" hidden></div>
         <section class="home-heading" aria-labelledby="home-title">
-        <h1 id="home-title">Repositories</h1>
+        <h1 id="home-title">Active Repos</h1>
         <div class="home-action-slot" aria-hidden="true"></div>
       </section>
       <section id="home-warning" class="notice warn" hidden></section>
@@ -31,7 +32,7 @@
             <div class="card-title">
               <h3><a data-slot="repository-name"></a></h3>
               <a class="git-repo-link repository-nested-control" data-slot="provider-link" target="_blank" rel="noreferrer" hidden>
-                <span data-slot="provider-link-label">GitHub</span><portal-icon name="external-link"></portal-icon>
+                <span data-slot="provider-link-label">GitHub</span><portal-icon name="external-link" size="sm"></portal-icon>
               </a>
               <span class="repository-card-badges">
                 <span class="repository-state-badge" data-slot="lifecycle-state" hidden></span>
@@ -46,28 +47,32 @@
     </template>
     <template id="tpl-domain-row">
       <section class="home-domain-row">
-        <div class="domain-heading">
-          <h4><portal-icon name="warning" data-slot="warning-icon" hidden></portal-icon><span data-slot="label"></span></h4>
-          <span class="domain-summary" data-slot="summary"></span>
-          <a class="domain-link" data-slot="link"></a>
+        <portal-icon class="domain-glyph" data-slot="glyph" aria-hidden="true"></portal-icon>
+        <div class="domain-body">
+          <div class="domain-heading">
+            <h4 data-slot="label"></h4>
+            <span class="domain-summary" data-slot="summary"></span>
+            <a class="domain-link" data-slot="link"></a>
+          </div>
+          <div class="domain-details" data-slot="details" hidden></div>
         </div>
-        <div class="domain-details" data-slot="details" hidden></div>
       </section>
     </template>
     <template id="tpl-plan-item">
-      <a class="plan-item">
-        <span class="plan-title" data-slot="title"></span>
+      <div class="plan-item">
+        <button type="button" class="plan-title" data-slot="title"></button>
         <span class="plan-completion">
-          <span class="plan-progress" data-slot="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span data-slot="fill"></span></span>
+          <span class="plan-progress" data-slot="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></span>
           <span class="plan-percent" data-slot="percent"></span>
+          <span class="plan-complete-badge" data-slot="complete" hidden>done</span>
         </span>
-      </a>
+      </div>
     </template>
     <template id="tpl-token-warnings">
       <ul class="token-warnings" aria-label="Token warnings"></ul>
     </template>
     <template id="tpl-token-warning">
-      <li class="token-warning"><span data-slot="label"></span><span class="warning-context" data-slot="context"></span></li>
+      <li class="token-warning"><span data-slot="summary"></span> in <span class="warning-model" data-slot="model"></span></li>
     </template>
     <template id="tpl-unresolved-activity">
       <aside class="unresolved-activity">
@@ -76,7 +81,10 @@
       </aside>
     </template>
 
+    {{PLAN_DRAWER}}
+
     <script src="/portal/shared/icon.js" type="module"></script>
+    <script src="/portal/shared/notice.js" type="module"></script>
     <script src="/portal/shared/theme.js" type="module"></script>
     <script src="/portal/shared/tooltip.js" type="module"></script>
     <script src="/portal/shared/menu-button.js" type="module"></script>

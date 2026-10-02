@@ -26,7 +26,7 @@ import {
 // capped — and middle-truncated, since the tail usually identifies the branch — so a long name never
 // pushes the actions column onto a second line. The full name is the tooltip's heading. Standalone
 // cards keep the shared cap (BRANCH_NAME_MAX_LENGTH in templates.js).
-const CHECKOUT_BRANCH_MAX_LENGTH = 30;
+const CHECKOUT_BRANCH_MAX_LENGTH = 40;
 
 // Health states worth interrupting for, and the badge tone each gets. Healthy and unknown say
 // nothing: silence is the healthy state.
@@ -332,6 +332,9 @@ function mountCopyDropdown(section, root) {
   if (items.length === 1) {
     const button = document.createElement("portal-copy-button");
     button.setAttribute("icon", "copy");
+    // The same glyph size as the copy dropdown's trigger (tpl-copy-menu-trigger), so rows with one
+    // copy action and rows with two show the same icon.
+    button.setAttribute("icon-size", "md");
     button.setAttribute("aria-label", items[0].label);
     button.copySource = items[0].value;
     slot.append(button);

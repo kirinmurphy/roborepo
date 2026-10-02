@@ -45,7 +45,7 @@ function repositoryCard(repository, actions) {
   const checkoutList = node.querySelector("[data-slot=checkouts]");
   if (checkouts.length === 0) checkoutList.append(noCheckoutRow());
   else checkoutList.append(...checkouts.map((checkout) => checkoutRow(checkout, actions)));
-  appendRepositoryDomains(node.querySelector("[data-slot=domains]"), repository.domains);
+  appendRepositoryDomains(node.querySelector("[data-slot=domains]"), repository.domains, { onOpenPlan: actions.onOpenPlan });
   return node;
 }
 
@@ -79,8 +79,9 @@ function homeMenuItems(repository) {
   const checkouts = repository.domains.runtime.data?.checkouts || [];
   const knownCheckout = checkouts.length > 0;
   return [
-    { key: "agents", label: "Agents", href: "/config" },
     { key: knownCheckout ? "hide" : "forget", label: knownCheckout ? "Hide" : "Forget This Repo" },
     { key: "pin", label: repository.pinned ? "Unpin" : "Pin" },
+    // Placeholder until repository-scoped agent config exists: shown, but not navigable.
+    { key: "agents", label: "Repo Agent Config", hint: "coming soon", disabled: true },
   ];
 }

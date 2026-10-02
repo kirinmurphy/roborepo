@@ -452,6 +452,9 @@ function buildRepositories({ projects, composeProjects, unmatchedInstances, repo
     for (const checkout of persisted.checkouts || []) {
       if (!checkout?.rootId) continue;
       const root = ensureRoot(entry, checkout.rootId, checkout.git, checkout.projectRoot);
+      // A checkout that is gone has no git to say it was a worktree; the registry recorded which
+      // kind it was when Runtime saw it, so a missing worktree still renders and sorts as one.
+      if (checkout.kind === "worktree") root.isWorktree = true;
       root.checkoutState = checkout.state;
       root.checkoutReason = checkout.reason || null;
     }
@@ -496,7 +499,7 @@ function displayGroup(repository) {
 // local/dev-fixtures), which is what makes them recognizable here without a registry flag.
 const FIXTURE_REPOSITORY_PREFIX = "git:github.com/example/";
 
-function isFixtureRepository(repositoryId) {
+export function isFixtureRepository(repositoryId) {
   return typeof repositoryId === "string" && repositoryId.startsWith(FIXTURE_REPOSITORY_PREFIX);
 }
 

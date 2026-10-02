@@ -18,6 +18,7 @@ let lastVersion = null;
 let hasData = false;
 let setupReady = false;
 let pollTimer = null;
+const TOKENS_POLL_MS = 5000;
 // Last applied setup snapshot + the cascade rung it produced — load() re-applies the setup state
 // when a real-data response flips hasData (first captures land mid-poll, or a wipe empties the
 // spool), so the no-data panel and the full report follow without a config change or reload.
@@ -86,7 +87,7 @@ async function init() {
   // panel hides when real data exists instead of persisting from the pre-load default.
   await applySetupState({ telemetryOn, activeHarnessCount: harnessCount, snap: cfg });
   if (setupReady) {
-    pollTimer = setInterval(() => load(), 5000);
+    pollTimer = setInterval(() => load(), TOKENS_POLL_MS);
   }
 }
 
@@ -200,7 +201,7 @@ async function load(force) {
       }
     }
   }
-  portalSetUpdatedAt();
+  portalSetUpdatedAt(new Date(), { cadenceMs: pollTimer ? TOKENS_POLL_MS : null });
 
   // Mock-data disclaimer: shown when the page is NOT in the "full" state (no real
   // harness installed or no real telemetry data). The report renders below the

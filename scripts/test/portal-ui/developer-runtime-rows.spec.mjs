@@ -17,7 +17,7 @@ import { buildDeveloperRuntimeSnapshot, defaultSettings } from "../../../modules
 const DEMO = "git:github.com/example/demo";
 const SHOP = "git:github.com/example/shop";
 const IDLE = "git:github.com/example/idle";
-const WORKTREE_BRANCH = "codex/telemetry-tokens-conditions-report";
+const WORKTREE_BRANCH = "codex/telemetry-tokens-conditions-and-waste-report";
 const mainGit = { provider: { ok: true }, branch: "main", isWorktree: false, ahead: 0, behind: 0 };
 const worktreeGit = { provider: { ok: true }, branch: WORKTREE_BRANCH, isWorktree: true, ahead: 0, behind: 0 };
 

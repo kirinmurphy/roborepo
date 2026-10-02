@@ -21,7 +21,7 @@ const repoRoot = path.resolve(here, "..", "..");
 
 // Canonical page map from the plan: order is the nav order, and each route is unique (no alias).
 const EXPECTED = [
-  { path: "/", id: "home", title: "Home", dir: "home", default: true },
+  { path: "/", id: "home", title: "Repos", dir: "home", default: true },
   { path: "/config", id: "config", title: "Agents", dir: "config" },
   { path: "/plans", id: "plans", title: "Plans", dir: "plans" },
   { path: "/tokens", id: "tokens", title: "Tokens", dir: "tokens" },
@@ -74,6 +74,7 @@ assert.equal(PAGE_ROUTES.length, 6, "page-route table adds exactly one non-navig
 const detailRoute = PAGE_ROUTES.find((page) => page.path === "/repositories/:urlKey");
 assert.ok(detailRoute, "repository detail route is registered");
 assert.equal(detailRoute.navId, "home", "repository detail belongs to Home navigation");
+assert.equal(detailRoute.redirect, "/", "the parked detail page redirects Home");
 assert.ok(fs.existsSync(path.join(repoRoot, "portal", detailRoute.dir, "index.html")));
 assert.equal(matchPortalPage("/repositories/roborepo").params.urlKey, "roborepo");
 assert.equal(matchPortalPage("/repositories/hello%20world").params.urlKey, "hello world", "route params decode once");

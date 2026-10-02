@@ -4,6 +4,7 @@ import {
   repositorySummary,
   resolveRegistryAlias,
 } from "../../modules/repositories/index.mjs";
+import { isFixtureRepository } from "../../modules/developer-runtime/snapshot.mjs";
 import {
   planChangedAt,
   plansByRepository,
@@ -82,6 +83,7 @@ function repositoryOverview(record, context) {
   const tokens = perRepositoryEnvelope(context.telemetryState, context.telemetry || { sessionCount: 0, warningCount: 0, highestSeverity: null, recent: [] });
   return {
     ...repositorySummary(record),
+    fixture: isFixtureRepository(record.id),
     lifecycle,
     lastSeenAt: workspace?.lastSeenAt || lastSeenAtFor(record),
     domains: {
@@ -113,10 +115,20 @@ function unavailableEnvelope(message) {
   return { status: "unavailable", updatedAt: null, data: null, message };
 }
 
+// Pinned first, then running before idle/stale, and within each of those real repositories before
+// dev fixtures: pinned → active → active fixtures → idle → idle fixtures. Pins lead the whole list
+// (unlike Runtime, which pins within each group) since Home has no other way to keep an idle
+// favorite in view.
 function sortRepositories(repositories) {
   const rank = { active: 0, idle: 1, stale: 2 };
+  const group = (repository) => {
+    if (repository.pinned) return 0;
+    const running = repository.lifecycle.state === "active";
+    return (running ? 1 : 3) + (repository.fixture ? 1 : 0);
+  };
   return repositories.sort((a, b) => {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    const grouped = group(a) - group(b);
+    if (grouped !== 0) return grouped;
     const lifecycle = (rank[a.lifecycle.state] ?? 3) - (rank[b.lifecycle.state] ?? 3);
     if (lifecycle !== 0) return lifecycle;
     if (a.lifecycle.state === "idle") {

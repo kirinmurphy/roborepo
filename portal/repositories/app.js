@@ -21,7 +21,7 @@ async function refresh() {
       renderedVersion = version;
     }
     warning.hidden = true;
-    portalSetUpdatedAt(overview.updatedAt);
+    portalSetUpdatedAt(new Date(), { cadenceMs: POLL_MS });
     document.title = `${overview.repository.displayName} · roborepo`;
   } catch (error) {
     content.replaceChildren(unavailableView(`This repository is unavailable. It may be hidden, removed, or unknown. ${error.message}`));

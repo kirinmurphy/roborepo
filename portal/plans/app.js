@@ -5,17 +5,14 @@
 import {
   portalSetUpdatedAt,
   portalHideLoading,
-  portalCopyText,
   portalWireBackdropClose,
 } from "/portal/shared/api.js";
-import { createSkillDetailModal } from "/portal/shared/skill-detail-modal.js";
-import { renderMermaidBlocks } from "/portal/shared/markdown-mermaid.js";
 import * as api from "./api.js";
 import * as tmpl from "./templates.js";
 import { createRootsPanel, createInfoModal, createPromptModal } from "./panels.js";
 import { createLifecycleEventDialog, lifecycleEvents } from "./lifecycle-event-dialog.js";
 import { createLifecycleErrorDialog } from "./lifecycle-error-dialog.js";
-import { createOutcomeToast } from "./toast-controller.js";
+import { createPlanDrawer } from "./plan-drawer.js";
 import { createBlockersPopover } from "./blockers-popover.js";
 import {
   FILTER_IDS,
@@ -31,7 +28,6 @@ import {
   replaceRecord,
   filteredListActionFor,
   resolveBlockers,
-  resolveBlocking,
   optionCounts,
   optionLabel,
   repositoryContext,
@@ -46,14 +42,11 @@ const state = {
   filters: { ...FILTER_DEFAULTS },
   filtersExpanded: false,
   selectedLifecycle: lifecycleFromSearchParams(new URLSearchParams(location.search)),
-  openDrawerKey: null,
 };
 
-const toastEl = document.getElementById("toast");
 const groupsEl = document.getElementById("groups");
 const warningsEl = document.getElementById("warnings");
 const bannerEl = document.getElementById("package-banner");
-const drawer = document.getElementById("drawer");
 const nextPrompt = document.getElementById("next-prompt");
 const plansHeaderEl = document.getElementById("plans-header");
 const filtersToggleEl = document.getElementById("filters-toggle");
@@ -73,9 +66,17 @@ const rootsPanel = createRootsPanel({
   onExpand: () => setFiltersExpanded(false),
 });
 createInfoModal();
-const skillModal = createSkillDetailModal(document.getElementById("skill-modal"));
+// The shared plan detail drawer (plan-drawer.js) — the same popup Home opens. It owns the copy
+// toast and the plan-docs skill modal, so the page reuses those rather than creating its own.
+const planDrawer = createPlanDrawer({
+  getPlans: () => state.snapshot.plans,
+  getPlanDocsPackage: () => state.snapshot.planDocsPackage,
+  onEnablePackage: enablePackage,
+  onError: showError,
+});
+const skillModal = planDrawer.skillModal;
 const promptModal = createPromptModal(document.getElementById("prompt-modal"));
-const outcomeToast = createOutcomeToast(toastEl);
+const outcomeToast = planDrawer.toast;
 const blockersPopover = createBlockersPopover(document.getElementById("blockers-popover"), {
   onOpenPlan: (key) => openPlan(key),
 });
@@ -88,11 +89,7 @@ const lifecycleErrorDialog = createLifecycleErrorDialog(document.getElementById(
   onViewPlan: (key) => openPlan(key),
 });
 const allTasksModal = document.getElementById("all-tasks-modal");
-portalWireBackdropClose(drawer, () => drawer.close());
 portalWireBackdropClose(allTasksModal, () => allTasksModal.close());
-// Fires however the dialog closes (button, backdrop, Escape, or a programmatic .close() call
-// from presentChangeOutcome) — one place to clear which plan the drawer was showing.
-drawer.addEventListener("close", () => { state.openDrawerKey = null; });
 
 bindStaticControls();
 load();
@@ -112,7 +109,6 @@ function bindStaticControls() {
     });
   });
   nextPrompt.addEventListener("click", openNextPrompt);
-  document.getElementById("drawer-close").addEventListener("click", () => drawer.close());
   document.getElementById("open-all-tasks").addEventListener("click", openAllTasks);
   document.getElementById("all-tasks-close").addEventListener("click", () => allTasksModal.close());
   for (const id of FILTER_IDS) {
@@ -372,8 +368,8 @@ async function handlePlanChange({ property, value, record }, mutationOptions) {
   // (dropdown spinner) forever, since it never receives the new record. presentChangeOutcome may
   // close the drawer for a lifecycle move (a stale key by then); re-set only when it's still open
   // for this same plan.
-  if (drawer.open && state.openDrawerKey === previousKey) {
-    const drawerStatus = document.getElementById("drawer-status-mount").querySelector("plan-status");
+  if (planDrawer.isOpen && planDrawer.openKey === previousKey) {
+    const drawerStatus = planDrawer.statusElement;
     if (drawerStatus) drawerStatus.record = result.record;
   }
   presentChangeOutcome({ result, wasVisible, nowVisible, previousKey, view: viewAtRequestTime });
@@ -385,8 +381,8 @@ async function handlePlanChange({ property, value, record }, mutationOptions) {
 // state even though nothing about the underlying record actually changed.
 function refreshMountedStatus(record) {
   render();
-  if (!drawer.open) return;
-  const drawerStatus = document.getElementById("drawer-status-mount").querySelector("plan-status");
+  if (!planDrawer.isOpen) return;
+  const drawerStatus = planDrawer.statusElement;
   if (drawerStatus && drawerStatus.record?.key === record.key) drawerStatus.record = record;
 }
 
@@ -399,12 +395,12 @@ async function recoverFromStaleConflict(record) {
   }
   const current = state.snapshot.plans.find((item) => item.plan.id && item.plan.id === record.plan.id) ||
     state.snapshot.plans.find((item) => item.key === record.key);
-  if (drawer.open && state.openDrawerKey === record.key) {
+  if (planDrawer.isOpen && planDrawer.openKey === record.key) {
     if (current) {
       showError({ message: `This plan changed outside the portal, so the update wasn't applied. The page has been refreshed. Current lifecycle: ${current.plan.lifecycle}.` });
       openPlan(current.key);
     } else {
-      drawer.close();
+      planDrawer.close();
       showError({ message: "This plan was removed or renamed outside the portal." });
     }
   } else {
@@ -421,8 +417,8 @@ function presentChangeOutcome({ result, wasVisible, nowVisible, previousKey, vie
   const { change, record } = result;
   // A lifecycle move invalidates the open drawer's key/path/actions — close it before showing
   // either outcome surface rather than leaving a stale detail view open behind the dialog/toast.
-  if (change.property === "lifecycle" && drawer.open && state.openDrawerKey === previousKey) {
-    drawer.close();
+  if (change.property === "lifecycle" && planDrawer.isOpen && planDrawer.openKey === previousKey) {
+    planDrawer.close();
   }
   if (change.property === "lifecycle" && lifecycleEvents[change.newValue]) {
     lifecycleEventDialog.open({ change, record, isTransition: true });
@@ -528,12 +524,8 @@ async function enablePackage() {
   }
 }
 
-async function openPlan(key) {
-  try {
-    renderDrawer(await api.fetchPlanDocument(key));
-  } catch (err) {
-    showError(err);
-  }
+function openPlan(key) {
+  return planDrawer.open(key);
 }
 
 // Every active plan's remaining work in one view, ordered the same way the Active tab is so the
@@ -570,71 +562,12 @@ function openAllTasks() {
   allTasksModal.showModal();
 }
 
-function renderDrawer(doc) {
-  state.openDrawerKey = doc.plan.key;
-  const content = tmpl.drawerContent(doc, {
-    onCopyPath: copyText,
-    onCopyRepoContext: (record) => copyText(repositoryContext(record)),
-    onCopyPortableContext: (key) => copyPrompt("review", [key], "portable"),
-    onPlanDocsAction: (key, mode, { portable } = {}) =>
-      copyPrompt(mode, [key], portable ? "portable" : "repository-aware"),
-    onEnablePackage: enablePackage,
-    planDocsPackage: state.snapshot.planDocsPackage,
-    skillModal,
-    onError: showError,
-  });
-  document.getElementById("drawer-title").textContent = content.title;
-  document.getElementById("drawer-path").textContent = content.path;
-  const pathCopyEl = document.getElementById("drawer-path-copy");
-  pathCopyEl.copySource = () => doc.plan.plan.relativePath;
-  const drawerDocEl = document.getElementById("drawer-doc");
-  drawerDocEl.innerHTML = content.html;
-  // Plan bodies routinely carry architecture diagrams; render them rather than showing the source.
-  renderMermaidBlocks(drawerDocEl);
-  document.getElementById("drawer-meta").replaceChildren(...content.meta);
-  document
-    .getElementById("drawer-warnings")
-    .replaceChildren(...content.warnings.map(tmpl.listItem));
-  document.getElementById("drawer-warnings-section").hidden =
-    content.warnings.length === 0;
-  document.getElementById("drawer-tasks").replaceChildren(...tmpl.drawerTaskItems(content.tasks));
-  renderDrawerBlockers(doc.plan);
-  const statusEl = document.createElement("plan-status");
-  statusEl.record = doc.plan;
-  document.getElementById("drawer-status-mount").replaceChildren(statusEl);
-  // Recommended-next CTA (hidden when there's no clear recommendation) + the unified ⋯ menu.
-  const ctaEl = document.getElementById("drawer-cta");
-  if (content.cta) {
-    ctaEl.textContent = content.cta.label;
-    ctaEl.hidden = false;
-    ctaEl.onclick = () => copyPrompt(content.cta.mode, [doc.plan.key], "repository-aware");
-  } else {
-    ctaEl.hidden = true;
-    ctaEl.onclick = null;
-  }
-  document.getElementById("drawer-menu").panelContent = content.menu;
-  drawer.showModal();
+function copyPrompt(actionName, keys, mode = "repository-aware") {
+  return planDrawer.copyPrompt(actionName, keys, mode);
 }
 
-// Blocked by (this plan's own blocked_by, resolved) and Blocking (other plans that list this one)
-// render as two independent warning-styled sections above the drawer's main content — each hidden
-// when empty. Every resolved entry is a link that closes to the same drawer re-opened for the
-// target plan; unresolved blocked_by ids render as plain text (see resolveBlockers).
-function renderDrawerBlockers(record) {
-  const blockedBy = resolveBlockers(record, state.snapshot.plans);
-  const blocking = resolveBlocking(record, state.snapshot.plans);
-  document.getElementById("drawer-blocked-by-section").hidden = blockedBy.length === 0;
-  document.getElementById("drawer-blocked-by-links").replaceChildren(...blockedBy.map((b) => tmpl.blockerLink(b, openPlan)));
-  document.getElementById("drawer-blocking-section").hidden = blocking.length === 0;
-  document.getElementById("drawer-blocking-links").replaceChildren(...blocking.map((b) => tmpl.blockerLink(b, openPlan)));
-}
-
-async function copyPrompt(actionName, keys, mode = "repository-aware") {
-  await copyText(await api.generatePrompt(actionName, keys, mode));
-}
-
-async function copyText(text) {
-  await portalCopyText(text, () => outcomeToast.show({ message: "copied" }));
+function copyText(text) {
+  return planDrawer.copyText(text);
 }
 
 function setPluralCount(node, count, noun) {

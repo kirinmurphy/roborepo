@@ -1,8 +1,11 @@
 // Shared repository/workspace primitives. The pages own their surrounding markup and unique
 // slots, while this module keeps the repeated identity and action affordances consistent.
 
-export function repositoryPageUrl(repository) {
-  return repository?.urlKey ? `/repositories/${encodeURIComponent(repository.urlKey)}` : null;
+// The repository detail page is parked: names render as plain text, and the server redirects
+// /repositories/* to Home (the route's `redirect` in portal-server.mjs). Restore the URL below to
+// bring the page back.
+export function repositoryPageUrl(_repository) {
+  return null;
 }
 
 export function configureRepositoryName(node, { name, href }) {
@@ -12,9 +15,12 @@ export function configureRepositoryName(node, { name, href }) {
     slot.href = href;
     slot.textContent = name || "Repository";
   } else {
-    const heading = slot.parentElement;
-    slot.remove();
-    heading.textContent = name || "Repository";
+    // Unlinked names keep the linked name's face (mono, via .repository-name-text) so a card looks
+    // the same with or without a detail page to point at.
+    const text = document.createElement("span");
+    text.className = "repository-name-text";
+    text.textContent = name || "Repository";
+    slot.replaceWith(text);
   }
 }
 
@@ -30,8 +36,29 @@ export function configureProviderLink(node, providerUrl, label = "GitHub") {
   link.target = "_blank";
   link.rel = "noreferrer";
   const labelSlot = link.querySelector("[data-slot=provider-link-label]");
-  if (labelSlot) labelSlot.textContent = label;
+  // GitHub gets its mark instead of the word; the name moves to the accessible label and tooltip.
+  // The mark already says "another site", so the external-link arrow only shows on hover/focus
+  // (see .is-provider-glyph in developer-runtime/styles.css). Other forges keep the text and a
+  // permanent arrow, since a lookalike glyph would claim the wrong vendor.
+  if (labelSlot && isGitHubUrl(providerUrl)) {
+    const glyph = document.createElement("portal-icon");
+    glyph.setAttribute("name", "github");
+    glyph.setAttribute("size", "md");
+    labelSlot.replaceChildren(glyph);
+    link.querySelector('portal-icon[name="external-link"]')?.setAttribute("size", "sm");
+    link.classList.add("is-provider-glyph");
+    link.setAttribute("aria-label", label);
+    link.title = label;
+  } else if (labelSlot) labelSlot.textContent = label;
   else link.textContent = label;
+}
+
+function isGitHubUrl(url) {
+  try {
+    return /(^|\.)github\.com$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 // A menu is only a useful control when it has at least one visible item. Both Home and Runtime
@@ -58,11 +85,20 @@ export function mountActionMenu(host, items, { onToggle, onSelect, ariaLabel = "
   panel.dataset.menu = "";
   panel.hidden = true;
   for (const item of usable) {
-    const control = item.href ? document.createElement("a") : document.createElement("button");
-    if (!item.href) control.type = "button";
+    // A disabled item is always a button (never a link), so there is nothing to follow; it keeps
+    // its place in the list to announce what is coming. `hint` adds a small second line.
+    const control = item.href && !item.disabled ? document.createElement("a") : document.createElement("button");
+    if (control.tagName === "BUTTON") control.type = "button";
     control.textContent = item.label;
     control.dataset.action = item.key;
-    if (item.href) {
+    if (item.disabled) control.disabled = true;
+    if (item.hint) {
+      const hint = document.createElement("span");
+      hint.className = "menu-item-hint";
+      hint.textContent = item.hint;
+      control.append(hint);
+    }
+    if (item.href && control.tagName === "A") {
       control.href = item.href;
       if (item.external) {
         control.target = "_blank";

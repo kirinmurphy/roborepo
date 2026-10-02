@@ -22,6 +22,19 @@ export function harnessWarningSpec(snap) {
   };
 }
 
+// Home's version of the same condition. Home does not depend on a harness, so it is not a warning
+// there: it is an info prompt that says what installing one unlocks, linking those pages, with the
+// supported harness list on its own smaller line. Null when no banner is warranted.
+export function harnessSetupPromptElement(snap) {
+  if (activePresentedHarnesses(snap).length > 0) return null;
+  const panel = tpl("tpl-harness-setup-prompt");
+  const names = (snap?.harnesses || []).map((harness) => harness.displayName);
+  const supported = panel.querySelector("[data-slot=supported]");
+  if (names.length) supported.querySelector("[data-slot=names]").textContent = names.join(", ");
+  else supported.remove();
+  return panel;
+}
+
 // Ready-to-insert element for portal pages. Null when no banner is warranted.
 export function harnessWarningElement(snap) {
   const spec = harnessWarningSpec(snap);

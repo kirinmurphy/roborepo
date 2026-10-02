@@ -96,7 +96,7 @@ function applySnapshot(snapshot, { reconcile = false } = {}) {
     lastHash = hash;
     render(snapshot, { reconcile });
   }
-  portalSetUpdatedAt(snapshot.generatedAt);
+  portalSetUpdatedAt(snapshot.generatedAt, { cadenceMs: 10000 });
 }
 
 function render(snapshot, { reconcile }) {

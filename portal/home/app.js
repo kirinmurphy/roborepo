@@ -1,4 +1,7 @@
-import { portalHideLoading, portalSetUpdatedAt } from "/portal/shared/api.js";
+import { portalGetJson, portalHideLoading, portalSetUpdatedAt } from "/portal/shared/api.js";
+import { harnessSetupPromptElement } from "/portal/shared/harness-warning.js";
+import { createPlanDrawer } from "/portal/plans/plan-drawer.js";
+import { fetchSnapshot as fetchPlansSnapshot } from "/portal/plans/api.js";
 import * as api from "./api.js";
 import { mountHomeLinks } from "./links.js";
 import { emptyState, repositoryDirectory, unresolvedActivity } from "./templates.js";
@@ -6,14 +9,44 @@ import { emptyState, repositoryDirectory, unresolvedActivity } from "./templates
 const POLL_MS = 10_000;
 const content = document.getElementById("home-content");
 const warning = document.getElementById("home-warning");
+const harnessBanner = document.getElementById("home-harness-banner");
 let renderedVersion = null;
 let pending = false;
+let plansSnapshot = null;
+
+// The same plan detail drawer the Plans page opens. Read-only here: lifecycle and priority edits
+// go through the Plans page's mutation flow, which Home does not carry.
+const planDrawer = createPlanDrawer({
+  getPlans: () => plansSnapshot?.plans || [],
+  getPlanDocsPackage: () => plansSnapshot?.planDocsPackage || {},
+  onEnablePackage: () => { location.href = "/plans"; },
+  onError: showWarning,
+  readonly: true,
+});
 
 const menuActions = {
   onMountLinks: (slot, entrypoint) => mountHomeLinks(slot, entrypoint, { onStale: refresh }),
   onToggleMenu: toggleActionMenu,
   onSelectMenu: selectRepositoryAction,
+  onOpenPlan: openPlan,
 };
+
+// The plans snapshot supplies what the drawer resolves against (blockers, plan-docs state); it is
+// fetched on open rather than polled, since Home only needs it while a drawer is showing.
+async function openPlan(plan) {
+  try {
+    plansSnapshot = await fetchPlansSnapshot();
+  } catch (error) {
+    showWarning(error);
+    return;
+  }
+  await planDrawer.open(plan.key);
+}
+
+function showWarning(error) {
+  warning.textContent = `Plan unavailable: ${error.message || error}`;
+  warning.hidden = false;
+}
 
 async function refresh() {
   if (pending) return;
@@ -29,7 +62,7 @@ async function refresh() {
       renderedVersion = version;
     }
     warning.hidden = true;
-    portalSetUpdatedAt(overview.updatedAt);
+    portalSetUpdatedAt(new Date(), { cadenceMs: POLL_MS });
   } catch (error) {
     warning.textContent = `Repository overview unavailable: ${error.message}`;
     warning.hidden = false;
@@ -40,8 +73,21 @@ async function refresh() {
   }
 }
 
-await refresh();
+await Promise.all([refresh(), renderHarnessBanner()]);
 setInterval(refresh, POLL_MS);
+
+// The "install a supported harness" condition Agents and Tokens warn about, shown here as an info
+// prompt (Home does not need a harness to work). Harness installation is a rare, out-of-band
+// change, so it is checked once per page load rather than on every poll.
+async function renderHarnessBanner() {
+  try {
+    const banner = harnessSetupPromptElement(await portalGetJson("/api/config"));
+    harnessBanner.replaceChildren(...(banner ? [banner] : []));
+    harnessBanner.hidden = !banner;
+  } catch {
+    harnessBanner.hidden = true;
+  }
+}
 
 function toggleActionMenu(card) {
   const menu = card.querySelector("[data-menu]");

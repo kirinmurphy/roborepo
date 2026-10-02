@@ -22,7 +22,7 @@ export function plansByRepository(snapshot, now, registry) {
     const repositoryId = sourceId && resolveRegistryAlias(registry, sourceId);
     if (!repositoryId || !registry.repositories?.[repositoryId]) continue;
     const group = coverage.get(repositoryId) || { repository: null, plans: [] };
-    group.plans.push(record.plan);
+    group.plans.push({ ...record.plan, key: record.key });
     coverage.set(repositoryId, group);
   }
   const result = new Map();
@@ -77,7 +77,7 @@ function planSummary(plans, now) {
     .slice(0, 5);
   const active = plans
     .filter((plan) => plan.lifecycle === "active")
-    .map((plan) => ({ id: plan.id, title: plan.title, lifecycle: plan.lifecycle, changedAt: planChangedAt(plan), taskCounts: { total: plan.taskCounts?.total || 0, complete: plan.taskCounts?.complete || 0 } }))
+    .map((plan) => ({ id: plan.id, key: plan.key, title: plan.title, lifecycle: plan.lifecycle, changedAt: planChangedAt(plan), taskCounts: { total: plan.taskCounts?.total || 0, complete: plan.taskCounts?.complete || 0 } }))
     .sort((a, b) => Date.parse(b.changedAt || 0) - Date.parse(a.changedAt || 0) || a.title.localeCompare(b.title));
   return { counts, active, recent };
 }

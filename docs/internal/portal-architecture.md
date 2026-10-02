@@ -90,10 +90,19 @@ it:
 | `portalGetJson(path)` | `fetch` + `.json()`; throws with the server's `error`/`message` on a non-OK response. |
 | `portalPostJson(path, body)` | Same, but POST with `Content-Type: application/json` and `X-Cli-Portal-Token` attached from `portalConfig().token`. Also throws if the response body has `ok: false`. |
 | `portalCopyText(text, onCopied?)` | Wraps `navigator.clipboard.writeText`; swallows clipboard-blocked errors; calls `onCopied()` on success. |
-| `portalSetUpdatedAt(date?)` | Updates the `#portal-updated` header chip. |
+| `portalSetUpdatedAt(date?, { cadenceMs }?)` | Marks a successful update for the `#portal-updated` freshness indicator. With the page's poll cadence it ages on its own: active (a dot) within 2× the cadence, `Waiting` past 2×, `Not connected` past 10×. Pages that never poll omit the cadence and stay active. `date` only appears in the tooltip. |
 | `portalHideLoading()` | Hides the shared full-page loading overlay (`#page-loading`, injected by `theme.js`). Call once after a page's first data fetch resolves — success or handled error — never again after that. |
 | `portalTpl(id)` | Clones a `<template>` element's first child by id. The shared render pattern for dynamically-injected markup, so pages keep an HTML anchor instead of building raw strings. |
 | `portalFillSlots(node, fills)` | Fills `data-slot` elements in a cloned template with text, a replacement node, or attributes. |
+
+### Shared plan drawer
+
+The plan detail popup is one component on every page that shows it (Plans and Home). Its dialog,
+templates, and stylesheet link live in `portal/plans/plan-drawer-partial.html`, injected wherever a
+page places `{{PLAN_DRAWER}}`; `portal/plans/plan-drawer.js` (`createPlanDrawer`) fills and opens it.
+The page supplies the plan list blockers resolve against and the plan-docs package state. Plans
+handles the drawer's `plan-change` events with its mutation orchestrator; Home passes `readonly`,
+so `<plan-status>` renders lifecycle and priority as chips.
 
 ### Adding a Read API
 
