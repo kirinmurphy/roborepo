@@ -28,6 +28,12 @@ the target worktree until step 7 approves.
 2. Confirm the primary checkout is on the base branch and `git status --porcelain` is empty. If it is
    on another branch or has any change, stop and ask the user; a checkout with someone else's edits
    is not eligible for an automated commit.
+
+   Exception — first run in a repository: Preflight asks the user to confirm `worktreeRoot` and
+   writes it to `docs/plans/plans-config.json`. When that file, with only that key added, is the
+   sole change, stage it by name and commit it alone on the base branch as a configuration-only
+   commit (do not push), then repeat this check. Never fold it into the transition commit; check 4
+   below requires that commit to touch only the plan.
 3. Resolve the worktree name from the target. A main checkout has none and cannot be associated;
    stop if the target is not a linked worktree.
 4. Write `worktree: <name>` into the canonical plan's frontmatter. If the plan is in `backlog/`, move

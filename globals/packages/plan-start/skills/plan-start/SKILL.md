@@ -71,7 +71,9 @@ Run the transition from the primary checkout, after the target worktree is resol
 implementation:
 
 1. Require the primary checkout to be on the base branch with no uncommitted changes. Otherwise stop
-   and ask the user.
+   and ask the user. The one exception is the `worktreeRoot` that Preflight just wrote to
+   `docs/plans/plans-config.json` on a repository's first run: commit that file alone first, as a
+   configuration-only commit, then re-check that the checkout is clean.
 2. Resolve the target's Git administrative worktree name — not the checkout directory's basename,
    and never a branch name or absolute path.
 3. Write `worktree: <name>` into the canonical plan, and move the plan from `backlog/` to `active/`

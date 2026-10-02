@@ -220,8 +220,10 @@ Each source is projected independently into a small envelope:
 The aggregate request path reads bounded in-memory projections only:
 
 - Runtime supplies its cached repository/worktree snapshot. The mapper keeps lifecycle, branch and
-  Git status, and one promoted `primaryEntrypoint` per checkout; it drops paths, opaque runtime
-  keys, secondary ports, PIDs, and container internals.
+  Git status, each checkout's `projectRoot` (for the shared tooltip and copy control, never as
+  identity), a linked worktree's `worktreeName`, and one promoted `primaryEntrypoint` per checkout,
+  including that entrypoint's opaque key for route discovery. It drops every other opaque runtime
+  key, secondary ports, PIDs, and container internals.
 - Plans supplies its last cached discovery result. Missing scan coverage is `unavailable`, not an
   authoritative zero. Recently changed plans prefer Git last-change time and fall back to mtime.
 - Tokens supplies a compact repository/session warning projection retained beside the default

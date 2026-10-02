@@ -107,13 +107,14 @@ for (const [id, { boundaryPhrases }] of Object.entries(SKILLS)) {
     assert.ok(at > cursor, `plan-start: start transition step missing or out of order: "${step}"`);
     cursor = at;
   }
-  for (const phrase of ["Do not push", "at most three correction passes", "not the checkout directory's basename"]) {
+  for (const phrase of ["Do not push", "at most three correction passes", "not the checkout directory's basename", "configuration-only commit"]) {
     assert.ok(transition.includes(phrase), `plan-start: start transition missing "${phrase}"`);
   }
 
   for (const phrase of [
     "rev-parse --absolute-git-dir",
     "Never use `git add -A` or `.`",
+    "Never fold it into the transition commit",
     "Do not push",
     "Enter the target worktree only on `APPROVED`",
     "at most three correction passes",
