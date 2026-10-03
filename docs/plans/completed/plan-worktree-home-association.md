@@ -1,14 +1,14 @@
 ---
 id: wk7p4n2
 priority: high
-next_action: Review and merge branch claude/plan-worktree-home-association into main, and decide whether 684a136 stands as this plan's start transition.
+next_action:
 blocked_by: []
 depends_on:
   - jqi1dof
 related:
   - qk4mz7t2
   - plan-lifecycle-suite-workflow-navigation
-reviewed_commit: 388d8cf
+reviewed_commit: 14b1ed6
 worktree: plan-worktree-home-association
 ---
 
@@ -343,8 +343,8 @@ name or historical plan prose.
 - [x] Validate this plan against Plan Docs schema, lifecycle, naming, relationships, and the
       technical-writing/code/test rules.
 
-- [ ] Decide whether `684a136` stands as this plan's start transition; see decision 12.
-- [ ] Review and merge `claude/plan-worktree-home-association` into `main`.
+- [x] Decide whether `684a136` stands as this plan's start transition; see decision 12.
+- [x] Review and merge `claude/plan-worktree-home-association` into `main`.
 
 ## Validation
 
@@ -392,8 +392,8 @@ fields.
 ## Implementation Status
 
 Implemented on branch `claude/plan-worktree-home-association`, started from `main` at `388d8cf`
-after [[jqi1dof]] merged. The implementation is committed on that branch and awaits review and
-merge.
+after [[jqi1dof]] merged. The branch merged into `main` as `14b1ed6` (PR #23) on 2026-10-02, and
+every task and decision in this plan is closed.
 
 | Phase | State |
 | --- | --- |
@@ -402,7 +402,7 @@ merge.
 | 2 — Start transition and validator | Done. `plan-start/SKILL.md` gains a Start Transition section; `references/start-validation.md` holds the validator; Plan Docs `workflow-start.md` owns the lifecycle half. |
 | 3 — Repository association | Done. `associatePlans()` in `repository-overview-projections.mjs` produces `checkout.plan` and `plans.additionalActive`. |
 | 4 — Home presentation | Done. Additional Plans renders while active plans exist (decision 17); an associated plan mounts beneath its worktree through a Home-owned template. |
-| 5 — Migration, docs, verification | Backfill value on `main` since `684a136` (not a plan-only commit; see decision 12). Docs updated. Verification below. |
+| 5 — Migration, docs, verification | Done. Backfill value on `main` since `684a136` (not a plan-only commit; accepted exception, see decision 12). Docs updated. Verification below. |
 
 ### Migration result
 
@@ -453,6 +453,9 @@ Decisions made during implementation without stopping, recorded for review:
     also changed `case-study-pack/skills/case-study/SKILL.md`. The association is therefore
     committed, but not as a plan-only transition: validator check 4 would refuse that commit. This
     session began before the start transition existed, so its own start never passed the validator.
+    Accepted at completion: `684a136` stands as this plan's start transition. Its `worktree` value is
+    correct and has been on `main` since that commit, and the only alternative was rewriting
+    published history.
 13. **Empty value in the payload.** A plan with no `worktree` carries `""` in the Home payload, the
     same representation as the plan record, rather than converting it to `null` in between.
 14. **Privacy wording corrected.** `docs/user/reference/repositories.md` and
@@ -491,14 +494,16 @@ Run in the implementation worktree on 2026-10-02:
 | `node scripts/test/repository-overview-check.mjs` | passed |
 | `npm run test:portal-ui` | 34 passed, 2 documentation-screenshot specs skipped by design |
 | `npm run check` | `CI checks passed`, including the Docker clean-machine suites; Windows installer parity skipped because `pwsh` is not installed |
+| `npm run check` on merge commit `942bbf6`, before merging to `main` (2026-10-02) | `CI checks passed`; 422 roborepo tests passed, 0 failed; Windows installer parity skipped because `pwsh` is not installed |
 
 Manual: a hermetic portal rendered Home with one matched worktree, one unmatched worktree, and one
 Additional Plan; the matched plan appeared once, beneath its worktree, on the checkout glyph rail.
 The Home payload for an association carries only the worktree name; no new path field was added.
 
-Plan Docs validation of this document through `buildPlanSnapshot()` reports `active`, `ready`,
-`worktree: plan-worktree-home-association`, and no findings. The `technical-writing` Validator was
-not run as a separate pass on the added sections.
+Plan Docs validation of this document through `buildPlanSnapshot()` reported `active`, `ready`,
+`worktree: plan-worktree-home-association`, and no findings before completion. After the move to
+`completed/` it reports `completed`, `ready`, 26 of 26 tasks, and no findings. The
+`technical-writing` Validator was not run as a separate pass on the added sections.
 
 ## Risks and Open Decisions
 

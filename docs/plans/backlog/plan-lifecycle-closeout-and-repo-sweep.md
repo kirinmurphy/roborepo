@@ -4,7 +4,8 @@ priority: high
 next_action: Decide whether the completion gate blocks on unchecked manual verification or only warns, then add the Not tested section rules to plan-schema.md
 blocked_by: []
 depends_on: []
-related: []
+related:
+  - a7bslb00
 reviewed_commit: 9e79d1f
 ---
 
@@ -161,6 +162,11 @@ flowchart LR
 A skill invoked only as the slash command `/tear-down`, never model-invoked: it removes worktrees and
 branches, and that is not a decision to make on inference. Bare invocation with no argument is the
 normal path, and it enumerates everything eligible.
+
+Worktree and branch candidates should come from the inventory and landed test in
+`git-worktree-lifecycle-cleanup` (`a7bslb00`) rather than a second eligibility test. That plan also
+removes landed, clean worktrees automatically, a user decision on 2026-10-02 that supersedes the
+confirmation rule below for that one class.
 
 Survey first, act second. One report, one approval, then execution:
 
